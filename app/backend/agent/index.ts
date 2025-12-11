@@ -5,7 +5,7 @@ import { getTools, executeTool } from './tools.js';
 const client = new Anthropic({
   apiKey: process.env.DATABRICKS_TOKEN || process.env.ANTHROPIC_API_KEY || '',
   baseURL: process.env.DATABRICKS_HOST
-    ? `${process.env.DATABRICKS_HOST}/serving-endpoints/anthropic`
+    ? `https://${process.env.DATABRICKS_HOST}/serving-endpoints/anthropic`
     : undefined,
   // Databricks uses Bearer token authentication instead of x-api-key
   defaultHeaders: process.env.DATABRICKS_HOST
