@@ -1,47 +1,103 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './App.css';
+import { useAgent } from './hooks/useAgent';
 
 function App() {
-  const [message, setMessage] = useState<string>('');
-  const [health, setHealth] = useState<string>('');
+  const [input, setInput] = useState('');
+  const { messages, isConnected, isProcessing, sendMessage } = useAgent();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchHello = async () => {
-    const response = await fetch('/api/hello');
-    const data = await response.json();
-    setMessage(JSON.stringify(data, null, 2));
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const fetchHealth = async () => {
-    const response = await fetch('/api/health');
-    const data = await response.json();
-    setHealth(JSON.stringify(data, null, 2));
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input.trim() && !isProcessing) {
+      sendMessage(input.trim());
+      setInput('');
+    }
   };
 
   return (
-    <div className="container">
-      <h1>🚀 React + Express App</h1>
-      <p className="subtitle">Turborepo Monorepo</p>
+    <div className="app">
+      <header className="header">
+        <h1>Claude Coding Agent</h1>
+        <div className="status">
+          <span
+            className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`}
+          ></span>
+          <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+        </div>
+      </header>
 
-      <div className="card">
-        <h3>📦 機能</h3>
-        <ul className="feature-list">
-          <li>React フロントエンド</li>
-          <li>Express バックエンド</li>
-          <li>Turborepo モノレポ</li>
-          <li>TypeScript</li>
-        </ul>
-      </div>
+      <div className="chat-container">
+        <div className="messages">
+          {messages.length === 0 && (
+            <div className="welcome-message">
+              <p>Claude Coding Agent</p>
+              <div className="examples">
+                <p>Try:</p>
+                <ul>
+                  <li>List all TypeScript files</li>
+                  <li>Read package.json</li>
+                  <li>Search for TODO comments</li>
+                  <li>Create a new file</li>
+                </ul>
+              </div>
+            </div>
+          )}
 
-      <div className="card">
-        <h3>🧪 API テスト</h3>
-        <button onClick={fetchHello}>Hello API</button>
-        <button onClick={fetchHealth}>Health Check</button>
-        {message && (
-          <pre className="response">{message}</pre>
-        )}
-        {health && (
-          <pre className="response">{health}</pre>
-        )}
+          {messages.map((message) => (
+            <div key={message.id} className={`message ${message.role}`}>
+              <div className="message-role">
+                {message.role === 'user' ? '>' : '◆'}
+              </div>
+              <div className="message-content">
+                <pre>{message.content}</pre>
+              </div>
+            </div>
+          ))}
+
+          {isProcessing &&
+            messages.length > 0 &&
+            messages[messages.length - 1].role === 'user' && (
+              <div className="message agent">
+                <div className="message-role">◆</div>
+                <div className="message-content">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        <form className="input-form" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            disabled={!isConnected || isProcessing}
+            className="input-field"
+          />
+          <button
+            type="submit"
+            disabled={!isConnected || isProcessing || !input.trim()}
+            className="send-button"
+          >
+            Send
+          </button>
+        </form>
       </div>
     </div>
   );

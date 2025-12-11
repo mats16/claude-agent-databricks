@@ -11,9 +11,12 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "start": "npm run start --workspace=backend"
+    "start": "npm run start --workspace=backend",
+    "format": "turbo run format",
+    "format:check": "turbo run format:check"
   },
   "devDependencies": {
+    "prettier": "^3.7.4",
     "turbo": "^2.0.0"
   }
 }

@@ -94,9 +94,32 @@ npm install <package-name>
 
 ### 環境変数
 
+#### Databricks 環境（推奨）
+
+```bash
+# app/backend/.env または app/.env
+DATABRICKS_HOST=https://your-workspace.databricks.com
+DATABRICKS_TOKEN=your-databricks-token
+WORKSPACE_PATH=/path/to/workspace
+PORT=8000
+LOG_LEVEL=info
+```
+
+または
+
+```bash
+# プロジェクトルートで
+export DATABRICKS_HOST="https://your-workspace.databricks.com"
+export DATABRICKS_TOKEN="your-databricks-token"
+export WORKSPACE_PATH="/path/to/workspace"
+```
+
+#### 直接 Anthropic API を使用
+
 ```bash
 # app/backend/.env
 ANTHROPIC_API_KEY=your-api-key-here
+WORKSPACE_PATH=/path/to/workspace
 PORT=8000
 LOG_LEVEL=info
 ```
@@ -192,8 +215,12 @@ fastify.register(async (fastify) => {
 // app/backend/agent/index.ts
 import Anthropic from '@anthropic-ai/sdk';
 
+// Databricks Anthropic Proxy または直接 Anthropic API
 const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: process.env.DATABRICKS_TOKEN || process.env.ANTHROPIC_API_KEY || '',
+  baseURL: process.env.DATABRICKS_HOST
+    ? `${process.env.DATABRICKS_HOST}/serving-endpoints/anthropic`
+    : undefined,
 });
 
 export async function* processAgentRequest(
@@ -206,7 +233,11 @@ export async function* processAgentRequest(
 
   while (true) {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      // Databricks: databricks-claude-sonnet-4-5
+      // 直接 Anthropic: claude-sonnet-4-20250514
+      model: process.env.DATABRICKS_HOST
+        ? 'databricks-claude-sonnet-4-5'
+        : 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       tools: getTools(workspacePath),
       messages,
@@ -433,6 +464,34 @@ ls -la app/frontend/dist/    # フロントエンドビルド
 ls -la app/backend/dist/     # バックエンドビルド
 ```
 
+### セキュリティ: .env ファイルの除外
+
+**重要**: ローカル開発用の `.env` ファイルは自動的にデプロイから除外されます。
+
+除外設定は以下で定義されています：
+- **`.databricksignore`**: Git の `.gitignore` と同様の形式
+- **`databricks.yml`**: `sync.exclude` セクション
+
+除外されるファイル：
+- `.env`, `.env.*`
+- `app/.env`, `app/.env.*`
+- `node_modules/`
+- `.git/`, `.vscode/`
+
+### Databricks Apps での環境変数設定
+
+デプロイ後は、Databricks 環境で環境変数を設定します：
+
+1. **Databricks Secrets を使用**:
+   ```bash
+   databricks secrets create-scope --scope agent-app
+   databricks secrets put --scope agent-app --key databricks-token
+   ```
+
+2. **App 設定で環境変数を指定**:
+   - Databricks Workspace の Apps 設定画面で環境変数を設定
+   - または `resources/claude_agent.app.yml` で定義
+
 ### デプロイコマンド
 
 ```bash
@@ -575,9 +634,21 @@ function validatePath(workspacePath: string, targetPath: string): string {
 
 ### API キー管理
 
+#### Databricks 環境
+- `DATABRICKS_HOST`: Databricks ワークスペースの URL
+- `DATABRICKS_TOKEN`: Databricks パーソナルアクセストークン
+- Databricks Apps では環境変数または Secrets で管理
+- Anthropic API は Databricks の Serving Endpoints 経由で呼び出し
+
+#### 直接 Anthropic API
+- `ANTHROPIC_API_KEY`: Anthropic API キー
 - 環境変数で管理（`.env` ファイル）
 - Git にコミットしない（`.gitignore` に追加）
-- Databricks Apps では Secrets で管理
+
+#### 共通
+- すべての認証情報は環境変数で管理
+- `.env` ファイルは `.gitignore` に追加済み
+- 本番環境では Databricks Secrets を使用
 
 ### WebSocket セキュリティ
 

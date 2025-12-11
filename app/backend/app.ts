@@ -1,53 +1,123 @@
-import express, { Request, Response } from 'express';
+import Fastify from 'fastify';
+import websocket from '@fastify/websocket';
+import staticPlugin from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { processAgentRequest } from './agent/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
-const PORT = process.env.PORT || 8000;
+// Load environment variables from parent directory (.env or ../.env)
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
-// Serve frontend build
-app.use(express.static(path.join(__dirname, '../../frontend/dist')));
-
-// API endpoints
-app.get('/api/hello', (req: Request, res: Response) => {
-  res.json({
-    message: 'Hello from Backend!',
-    timestamp: new Date().toISOString()
-  });
+const fastify = Fastify({
+  logger: true,
 });
 
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8000;
+const WORKSPACE_PATH = process.env.WORKSPACE_PATH || process.cwd();
+
+// Register WebSocket plugin
+await fastify.register(websocket);
+
+// Register static file serving for frontend
+await fastify.register(staticPlugin, {
+  root: path.join(__dirname, '../../frontend/dist'),
+  prefix: '/',
+});
+
+// Health check endpoint
+fastify.get('/api/health', async () => {
+  return {
     status: 'ok',
-    service: 'Express Backend'
+    service: 'Fastify Backend with Claude Agent',
+  };
+});
+
+// Hello endpoint
+fastify.get('/api/hello', async () => {
+  return {
+    message: 'Hello from Fastify Backend!',
+    timestamp: new Date().toISOString(),
+  };
+});
+
+// WebSocket endpoint for agent communication
+fastify.register(async (fastify) => {
+  fastify.get('/ws/agent', { websocket: true }, (socket) => {
+    console.log('Client connected to WebSocket');
+
+    socket.on('message', async (messageBuffer: Buffer) => {
+      try {
+        const messageStr = messageBuffer.toString();
+        const message = JSON.parse(messageStr);
+
+        if (message.type === 'init') {
+          socket.send(
+            JSON.stringify({
+              type: 'init',
+              status: 'ready',
+              workspacePath: WORKSPACE_PATH,
+            })
+          );
+          return;
+        }
+
+        if (message.type === 'message') {
+          const userMessage = message.content;
+
+          // Process agent request and stream responses
+          for await (const agentMessage of processAgentRequest(
+            userMessage,
+            WORKSPACE_PATH
+          )) {
+            socket.send(JSON.stringify(agentMessage));
+          }
+        }
+      } catch (error: any) {
+        console.error('WebSocket error:', error);
+        socket.send(
+          JSON.stringify({
+            type: 'error',
+            error: error.message || 'Unknown error occurred',
+          })
+        );
+      }
+    });
+
+    socket.on('close', () => {
+      console.log('Client disconnected from WebSocket');
+    });
+
+    socket.on('error', (error: Error) => {
+      console.error('WebSocket connection error:', error);
+    });
   });
 });
 
-// SPA fallback - must be after API routes
-app.use((req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+// SPA fallback - catch all routes and serve index.html
+fastify.setNotFoundHandler((_request, reply) => {
+  reply.sendFile('index.html');
 });
 
-const server = app.listen(PORT, () => {
+// Start server
+try {
+  await fastify.listen({ port: PORT, host: '0.0.0.0' });
   console.log(`Backend server running on http://0.0.0.0:${PORT}`);
-});
+} catch (err) {
+  fastify.log.error(err);
+  process.exit(1);
+}
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-    process.exit(0);
-  });
-});
+const shutdown = async (signal: string) => {
+  console.log(`${signal} signal received: closing HTTP server`);
+  await fastify.close();
+  console.log('HTTP server closed');
+  process.exit(0);
+};
 
-process.on('SIGINT', () => {
-  console.log('SIGINT signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-    process.exit(0);
-  });
-});
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
