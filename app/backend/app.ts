@@ -46,8 +46,13 @@ fastify.get('/api/hello', async () => {
 
 // WebSocket endpoint for agent communication
 fastify.register(async (fastify) => {
-  fastify.get('/ws/agent', { websocket: true }, (socket) => {
+  fastify.get('/ws/agent', { websocket: true }, (socket, req) => {
     console.log('Client connected to WebSocket');
+
+    // Get user access token from request header
+    const userAccessToken = req.headers['x-forwarded-access-token'] as
+      | string
+      | undefined;
 
     socket.on('message', async (messageBuffer: Buffer) => {
       try {
@@ -68,12 +73,15 @@ fastify.register(async (fastify) => {
         if (message.type === 'message') {
           const userMessage = message.content;
           const model = message.model || 'databricks-claude-sonnet-4-5';
+          const sessionId = message.sessionId;
 
           // Process agent request and stream responses
           for await (const agentMessage of processAgentRequest(
             userMessage,
             WORKSPACE_PATH,
-            model
+            model,
+            sessionId,
+            userAccessToken
           )) {
             socket.send(JSON.stringify(agentMessage));
           }

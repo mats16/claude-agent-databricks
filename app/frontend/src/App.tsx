@@ -4,7 +4,14 @@ import { useAgent } from './hooks/useAgent';
 
 function App() {
   const [input, setInput] = useState('');
-  const { messages, isConnected, isProcessing, sendMessage, selectedModel, setSelectedModel } = useAgent();
+  const {
+    messages,
+    isConnected,
+    isProcessing,
+    sendMessage,
+    selectedModel,
+    setSelectedModel,
+  } = useAgent();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -36,8 +43,12 @@ function App() {
               onChange={(e) => setSelectedModel(e.target.value)}
               disabled={isProcessing}
             >
-              <option value="databricks-claude-sonnet-4-5">Claude Sonnet 4.5</option>
-              <option value="databricks-claude-opus-4-5">Claude Opus 4.5</option>
+              <option value="databricks-claude-sonnet-4-5">
+                Claude Sonnet 4.5
+              </option>
+              <option value="databricks-claude-opus-4-5">
+                Claude Opus 4.5
+              </option>
             </select>
           </div>
           <div className="status">

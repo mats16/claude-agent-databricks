@@ -1,6 +1,7 @@
 // Agent message types sent to frontend
 export interface AgentMessage {
-  type: 'assistant_message' | 'tool_use' | 'result' | 'error';
+  type: 'session_init' | 'assistant_message' | 'tool_use' | 'result' | 'error';
+  sessionId?: string;
   content?: string;
   toolName?: string;
   toolId?: string;
@@ -18,6 +19,7 @@ export interface WSChatMessage {
   type: 'message';
   content: string;
   model?: string;
+  sessionId?: string;
 }
 
 export type IncomingWSMessage = WSInitMessage | WSChatMessage;

@@ -1,18 +1,14 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { AgentMessage } from '../types.js';
+import { databricksMcpServer } from './mcp/databricks.js';
 
 export type { AgentMessage };
 
+const databricksHost = process.env.DATABRICKS_HOST;
+let accessToken = process.env.DATABRICKS_TOKEN;
+
 // Token cache for service principal
 let cachedToken: { token: string; expiresAt: number } | null = null;
-
-// Helper to ensure URL has protocol
-function ensureHttpsProtocol(host: string): string {
-  if (!host.startsWith('http://') && !host.startsWith('https://')) {
-    return `https://${host}`;
-  }
-  return host;
-}
 
 // Get service principal access token from Databricks OAuth2
 async function getServicePrincipalToken(): Promise<string> {
@@ -23,7 +19,6 @@ async function getServicePrincipalToken(): Promise<string> {
 
   const clientId = process.env.DATABRICKS_CLIENT_ID;
   const clientSecret = process.env.DATABRICKS_CLIENT_SECRET;
-  const databricksHost = process.env.DATABRICKS_HOST;
 
   if (!clientId || !clientSecret || !databricksHost) {
     throw new Error(
@@ -32,7 +27,7 @@ async function getServicePrincipalToken(): Promise<string> {
   }
 
   // Request token from Databricks OAuth2 endpoint
-  const tokenUrl = `${ensureHttpsProtocol(databricksHost)}/oidc/v1/token`;
+  const tokenUrl = `https://${databricksHost}/oidc/v1/token`;
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
@@ -72,50 +67,31 @@ async function getServicePrincipalToken(): Promise<string> {
 export async function* processAgentRequest(
   message: string,
   workspacePath: string,
-  model?: string
+  model: string = 'databricks-claude-sonnet-4-5',
+  sessionId?: string,
+  userAccessToken?: string
 ): AsyncGenerator<AgentMessage> {
   try {
-    // Prepare environment variables for Claude Agent SDK
-    const env: Record<string, string> = {
-      ...process.env,
-    } as Record<string, string>;
-
-    // Set up authentication for Databricks or direct Anthropic
-    let defaultModel: string;
-    if (process.env.DATABRICKS_HOST) {
-      const databricksHost = ensureHttpsProtocol(process.env.DATABRICKS_HOST);
-
-      // Set ANTHROPIC_BASE_URL for Databricks serving endpoint
-      env.ANTHROPIC_BASE_URL = `${databricksHost}/serving-endpoints/anthropic`;
-
-      // Use existing DATABRICKS_TOKEN if available, otherwise get service principal token
-      let authToken = process.env.DATABRICKS_TOKEN;
-      if (!authToken) {
-        authToken = await getServicePrincipalToken();
-      }
-      env.ANTHROPIC_AUTH_TOKEN = authToken;
-      defaultModel = 'databricks-claude-sonnet-4-5';
-    } else if (process.env.ANTHROPIC_API_KEY) {
-      // For direct Anthropic API, use ANTHROPIC_API_KEY (SDK will pick it up automatically)
-      env.ANTHROPIC_AUTH_TOKEN = process.env.ANTHROPIC_API_KEY;
-      defaultModel = 'claude-sonnet-4-20250514';
-    } else {
-      throw new Error(
-        'Either DATABRICKS_HOST with credentials or ANTHROPIC_API_KEY must be set'
-      );
-    }
-
-    // Determine which model to use
-    const selectedModel = model || defaultModel;
-
     // Create query with Claude Agent SDK
-    const agentQuery = query({
+    const response = query({
       prompt: message,
       options: {
-        cwd: workspacePath,
-        model: selectedModel,
-        env,
+        resume: sessionId,
+        //cwd: workspacePath,
+        model,
+        env: {
+          //...process.env,
+          PATH: process.env.PATH,
+          ANTHROPIC_BASE_URL: `https://${databricksHost}/serving-endpoints/anthropic`,
+          ANTHROPIC_AUTH_TOKEN:
+            accessToken ?? (await getServicePrincipalToken()),
+          DATABRICKS_TOKEN: accessToken ?? userAccessToken,
+        },
         maxTurns: 100,
+        tools: {
+          type: 'preset',
+          preset: 'claude_code',
+        },
         allowedTools: [
           'Bash',
           'Read',
@@ -125,15 +101,39 @@ export async function* processAgentRequest(
           'Grep',
           'WebSearch',
           'WebFetch',
+          'list_workspace_objects',
+          'get_workspace_object',
         ],
+        mcpServers: {
+          databricks: databricksMcpServer,
+        },
+        permissionMode: 'bypassPermissions',
+        systemPrompt: {
+          type: 'preset',
+          preset: 'claude_code',
+          //append: 'string'
+        },
       },
     });
 
     // Process messages from agent
-    for await (const sdkMessage of agentQuery) {
-      if (sdkMessage.type === 'assistant') {
-        const content = sdkMessage.message.content;
+    for await (const message of response) {
+      //console.log('--------------------------------')
+      //console.log(message.session_id)
+      //console.log(message)
 
+      // 最初のメッセージは、セッションIDを含むシステム初期化メッセージです
+      if (message.type === 'system' && message.subtype === 'init') {
+        sessionId = message.session_id;
+        console.log(`セッションが開始されました。ID: ${sessionId}`);
+        yield {
+          type: 'session_init',
+          sessionId: message.session_id,
+        };
+      }
+
+      if (message.type === 'assistant') {
+        const content = message.message.content;
         if (typeof content === 'string') {
           yield {
             type: 'assistant_message',
@@ -156,10 +156,10 @@ export async function* processAgentRequest(
             }
           }
         }
-      } else if (sdkMessage.type === 'result') {
+      } else if (message.type === 'result') {
         yield {
           type: 'result',
-          success: sdkMessage.subtype === 'success',
+          success: message.subtype === 'success',
         };
       }
     }

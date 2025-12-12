@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface AgentMessage {
-  type: 'init' | 'assistant_message' | 'tool_use' | 'result' | 'error';
+  type:
+    | 'init'
+    | 'session_init'
+    | 'assistant_message'
+    | 'tool_use'
+    | 'result'
+    | 'error';
+  sessionId?: string;
   content?: string;
   toolName?: string;
   toolId?: string;
@@ -23,10 +30,13 @@ export function useAgent() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('databricks-claude-sonnet-4-5');
+  const [selectedModel, setSelectedModel] = useState(
+    'databricks-claude-sonnet-4-5'
+  );
   const wsRef = useRef<WebSocket | null>(null);
   const currentResponseRef = useRef<string>('');
   const currentMessageIdRef = useRef<string>('');
+  const sessionIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -45,6 +55,12 @@ export function useAgent() {
       const message: AgentMessage = JSON.parse(event.data);
 
       if (message.type === 'init') {
+        return;
+      }
+
+      if (message.type === 'session_init' && message.sessionId) {
+        sessionIdRef.current = message.sessionId;
+        console.log('Session started:', message.sessionId);
         return;
       }
 
@@ -166,6 +182,7 @@ export function useAgent() {
           type: 'message',
           content,
           model: selectedModel,
+          sessionId: sessionIdRef.current,
         })
       );
     },
