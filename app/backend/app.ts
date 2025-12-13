@@ -46,7 +46,7 @@ fastify.get('/api/hello', async () => {
 
 // WebSocket endpoint for agent communication
 fastify.register(async (fastify) => {
-  fastify.get('/ws/agent', { websocket: true }, (socket, req) => {
+  fastify.get('/ws', { websocket: true }, (socket, req) => {
     console.log('Client connected to WebSocket');
 
     // Get user access token from request header
