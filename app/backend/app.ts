@@ -62,15 +62,13 @@ fastify.register(async (fastify) => {
         if (message.type === 'init') {
           socket.send(
             JSON.stringify({
-              type: 'init',
-              status: 'ready',
-              workspacePath: WORKSPACE_PATH,
+              type: 'ready',
             })
           );
           return;
         }
 
-        if (message.type === 'message') {
+        if (message.type === 'user_message') {
           const userMessage = message.content;
           const model = message.model || 'databricks-claude-sonnet-4-5';
           const sessionId = message.sessionId;

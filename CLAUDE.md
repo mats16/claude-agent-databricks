@@ -26,11 +26,12 @@ Visit http://localhost:5173
 
 ```
 claude_agent_app/
-├── app/                   # Monorepo root
-│   ├── frontend/          # React frontend
-│   ├── backend/           # Fastify backend
+├── app/                          # Monorepo root
+│   ├── shared/                   # Shared types (@app/shared)
+│   ├── frontend/                 # React frontend (@app/frontend)
+│   ├── backend/                  # Fastify backend (@app/backend)
 │   ├── package.json
-│   └── turbo.json                # Turborepo 設定
+│   └── turbo.json                # Turborepo config
 ├── resources/
 │   └── claude_agent.app.yml      # Databricks Apps settings
 ├── databricks.yml                # Databricks Asset Bundle settings
@@ -106,10 +107,10 @@ It's unnecessary since it will be designed later.
 **Client -> Server:**
 - `{ type: "init" }` - Connection request
 - `{ type: "resume", sessionId: string }` - Subscribe to a chat (TBD)
-- `{ type: "user_message", content: string, model: string }` - Send message
+- `{ type: "user_message", content: string, model: string }` - Send user message
 
 **Server -> Client:**
-- `{ type: "rady" }` - Connection established
+- `{ type: "ready" }` - Connection established
 - `{ type: "session.created", sessionId: string }` - Session created
 - `{ type: "history", messages: [...] }` - Chat history
 - `{ type: "assistant_message", content: string }` - AI response

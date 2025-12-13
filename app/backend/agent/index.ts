@@ -132,7 +132,7 @@ export async function* processAgentRequest(
         sessionId = message.session_id;
         console.log(`セッションが開始されました。ID: ${sessionId}`);
         yield {
-          type: 'session_init',
+          type: 'session.created',
           sessionId: message.session_id,
         };
       }

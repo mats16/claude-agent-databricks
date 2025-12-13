@@ -1,23 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { OutgoingWSMessage } from '@app/shared';
 
-export interface AgentMessage {
-  type:
-    | 'init'
-    | 'session_init'
-    | 'assistant_message'
-    | 'tool_use'
-    | 'result'
-    | 'error';
-  sessionId?: string;
-  content?: string;
-  toolName?: string;
-  toolId?: string;
-  toolInput?: any;
-  success?: boolean;
-  error?: string;
-  status?: string;
-  workspacePath?: string;
-}
+// Type alias for incoming server messages
+type ServerMessage = OutgoingWSMessage;
 
 export interface ChatMessage {
   id: string;
@@ -52,15 +37,16 @@ export function useAgent() {
     };
 
     ws.onmessage = (event) => {
-      const message: AgentMessage = JSON.parse(event.data);
+      const message: ServerMessage = JSON.parse(event.data);
 
-      if (message.type === 'init') {
+      if (message.type === 'ready') {
+        console.log('Connection ready');
         return;
       }
 
-      if (message.type === 'session_init' && message.sessionId) {
+      if (message.type === 'session.created' && message.sessionId) {
         sessionIdRef.current = message.sessionId;
-        console.log('Session started:', message.sessionId);
+        console.log('Session created:', message.sessionId);
         return;
       }
 
@@ -179,7 +165,7 @@ export function useAgent() {
 
       wsRef.current.send(
         JSON.stringify({
-          type: 'message',
+          type: 'user_message',
           content,
           model: selectedModel,
           sessionId: sessionIdRef.current,
