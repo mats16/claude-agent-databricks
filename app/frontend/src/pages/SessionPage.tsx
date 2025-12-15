@@ -14,18 +14,14 @@ export default function SessionPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialMessageConsumedRef = useRef(false);
 
-  // Get initial message from navigation state (for new sessions)
-  // Only use it once - subsequent visits should load history from API
   const locationState = location.state as LocationState | null;
   const initialMessage = !initialMessageConsumedRef.current
     ? locationState?.initialMessage
     : undefined;
 
-  // Clear location state after consuming initial message to prevent re-use on back/forward
   useEffect(() => {
     if (locationState?.initialMessage && !initialMessageConsumedRef.current) {
       initialMessageConsumedRef.current = true;
-      // Clear state from history to prevent issues on back/forward navigation
       window.history.replaceState({}, '', location.pathname);
     }
   }, [locationState?.initialMessage, location.pathname]);
@@ -37,7 +33,6 @@ export default function SessionPage() {
     isLoadingHistory,
     sendMessage,
     selectedModel,
-    setSelectedModel,
   } = useAgent({
     sessionId,
     initialMessage,
@@ -59,101 +54,73 @@ export default function SessionPage() {
     }
   };
 
-  const isNewSession = sessionId === 'new';
-
   return (
-    <div className="app">
-      <header className="header">
-        <h1>Claude Coding Agent</h1>
-        <div className="header-controls">
-          {!isNewSession && (
-            <div
-              className="session-info"
-              style={{ marginRight: '1rem', fontSize: '0.8rem', opacity: 0.7 }}
-            >
-              Session: {sessionId?.slice(0, 8)}...
-            </div>
-          )}
-          <div className="model-selector">
-            <label htmlFor="model-select">Model:</label>
-            <select
-              id="model-select"
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              disabled={isProcessing}
-            >
-              <option value="databricks-claude-sonnet-4-5">
-                Claude Sonnet 4.5
-              </option>
-              <option value="databricks-claude-opus-4-5">
-                Claude Opus 4.5
-              </option>
-            </select>
-          </div>
-          <div className="status">
-            <span
-              className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`}
-            ></span>
-            <span>{isConnected ? 'Connected' : 'Connecting...'}</span>
-          </div>
+    <div className="chat-panel">
+      <div className="chat-header">
+        <div className="chat-header-left">
+          <span className="chat-session-id">
+            Session: {sessionId?.slice(0, 8)}...
+          </span>
         </div>
-      </header>
+        <div className="chat-header-right">
+          <span className="chat-model">{selectedModel.replace('databricks-claude-', '')}</span>
+          <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+        </div>
+      </div>
 
-      <div className="chat-container">
-        <div className="messages">
-          {messages.length === 0 && !isProcessing && !isLoadingHistory && (
-            <div className="welcome-message">
-              <p>Session started. Continue your conversation.</p>
+      <div className="chat-messages">
+        {messages.length === 0 && !isProcessing && !isLoadingHistory && (
+          <div className="chat-empty">
+            <p>Session started. Waiting for response...</p>
+          </div>
+        )}
+
+        {messages.map((message) => (
+          <div key={message.id} className={`chat-message ${message.role}`}>
+            <div className="chat-message-icon">
+              {message.role === 'user' ? '>' : '◆'}
             </div>
-          )}
-
-          {messages.map((message) => (
-            <div key={message.id} className={`message ${message.role}`}>
-              <div className="message-role">
-                {message.role === 'user' ? '>' : '◆'}
-              </div>
-              <div className="message-content">
-                <pre>{message.content}</pre>
-              </div>
+            <div className="chat-message-content">
+              <pre>{message.content}</pre>
             </div>
-          ))}
+          </div>
+        ))}
 
-          {isProcessing &&
-            messages.length > 0 &&
-            messages[messages.length - 1].role === 'user' && (
-              <div className="message agent">
-                <div className="message-role">◆</div>
-                <div className="message-content">
-                  <div className="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
+        {isProcessing &&
+          messages.length > 0 &&
+          messages[messages.length - 1].role === 'user' && (
+            <div className="chat-message agent">
+              <div className="chat-message-icon">◆</div>
+              <div className="chat-message-content">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-          <div ref={messagesEndRef} />
-        </div>
-
-        <form className="input-form" onSubmit={handleSubmit}>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            disabled={!isConnected || isProcessing}
-            className="input-field"
-          />
-          <button
-            type="submit"
-            disabled={!isConnected || isProcessing || !input.trim()}
-            className="send-button"
-          >
-            Send
-          </button>
-        </form>
+        <div ref={messagesEndRef} />
       </div>
+
+      <form className="chat-input-form" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message..."
+          disabled={!isConnected || isProcessing}
+          className="chat-input"
+        />
+        <button
+          type="submit"
+          disabled={!isConnected || isProcessing || !input.trim()}
+          className="chat-submit"
+        >
+          Send
+        </button>
+      </form>
     </div>
   );
 }
