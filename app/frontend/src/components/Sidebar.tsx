@@ -74,7 +74,8 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Don't submit during IME composition (e.g., Japanese input)
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSubmit(e);
     }
