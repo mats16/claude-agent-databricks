@@ -67,8 +67,7 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
   return (
     <aside className="sidebar" style={width ? { width: `${width}px`, minWidth: `${width}px` } : undefined}>
       <div className="sidebar-header">
-        <h1 className="sidebar-title">Claude Code</h1>
-        <span className="sidebar-subtitle">on Databricks</span>
+        <h1 className="sidebar-title">Claude Code on Databricks<span className="sidebar-subtitle"></span></h1>
       </div>
 
       <form className="sidebar-form" onSubmit={handleSubmit}>

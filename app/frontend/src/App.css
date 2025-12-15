@@ -63,8 +63,7 @@ body {
 .sidebar-subtitle {
   font-size: 0.75rem;
   color: #666;
-  display: block;
-  margin-top: 0.25rem;
+  font-weight: 400;
 }
 
 .sidebar-form {
