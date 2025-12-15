@@ -208,6 +208,11 @@ function convertSDKMessagesToChat(sdkMessages: SDKMessage[]): ChatMessage[] {
   return messages;
 }
 
+// Reconnection configuration
+const RECONNECT_MAX_ATTEMPTS = 5;
+const RECONNECT_BASE_DELAY = 1000; // 1 second
+const RECONNECT_MAX_DELAY = 30000; // 30 seconds
+
 export function useAgent(options: UseAgentOptions = {}) {
   const { sessionId, initialMessage, model } = options;
 
@@ -215,6 +220,7 @@ export function useAgent(options: UseAgentOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [selectedModel, setSelectedModel] = useState(
     model || 'databricks-claude-sonnet-4-5'
   );
@@ -226,6 +232,11 @@ export function useAgent(options: UseAgentOptions = {}) {
   const initialMessageRef = useRef(initialMessage);
   const loadedSessionIdRef = useRef<string | null>(null);
   const prevSessionIdRef = useRef<string | undefined>(undefined);
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const isUnmountingRef = useRef(false);
 
   // Reset state when sessionId changes
   useEffect(() => {
@@ -294,110 +305,81 @@ export function useAgent(options: UseAgentOptions = {}) {
     // Prevent double connection in StrictMode
     if (connectionInitiatedRef.current) return;
     connectionInitiatedRef.current = true;
+    isUnmountingRef.current = false;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/v1/sessions/${sessionId}/ws`;
+    const connect = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/v1/sessions/${sessionId}/ws`;
 
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    ws.onopen = () => {
-      console.log(`WebSocket connected (session: ${sessionId})`);
-      setIsConnected(true);
-      ws.send(JSON.stringify({ type: 'connect' }));
-    };
-
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data) as SDKMessage & {
-        error?: string;
-        session_id?: string;
+      ws.onopen = () => {
+        console.log(`WebSocket connected (session: ${sessionId})`);
+        setIsConnected(true);
+        setIsReconnecting(false);
+        reconnectAttemptsRef.current = 0;
+        ws.send(JSON.stringify({ type: 'connect' }));
       };
 
-      // Handle control message: connected
-      if (message.type === 'connected') {
-        console.log('Connection established');
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data) as SDKMessage & {
+          error?: string;
+          session_id?: string;
+        };
 
-        // For new sessions with initial message
-        if (initialMessageRef.current && !initialMessageAddedRef.current) {
-          initialMessageAddedRef.current = true;
+        // Handle control message: connected
+        if (message.type === 'connected') {
+          console.log('Connection established');
 
-          const userMsg: ChatMessage = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: initialMessageRef.current,
-            timestamp: new Date(),
-          };
-          setMessages([userMsg]);
-          setIsProcessing(true);
+          // For new sessions with initial message
+          if (initialMessageRef.current && !initialMessageAddedRef.current) {
+            initialMessageAddedRef.current = true;
 
-          currentResponseRef.current = '';
-          currentMessageIdRef.current = `agent-${Date.now()}`;
-        }
-        // For existing sessions - history is loaded via REST API
-        return;
-      }
-
-      // Handle SDK system message (init)
-      if (
-        message.type === 'system' &&
-        'subtype' in message &&
-        message.subtype === 'init'
-      ) {
-        console.log('Session initialized:', message.session_id);
-        if (!initialMessageAddedRef.current) {
-          setIsProcessing(true);
-          currentResponseRef.current = '';
-          currentMessageIdRef.current = `agent-${Date.now()}`;
-        }
-        return;
-      }
-
-      // Handle SDK assistant message
-      if (message.type === 'assistant' && 'message' in message) {
-        const assistantMsg = message as SDKAssistantMessage;
-
-        // Process content blocks
-        for (const block of assistantMsg.message.content) {
-          if (block.type === 'text' && block.text) {
-            currentResponseRef.current += block.text;
-          } else if (block.type === 'tool_use' && block.name) {
-            const toolInput = block.input ? JSON.stringify(block.input) : '';
-            currentResponseRef.current += `\n\n[Tool: ${block.name}] ${toolInput}\n`;
-          }
-        }
-
-        // Update the message in real-time
-        setMessages((prev) => {
-          const existingIndex = prev.findIndex(
-            (m) => m.id === currentMessageIdRef.current
-          );
-
-          if (existingIndex >= 0) {
-            const updated = [...prev];
-            updated[existingIndex] = {
-              ...updated[existingIndex],
-              content: currentResponseRef.current.trim(),
-            };
-            return updated;
-          } else {
-            const newMessage: ChatMessage = {
-              id: currentMessageIdRef.current,
-              role: 'agent',
-              content: currentResponseRef.current.trim(),
+            const userMsg: ChatMessage = {
+              id: Date.now().toString(),
+              role: 'user',
+              content: initialMessageRef.current,
               timestamp: new Date(),
             };
-            return [...prev, newMessage];
-          }
-        });
-        return;
-      }
+            setMessages([userMsg]);
+            setIsProcessing(true);
 
-      // Handle user message with tool results
-      if (message.type === 'user' && 'message' in message) {
-        const userMsg = message as SDKUserMessage;
-        const toolResults = extractToolResults(userMsg.message.content);
-        if (toolResults) {
-          currentResponseRef.current += '\n' + toolResults;
+            currentResponseRef.current = '';
+            currentMessageIdRef.current = `agent-${Date.now()}`;
+          }
+          // For existing sessions - history is loaded via REST API
+          return;
+        }
+
+        // Handle SDK system message (init)
+        if (
+          message.type === 'system' &&
+          'subtype' in message &&
+          message.subtype === 'init'
+        ) {
+          console.log('Session initialized:', message.session_id);
+          if (!initialMessageAddedRef.current) {
+            setIsProcessing(true);
+            currentResponseRef.current = '';
+            currentMessageIdRef.current = `agent-${Date.now()}`;
+          }
+          return;
+        }
+
+        // Handle SDK assistant message
+        if (message.type === 'assistant' && 'message' in message) {
+          const assistantMsg = message as SDKAssistantMessage;
+
+          // Process content blocks
+          for (const block of assistantMsg.message.content) {
+            if (block.type === 'text' && block.text) {
+              currentResponseRef.current += block.text;
+            } else if (block.type === 'tool_use' && block.name) {
+              const toolInput = block.input ? JSON.stringify(block.input) : '';
+              currentResponseRef.current += `\n\n[Tool: ${block.name}] ${toolInput}\n`;
+            }
+          }
 
           // Update the message in real-time
           setMessages((prev) => {
@@ -412,64 +394,129 @@ export function useAgent(options: UseAgentOptions = {}) {
                 content: currentResponseRef.current.trim(),
               };
               return updated;
-            }
-            return prev;
-          });
-        }
-        return;
-      }
-
-      // Handle error message
-      if (message.type === 'error' && message.error) {
-        currentResponseRef.current += `\n\nError: ${message.error}`;
-        setMessages((prev) => {
-          const existingIndex = prev.findIndex(
-            (m) => m.id === currentMessageIdRef.current
-          );
-          if (existingIndex >= 0) {
-            const updated = [...prev];
-            updated[existingIndex] = {
-              ...updated[existingIndex],
-              content: currentResponseRef.current.trim(),
-            };
-            return updated;
-          } else {
-            return [
-              ...prev,
-              {
+            } else {
+              const newMessage: ChatMessage = {
                 id: currentMessageIdRef.current,
                 role: 'agent',
                 content: currentResponseRef.current.trim(),
                 timestamp: new Date(),
-              },
-            ];
+              };
+              return [...prev, newMessage];
+            }
+          });
+          return;
+        }
+
+        // Handle user message with tool results
+        if (message.type === 'user' && 'message' in message) {
+          const userMsg = message as SDKUserMessage;
+          const toolResults = extractToolResults(userMsg.message.content);
+          if (toolResults) {
+            currentResponseRef.current += '\n' + toolResults;
+
+            // Update the message in real-time
+            setMessages((prev) => {
+              const existingIndex = prev.findIndex(
+                (m) => m.id === currentMessageIdRef.current
+              );
+
+              if (existingIndex >= 0) {
+                const updated = [...prev];
+                updated[existingIndex] = {
+                  ...updated[existingIndex],
+                  content: currentResponseRef.current.trim(),
+                };
+                return updated;
+              }
+              return prev;
+            });
           }
-        });
-        setIsProcessing(false);
-        return;
-      }
+          return;
+        }
 
-      // Handle SDK result message
-      if (message.type === 'result') {
-        setIsProcessing(false);
-        currentResponseRef.current = '';
-        currentMessageIdRef.current = '';
-      }
+        // Handle error message
+        if (message.type === 'error' && message.error) {
+          currentResponseRef.current += `\n\nError: ${message.error}`;
+          setMessages((prev) => {
+            const existingIndex = prev.findIndex(
+              (m) => m.id === currentMessageIdRef.current
+            );
+            if (existingIndex >= 0) {
+              const updated = [...prev];
+              updated[existingIndex] = {
+                ...updated[existingIndex],
+                content: currentResponseRef.current.trim(),
+              };
+              return updated;
+            } else {
+              return [
+                ...prev,
+                {
+                  id: currentMessageIdRef.current,
+                  role: 'agent',
+                  content: currentResponseRef.current.trim(),
+                  timestamp: new Date(),
+                },
+              ];
+            }
+          });
+          setIsProcessing(false);
+          return;
+        }
+
+        // Handle SDK result message
+        if (message.type === 'result') {
+          setIsProcessing(false);
+          currentResponseRef.current = '';
+          currentMessageIdRef.current = '';
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        setIsConnected(false);
+
+        // Attempt reconnection if not unmounting
+        if (!isUnmountingRef.current) {
+          const attempts = reconnectAttemptsRef.current;
+          if (attempts < RECONNECT_MAX_ATTEMPTS) {
+            const delay = Math.min(
+              RECONNECT_BASE_DELAY * Math.pow(2, attempts),
+              RECONNECT_MAX_DELAY
+            );
+            console.log(
+              `Reconnecting in ${delay}ms (attempt ${attempts + 1}/${RECONNECT_MAX_ATTEMPTS})`
+            );
+            setIsReconnecting(true);
+
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectAttemptsRef.current++;
+              connect();
+            }, delay);
+          } else {
+            console.log('Max reconnection attempts reached');
+            setIsReconnecting(false);
+          }
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
     };
 
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-      setIsConnected(false);
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setIsConnected(false);
-    };
+    connect();
 
     return () => {
+      isUnmountingRef.current = true;
       connectionInitiatedRef.current = false;
-      ws.close();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
@@ -510,6 +557,7 @@ export function useAgent(options: UseAgentOptions = {}) {
     isConnected,
     isProcessing,
     isLoadingHistory,
+    isReconnecting,
     sendMessage,
     selectedModel,
     setSelectedModel,

@@ -510,6 +510,21 @@ body {
   background: #f44336;
 }
 
+.status-dot.reconnecting {
+  background: #ff9800;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
 /* Chat Messages */
 .chat-messages {
   flex: 1;

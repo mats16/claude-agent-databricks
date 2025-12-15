@@ -91,6 +91,7 @@ export default function SessionPage() {
     isConnected,
     isProcessing,
     isLoadingHistory,
+    isReconnecting,
     sendMessage,
     selectedModel,
   } = useAgent({
@@ -137,7 +138,8 @@ export default function SessionPage() {
             {selectedModel}
           </span>
           <span
-            className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}
+            className={`status-dot ${isConnected ? 'connected' : isReconnecting ? 'reconnecting' : 'disconnected'}`}
+            title={isConnected ? 'Connected' : isReconnecting ? 'Reconnecting...' : 'Disconnected'}
           ></span>
         </div>
       </div>
