@@ -6,6 +6,12 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { processAgentRequest, SDKMessage } from './agent/index.js';
 import { saveMessage, getMessagesBySessionId } from './db/events.js';
+import {
+  createSession,
+  getSessions,
+  getSessionsByUserEmail,
+  updateSessionTitle,
+} from './db/sessions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -156,6 +162,16 @@ fastify.post<{ Body: CreateSessionBody }>(
           ) {
             sessionId = sdkMessage.session_id;
             getOrCreateQueue(sessionId);
+
+            // Save session to database
+            await createSession({
+              id: sessionId,
+              title: userMessage.slice(0, 100), // Use first 100 chars of message as title
+              model,
+              workspacePath,
+              userEmail,
+            });
+
             resolveInit?.();
 
             // Save user message after getting sessionId
@@ -188,6 +204,34 @@ fastify.post<{ Body: CreateSessionBody }>(
     return {
       session_id: sessionId,
     };
+  }
+);
+
+// Get all sessions
+fastify.get('/api/v1/sessions', async (request, _reply) => {
+  const userEmail = request.headers['x-forwarded-email'] as string | undefined;
+
+  // If user email is provided, filter by user
+  const sessionList = userEmail
+    ? await getSessionsByUserEmail(userEmail)
+    : await getSessions();
+
+  return { sessions: sessionList };
+});
+
+// Update session title
+fastify.patch<{ Params: { sessionId: string }; Body: { title: string } }>(
+  '/api/v1/sessions/:sessionId',
+  async (request, reply) => {
+    const { sessionId } = request.params;
+    const { title } = request.body;
+
+    if (!title || typeof title !== 'string') {
+      return reply.status(400).send({ error: 'title is required' });
+    }
+
+    await updateSessionTitle(sessionId, title);
+    return { success: true };
   }
 );
 

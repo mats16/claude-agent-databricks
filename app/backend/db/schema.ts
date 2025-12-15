@@ -7,11 +7,28 @@ import {
   integer,
 } from 'drizzle-orm/pg-core';
 
+// Sessions table
+export const sessions = pgTable('sessions', {
+  id: text('id').primaryKey(),
+  title: text('title'),
+  model: text('model').notNull(),
+  workspacePath: text('workspace_path'),
+  userEmail: text('user_email'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;
+
+// Events table
 export const events = pgTable(
   'events',
   {
     uuid: text('uuid').primaryKey(),
-    sessionId: text('session_id').notNull(),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
     seq: integer('seq').notNull(),
     type: text('type').notNull(),
     subtype: text('subtype'),
