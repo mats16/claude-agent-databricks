@@ -175,9 +175,7 @@ function convertSDKMessagesToChat(sdkMessages: SDKMessage[]): ChatMessage[] {
         if (block.type === 'text' && block.text) {
           currentAgentContent += block.text;
         } else if (block.type === 'tool_use' && block.name) {
-          const toolInput = block.input
-            ? JSON.stringify(block.input)
-            : '';
+          const toolInput = block.input ? JSON.stringify(block.input) : '';
           currentAgentContent += `\n\n[Tool: ${block.name}] ${toolInput}\n`;
         }
       }
@@ -363,9 +361,7 @@ export function useAgent(options: UseAgentOptions = {}) {
           if (block.type === 'text' && block.text) {
             currentResponseRef.current += block.text;
           } else if (block.type === 'tool_use' && block.name) {
-            const toolInput = block.input
-              ? JSON.stringify(block.input)
-              : '';
+            const toolInput = block.input ? JSON.stringify(block.input) : '';
             currentResponseRef.current += `\n\n[Tool: ${block.name}] ${toolInput}\n`;
           }
         }

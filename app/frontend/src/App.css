@@ -151,7 +151,7 @@ body {
   cursor: not-allowed;
 }
 
-.sidebar-workspace-input {
+.sidebar-workspace-button {
   flex: 1;
   min-width: 0;
   padding: 0.4rem 0.75rem;
@@ -160,16 +160,21 @@ body {
   border-radius: 8px;
   color: #333;
   font-size: 0.8rem;
+  cursor: pointer;
   outline: none;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.sidebar-workspace-input:focus {
-  border-color: #f5a623;
-  background: #ffffff;
+.sidebar-workspace-button:hover:not(:disabled) {
+  background: #eeeeee;
 }
 
-.sidebar-workspace-input::placeholder {
-  color: #999;
+.sidebar-workspace-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* Sidebar Section */
@@ -486,7 +491,8 @@ body {
 
 /* Formatted Message Styles */
 .message-formatted {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   font-size: 0.9rem;
   line-height: 1.6;
   color: #333;
@@ -637,7 +643,9 @@ body {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1006,7 +1014,8 @@ body {
 
 /* Markdown Content Styles */
 .markdown-content {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   font-size: 0.9rem;
   line-height: 1.7;
   color: #333;
@@ -1161,7 +1170,7 @@ body {
 }
 
 /* Task Lists */
-.markdown-content input[type="checkbox"] {
+.markdown-content input[type='checkbox'] {
   margin-right: 0.5em;
 }
 
@@ -1171,4 +1180,130 @@ body {
   height: auto;
   border-radius: 8px;
   margin: 0.75em 0;
+}
+
+/* Workspace Select Modal */
+.workspace-modal {
+  width: 500px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-current-path {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.workspace-path-label {
+  font-size: 0.8rem;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.workspace-path-value {
+  font-size: 0.85rem;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-error {
+  padding: 0.75rem;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  color: #c33;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.workspace-directory-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  min-height: 200px;
+  max-height: 400px;
+}
+
+.workspace-directory-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  color: #333;
+  transition: background 0.15s;
+}
+
+.workspace-directory-item:last-child {
+  border-bottom: none;
+}
+
+.workspace-directory-item:hover {
+  background: #f5f5f5;
+}
+
+.workspace-directory-item.workspace-parent {
+  color: #666;
+  font-style: italic;
+}
+
+.workspace-icon {
+  flex-shrink: 0;
+}
+
+.workspace-loading,
+.workspace-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.workspace-root-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.workspace-root-button {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  background: #f5f5f5;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  color: #666;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.workspace-root-button:hover:not(:disabled) {
+  background: #eeeeee;
+}
+
+.workspace-root-button.active {
+  background: #f5a623;
+  border-color: #f5a623;
+  color: #fff;
+}
+
+.workspace-root-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

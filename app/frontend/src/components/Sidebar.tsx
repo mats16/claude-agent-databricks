@@ -2,11 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
+import WorkspaceSelectModal from './WorkspaceSelectModal';
 
 interface SidebarProps {
   width?: number;
   onSessionCreated?: (sessionId: string) => void;
 }
+
+const PAT_STORAGE_KEY = 'databricks_pat';
 
 export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
   const [input, setInput] = useState('');
@@ -14,9 +17,35 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
     'databricks-claude-sonnet-4-5'
   );
   const [workspacePath, setWorkspacePath] = useState('');
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
+
+  // Fetch home directory as default
+  useEffect(() => {
+    const fetchHomeDirectory = async () => {
+      const token = localStorage.getItem(PAT_STORAGE_KEY);
+      if (!token || workspacePath) return;
+
+      try {
+        const res = await fetch('/api/v1/Workspace/Users/me', {
+          headers: { 'x-databricks-token': token },
+        });
+        const data = await res.json();
+        if (data.objects && data.objects.length > 0) {
+          // Extract home directory from first object's path
+          // e.g., /Workspace/Users/user@example.com/subdir -> /Workspace/Users/user@example.com
+          const firstPath = data.objects[0].path;
+          const homePath = firstPath.split('/').slice(0, 4).join('/');
+          setWorkspacePath(homePath);
+        }
+      } catch (e) {
+        console.error('Failed to fetch home directory:', e);
+      }
+    };
+    fetchHomeDirectory();
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -108,14 +137,15 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
             rows={1}
           />
           <div className="sidebar-input-controls">
-            <input
-              type="text"
-              value={workspacePath}
-              onChange={(e) => setWorkspacePath(e.target.value)}
-              placeholder="/Workspace/Users/..."
-              className="sidebar-workspace-input"
+            <button
+              type="button"
+              onClick={() => setIsWorkspaceModalOpen(true)}
+              className="sidebar-workspace-button"
               disabled={isSubmitting}
-            />
+              title={workspacePath || 'Select workspace'}
+            >
+              {workspacePath || 'Select workspace'}
+            </button>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
@@ -146,6 +176,13 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
       <div className="sidebar-footer">
         <AccountMenu />
       </div>
+
+      <WorkspaceSelectModal
+        isOpen={isWorkspaceModalOpen}
+        onClose={() => setIsWorkspaceModalOpen(false)}
+        onSelect={setWorkspacePath}
+        initialPath={workspacePath}
+      />
     </aside>
   );
 }

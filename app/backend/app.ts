@@ -245,6 +245,123 @@ fastify.get<{ Params: { sessionId: string } }>(
   }
 );
 
+// Workspace API - List root workspace (returns Users and Shared)
+fastify.get('/api/v1/Workspace', async (_request, _reply) => {
+  return {
+    objects: [
+      { path: '/Workspace/Users', object_type: 'DIRECTORY' },
+      { path: '/Workspace/Shared', object_type: 'DIRECTORY' },
+    ],
+  };
+});
+
+// Workspace API - List user's workspace directory
+fastify.get<{ Params: { email: string } }>(
+  '/api/v1/Workspace/Users/:email',
+  async (request, reply) => {
+    const token =
+      (request.headers['x-forwarded-access-token'] as string) ||
+      (request.headers['x-databricks-token'] as string);
+
+    if (!token) {
+      return reply.status(401).send({ error: 'Token required' });
+    }
+
+    const databricksHost = process.env.DATABRICKS_HOST;
+    let email: string | undefined = request.params.email;
+
+    // Resolve 'me' to actual email
+    if (email === 'me') {
+      // Try x-forwarded-email header first (Databricks Apps)
+      email = request.headers['x-forwarded-email'] as string | undefined;
+
+      // If not available, fetch from Databricks SCIM API
+      if (!email) {
+        try {
+          const meResponse = await fetch(
+            `https://${databricksHost}/api/2.0/preview/scim/v2/Me`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          const meData = (await meResponse.json()) as {
+            userName?: string;
+            emails?: Array<{ value: string }>;
+          };
+          email = meData.userName || meData.emails?.[0]?.value;
+        } catch (error: any) {
+          return reply
+            .status(500)
+            .send({ error: 'Failed to resolve current user' });
+        }
+      }
+    }
+
+    if (!email) {
+      return reply.status(400).send({ error: 'Email required' });
+    }
+
+    const path = `/Workspace/Users/${email}`;
+
+    try {
+      const response = await fetch(
+        `https://${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(path)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = (await response.json()) as {
+        objects?: Array<{ path: string; object_type: string }>;
+      };
+      // Filter to only return directories
+      const directories = data.objects?.filter(
+        (obj) => obj.object_type === 'DIRECTORY'
+      );
+      return { objects: directories || [] };
+    } catch (error: any) {
+      return reply.status(500).send({ error: error.message });
+    }
+  }
+);
+
+// Workspace API - List any workspace path (Shared, Repos, etc.)
+fastify.get<{ Params: { '*': string } }>(
+  '/api/v1/Workspace/*',
+  async (request, reply) => {
+    const subpath = request.params['*'];
+
+    const token =
+      (request.headers['x-forwarded-access-token'] as string) ||
+      (request.headers['x-databricks-token'] as string);
+
+    if (!token) {
+      return reply.status(401).send({ error: 'Token required' });
+    }
+
+    const databricksHost = process.env.DATABRICKS_HOST;
+    const path = `/Workspace/${subpath}`;
+
+    try {
+      const response = await fetch(
+        `https://${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(path)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = (await response.json()) as {
+        objects?: Array<{ path: string; object_type: string }>;
+      };
+      // Filter to only return directories
+      const directories = data.objects?.filter(
+        (obj) => obj.object_type === 'DIRECTORY'
+      );
+      return { objects: directories || [] };
+    } catch (error: any) {
+      return reply.status(500).send({ error: error.message });
+    }
+  }
+);
+
 // WebSocket endpoint for existing session - receives queued events
 fastify.register(async (fastify) => {
   fastify.get<{ Params: { sessionId: string } }>(
