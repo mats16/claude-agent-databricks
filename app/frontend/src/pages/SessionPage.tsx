@@ -12,15 +12,29 @@ export default function SessionPage() {
   const location = useLocation();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initialMessageConsumedRef = useRef(false);
 
   // Get initial message from navigation state (for new sessions)
+  // Only use it once - subsequent visits should load history from API
   const locationState = location.state as LocationState | null;
-  const initialMessage = locationState?.initialMessage;
+  const initialMessage = !initialMessageConsumedRef.current
+    ? locationState?.initialMessage
+    : undefined;
+
+  // Clear location state after consuming initial message to prevent re-use on back/forward
+  useEffect(() => {
+    if (locationState?.initialMessage && !initialMessageConsumedRef.current) {
+      initialMessageConsumedRef.current = true;
+      // Clear state from history to prevent issues on back/forward navigation
+      window.history.replaceState({}, '', location.pathname);
+    }
+  }, [locationState?.initialMessage, location.pathname]);
 
   const {
     messages,
     isConnected,
     isProcessing,
+    isLoadingHistory,
     sendMessage,
     selectedModel,
     setSelectedModel,
@@ -87,7 +101,7 @@ export default function SessionPage() {
 
       <div className="chat-container">
         <div className="messages">
-          {messages.length === 0 && !isProcessing && (
+          {messages.length === 0 && !isProcessing && !isLoadingHistory && (
             <div className="welcome-message">
               <p>Session started. Continue your conversation.</p>
             </div>

@@ -1,10 +1,11 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import type { AgentMessage } from '../types.js';
+import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { databricksMcpServer } from './mcp/databricks.js';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-export type { AgentMessage };
+
+export type { SDKMessage };
 
 const databricksHost = process.env.DATABRICKS_HOST as string;
 const personalAccessToken = process.env.DATABRICKS_TOKEN;
@@ -84,6 +85,7 @@ function cloneWorkspace(sourcePath: string, destPath: string): void {
 }
 
 // Process agent request using Claude Agent SDK
+// Returns SDKMessage directly without transformation
 export async function* processAgentRequest(
   message: string,
   model: string = 'databricks-claude-sonnet-4-5',
@@ -91,7 +93,7 @@ export async function* processAgentRequest(
   userAccessToken?: string,
   userEmail?: string,
   workspacePath?: string
-): AsyncGenerator<AgentMessage> {
+): AsyncGenerator<SDKMessage> {
   // Determine base directory based on environment
   // Local development: ./tmp, Production: /home/app/Workspace/Users/{email}
   const baseDir = userEmail ? '/home/app' : './tmp';
@@ -114,104 +116,57 @@ export async function* processAgentRequest(
     clientSecret
   );
 
-  try {
-    // Create query with Claude Agent SDK
-    const response = query({
-      prompt: message,
-      options: {
-        resume: sessionId,
-        cwd: workDir,
-        settingSources: ['user', 'project', 'local'],
-        model,
-        env: {
-          PATH: process.env.PATH,
-          HOME: userHomeDir,
-          ANTHROPIC_BASE_URL: `https://${databricksHost}/serving-endpoints/anthropic`,
-          ANTHROPIC_AUTH_TOKEN: spAccessToken ?? personalAccessToken,
-          DATABRICKS_HOST: databricksHost,
-          DATABRICKS_TOKEN: userAccessToken ?? personalAccessToken,
-          DATABRICKS_SP_ACCESS_TOKEN: spAccessToken,
-        },
-        maxTurns: 100,
-        tools: {
-          type: 'preset',
-          preset: 'claude_code',
-        },
-        allowedTools: [
-          //'Skill',
-          'Bash',
-          'Read',
-          'Write',
-          'Edit',
-          'Glob',
-          'Grep',
-          'WebSearch',
-          'WebFetch',
-          //'list_workspace_objects',
-          //'get_workspace_object',
-          //'update_workspace_object',
-        ],
-        mcpServers: {
-          databricks: databricksMcpServer,
-        },
-        permissionMode: 'bypassPermissions',
-        systemPrompt: {
-          type: 'preset',
-          preset: 'claude_code',
-          append:
-            'Claude Code is running on Databricks Apps. Artifacts must be saved to Volumes.',
-        },
+  // Create query with Claude Agent SDK
+  const response = query({
+    prompt: message,
+    options: {
+      resume: sessionId,
+      cwd: workDir,
+      settingSources: ['user', 'project', 'local'],
+      model,
+      env: {
+        PATH: process.env.PATH,
+        HOME: userHomeDir,
+        ANTHROPIC_BASE_URL: `https://${databricksHost}/serving-endpoints/anthropic`,
+        ANTHROPIC_AUTH_TOKEN: spAccessToken ?? personalAccessToken,
+        DATABRICKS_HOST: databricksHost,
+        DATABRICKS_TOKEN: userAccessToken ?? personalAccessToken,
+        DATABRICKS_SP_ACCESS_TOKEN: spAccessToken,
       },
-    });
+      maxTurns: 100,
+      tools: {
+        type: 'preset',
+        preset: 'claude_code',
+      },
+      allowedTools: [
+        //'Skill',
+        'Bash',
+        'Read',
+        'Write',
+        'Edit',
+        'Glob',
+        'Grep',
+        'WebSearch',
+        'WebFetch',
+        //'list_workspace_objects',
+        //'get_workspace_object',
+        //'update_workspace_object',
+      ],
+      mcpServers: {
+        databricks: databricksMcpServer,
+      },
+      permissionMode: 'bypassPermissions',
+      systemPrompt: {
+        type: 'preset',
+        preset: 'claude_code',
+        append:
+          'Claude Code is running on Databricks Apps. Artifacts must be saved to Volumes.',
+      },
+    },
+  });
 
-    // Process messages from agent
-    for await (const message of response) {
-      if (message.type === 'system' && message.subtype === 'init') {
-        sessionId = message.session_id;
-        yield {
-          type: 'init',
-          sessionId: message.session_id,
-          version: message.claude_code_version,
-          model: message.model,
-        };
-      }
-
-      if (message.type === 'assistant') {
-        const content = message.message.content;
-        if (typeof content === 'string') {
-          yield {
-            type: 'assistant_message',
-            content,
-          };
-        } else if (Array.isArray(content)) {
-          for (const block of content) {
-            if (block.type === 'text') {
-              yield {
-                type: 'assistant_message',
-                content: block.text,
-              };
-            } else if (block.type === 'tool_use') {
-              yield {
-                type: 'tool_use',
-                toolName: block.name,
-                toolId: block.id,
-                toolInput: block.input,
-              };
-            }
-          }
-        }
-      } else if (message.type === 'result') {
-        yield {
-          type: 'result',
-          success: message.subtype === 'success',
-        };
-      }
-    }
-  } catch (error: any) {
-    console.error(error);
-    yield {
-      type: 'error',
-      error: error.message || 'Unknown error occurred',
-    };
+  // Yield SDK messages directly without transformation
+  for await (const sdkMessage of response) {
+    yield sdkMessage;
   }
 }

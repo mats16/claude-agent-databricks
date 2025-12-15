@@ -1,8 +1,7 @@
 // ============================================
-// WebSocket Message Types
+// WebSocket Message Types (Client -> Server)
 // ============================================
 
-// Client -> Server messages
 export interface WSConnectMessage {
   type: 'connect';
 }
@@ -24,98 +23,33 @@ export type IncomingWSMessage =
   | WSResumeMessage
   | WSUserMessage;
 
-// Server -> Client messages
+// ============================================
+// WebSocket Message Types (Server -> Client)
+// Server sends SDKMessage from @anthropic-ai/claude-agent-sdk directly
+// Plus these control messages:
+// ============================================
+
 export interface WSConnectedResponse {
   type: 'connected';
 }
 
-export interface WSInitResponse {
-  type: 'init';
-  sessionId: string;
-  version: string;
-  model: string;
-}
-
-export interface WSHistoryResponse {
-  type: 'history';
-  messages: any[];
-}
-
-export interface WSAssistantMessage {
-  type: 'assistant_message';
-  content: string;
-}
-
-export interface WSToolUseMessage {
-  type: 'tool_use';
-  toolName: string;
-  toolId?: string;
-  toolInput?: any;
-}
-
-export interface WSResultMessage {
-  type: 'result';
-  success: boolean;
-}
-
-export interface WSErrorMessage {
+export interface WSErrorResponse {
   type: 'error';
   error: string;
 }
-
-export type OutgoingWSMessage =
-  | WSConnectedResponse
-  | WSInitResponse
-  | WSHistoryResponse
-  | WSAssistantMessage
-  | WSToolUseMessage
-  | WSResultMessage
-  | WSErrorMessage;
-
-// Agent message type (used internally by backend)
-export type AgentMessage =
-  | WSInitResponse
-  | WSAssistantMessage
-  | WSToolUseMessage
-  | WSResultMessage
-  | WSErrorMessage;
 
 // ============================================
 // REST API Types
 // ============================================
 
-// Session event types
-export type SessionEventType =
-  | 'user'
-  | 'init'
-  | 'assistant'
-  | 'tool_use'
-  | 'result'
-  | 'error';
-
-export interface SessionEvent {
-  uuid: string;
-  session_id: string;
-  type: SessionEventType;
-  data?: {
-    content?: string;
-    version?: string;
-    model?: string;
-    tool_name?: string;
-    tool_id?: string;
-    tool_input?: any;
-    success?: boolean;
-    error?: string;
-  };
-  message?: {
-    role: string;
-    content: string;
-  };
-}
-
 // POST /api/v1/sessions
 export interface CreateSessionRequest {
-  events: SessionEvent[];
+  events: Array<{
+    uuid: string;
+    session_id: string;
+    type: string;
+    message: { role: string; content: string };
+  }>;
   session_context: {
     model: string;
     workspacePath?: string;
@@ -124,10 +58,8 @@ export interface CreateSessionRequest {
 
 export interface CreateSessionResponse {
   session_id: string;
-  events: SessionEvent[];
 }
 
 // GET /api/v1/sessions/:sessionId/events
-export interface GetSessionEventsResponse {
-  events: SessionEvent[];
-}
+// Returns SDKMessage[] from the database
+// The SDKMessage type is defined in @anthropic-ai/claude-agent-sdk

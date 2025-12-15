@@ -4,7 +4,8 @@ import staticPlugin from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { processAgentRequest, AgentMessage } from './agent/index.js';
+import { processAgentRequest, SDKMessage } from './agent/index.js';
+import { saveMessage, getMessagesBySessionId } from './db/events.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,8 +21,8 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8000;
 
 // Session event queue for streaming events to WebSocket
 interface SessionQueue {
-  events: AgentMessage[];
-  listeners: Set<(event: AgentMessage) => void>;
+  events: SDKMessage[];
+  listeners: Set<(event: SDKMessage) => void>;
   completed: boolean;
 }
 
@@ -36,7 +37,7 @@ function getOrCreateQueue(sessionId: string): SessionQueue {
   return queue;
 }
 
-function addEventToQueue(sessionId: string, event: AgentMessage) {
+function addEventToQueue(sessionId: string, event: SDKMessage) {
   const queue = getOrCreateQueue(sessionId);
   queue.events.push(event);
   // Notify all listeners
@@ -48,6 +49,19 @@ function markQueueCompleted(sessionId: string) {
   if (queue) {
     queue.completed = true;
   }
+}
+
+// Create SDKMessage for user message
+function createUserMessage(sessionId: string, content: string): SDKMessage {
+  return {
+    type: 'user',
+    session_id: sessionId,
+    uuid: crypto.randomUUID(),
+    message: {
+      role: 'user',
+      content: content,
+    },
+  } as SDKMessage;
 }
 
 // Register WebSocket plugin
@@ -132,24 +146,35 @@ fastify.post<{ Body: CreateSessionBody }>(
     // Process events in background
     (async () => {
       try {
-        for await (const agentMessage of agentIterator) {
-          if (agentMessage.type === 'init') {
-            sessionId = agentMessage.sessionId;
+        let userMessageSaved = false;
+        for await (const sdkMessage of agentIterator) {
+          // Extract sessionId from init message
+          if (
+            sdkMessage.type === 'system' &&
+            'subtype' in sdkMessage &&
+            sdkMessage.subtype === 'init'
+          ) {
+            sessionId = sdkMessage.session_id;
             getOrCreateQueue(sessionId);
             resolveInit?.();
+
+            // Save user message after getting sessionId
+            if (!userMessageSaved) {
+              const userMsg = createUserMessage(sessionId, userMessage);
+              await saveMessage(userMsg);
+              addEventToQueue(sessionId, userMsg);
+              userMessageSaved = true;
+            }
           }
 
+          // Save all messages to database
           if (sessionId) {
-            addEventToQueue(sessionId, agentMessage);
+            await saveMessage(sdkMessage);
+            addEventToQueue(sessionId, sdkMessage);
           }
         }
       } catch (error: any) {
-        if (sessionId) {
-          addEventToQueue(sessionId, {
-            type: 'error',
-            error: error.message || 'Unknown error occurred',
-          });
-        }
+        console.error('Error processing agent request:', error);
       } finally {
         if (sessionId) {
           markQueueCompleted(sessionId);
@@ -166,12 +191,13 @@ fastify.post<{ Body: CreateSessionBody }>(
   }
 );
 
-// Get session events (placeholder - data store not implemented)
+// Get session events from database
 fastify.get<{ Params: { sessionId: string } }>(
   '/api/v1/sessions/:sessionId/events',
-  async (_request, _reply) => {
-    // TODO: Implement when data store is ready
-    return { events: [] };
+  async (request, _reply) => {
+    const { sessionId } = request.params;
+    const messages = await getMessagesBySessionId(sessionId);
+    return { events: messages };
   }
 );
 
@@ -193,7 +219,7 @@ fastify.register(async (fastify) => {
       const queue = sessionQueues.get(sessionId);
 
       // Event listener for new events
-      const onEvent = (event: AgentMessage) => {
+      const onEvent = (event: SDKMessage) => {
         socket.send(JSON.stringify(event));
       };
 
@@ -205,16 +231,13 @@ fastify.register(async (fastify) => {
           if (message.type === 'connect') {
             socket.send(JSON.stringify({ type: 'connected' }));
 
-            // Send all queued events
-            if (queue) {
+            // Only send queued events if session is still being processed
+            // Completed sessions should load history from REST API
+            if (queue && !queue.completed) {
               for (const event of queue.events) {
                 socket.send(JSON.stringify(event));
               }
-
-              // If not completed, subscribe to new events
-              if (!queue.completed) {
-                queue.listeners.add(onEvent);
-              }
+              queue.listeners.add(onEvent);
             }
             return;
           }
@@ -223,15 +246,22 @@ fastify.register(async (fastify) => {
             const userMessage = message.content;
             const model = message.model || 'databricks-claude-sonnet-4-5';
 
+            // Save user message to database
+            const userMsg = createUserMessage(sessionId, userMessage);
+            await saveMessage(userMsg);
+
             // Process agent request and stream responses (use URL sessionId for resume)
-            for await (const agentMessage of processAgentRequest(
+            for await (const sdkMessage of processAgentRequest(
               userMessage,
               model,
               sessionId,
               userAccessToken,
               userEmail
             )) {
-              socket.send(JSON.stringify(agentMessage));
+              // Save message to database
+              await saveMessage(sdkMessage);
+              // Send to client
+              socket.send(JSON.stringify(sdkMessage));
             }
           }
         } catch (error: any) {

@@ -1,8 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { OutgoingWSMessage } from '@app/shared';
-
-// Type alias for incoming server messages
-type ServerMessage = OutgoingWSMessage;
 
 export interface ChatMessage {
   id: string;
@@ -17,12 +13,142 @@ interface UseAgentOptions {
   model?: string;
 }
 
+// SDKMessage type definitions (subset of @anthropic-ai/claude-agent-sdk)
+interface SDKMessageBase {
+  type: string;
+  session_id: string;
+  uuid?: string;
+}
+
+interface SDKUserMessage extends SDKMessageBase {
+  type: 'user';
+  message: {
+    role: 'user';
+    content: string | Array<{ type: string; text?: string }>;
+  };
+}
+
+interface SDKAssistantMessage extends SDKMessageBase {
+  type: 'assistant';
+  message: {
+    role: 'assistant';
+    content: Array<{
+      type: string;
+      text?: string;
+      name?: string;
+      id?: string;
+      input?: unknown;
+    }>;
+  };
+}
+
+interface SDKResultMessage extends SDKMessageBase {
+  type: 'result';
+  subtype: string;
+  is_error: boolean;
+  result: string;
+}
+
+interface SDKSystemMessage extends SDKMessageBase {
+  type: 'system';
+  subtype: string;
+}
+
+type SDKMessage =
+  | SDKUserMessage
+  | SDKAssistantMessage
+  | SDKResultMessage
+  | SDKSystemMessage
+  | SDKMessageBase;
+
+// Extract text content from user message
+function extractUserContent(
+  content: string | Array<{ type: string; text?: string }>
+): string {
+  if (typeof content === 'string') return content;
+  return content
+    .filter((block) => block.type === 'text' && block.text)
+    .map((block) => block.text)
+    .join('');
+}
+
+// Convert SDKMessage[] to ChatMessage[]
+function convertSDKMessagesToChat(sdkMessages: SDKMessage[]): ChatMessage[] {
+  const messages: ChatMessage[] = [];
+  let currentAgentContent = '';
+  let currentAgentId = '';
+
+  for (const msg of sdkMessages) {
+    if (msg.type === 'user') {
+      // Flush any pending agent message
+      if (currentAgentContent && currentAgentId) {
+        messages.push({
+          id: currentAgentId,
+          role: 'agent',
+          content: currentAgentContent.trim(),
+          timestamp: new Date(),
+        });
+        currentAgentContent = '';
+        currentAgentId = '';
+      }
+
+      const userMsg = msg as SDKUserMessage;
+      messages.push({
+        id: msg.uuid || `user-${Date.now()}`,
+        role: 'user',
+        content: extractUserContent(userMsg.message.content),
+        timestamp: new Date(),
+      });
+    } else if (msg.type === 'assistant') {
+      const assistantMsg = msg as SDKAssistantMessage;
+      if (!currentAgentId) {
+        currentAgentId = msg.uuid || `agent-${Date.now()}`;
+      }
+
+      // Process content blocks
+      for (const block of assistantMsg.message.content) {
+        if (block.type === 'text' && block.text) {
+          currentAgentContent += block.text;
+        } else if (block.type === 'tool_use' && block.name) {
+          currentAgentContent += `\n\n[Using tool: ${block.name}]\n`;
+        }
+      }
+    } else if (msg.type === 'result') {
+      // Flush agent message on result
+      if (currentAgentContent && currentAgentId) {
+        messages.push({
+          id: currentAgentId,
+          role: 'agent',
+          content: currentAgentContent.trim(),
+          timestamp: new Date(),
+        });
+        currentAgentContent = '';
+        currentAgentId = '';
+      }
+    }
+    // Skip system messages (init, etc.)
+  }
+
+  // Flush any remaining agent message
+  if (currentAgentContent && currentAgentId) {
+    messages.push({
+      id: currentAgentId,
+      role: 'agent',
+      content: currentAgentContent.trim(),
+      timestamp: new Date(),
+    });
+  }
+
+  return messages;
+}
+
 export function useAgent(options: UseAgentOptions = {}) {
   const { sessionId, initialMessage, model } = options;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedModel, setSelectedModel] = useState(
     model || 'databricks-claude-sonnet-4-5'
   );
@@ -32,6 +158,40 @@ export function useAgent(options: UseAgentOptions = {}) {
   const initialMessageAddedRef = useRef(false);
   const connectionInitiatedRef = useRef(false);
   const initialMessageRef = useRef(initialMessage);
+  const loadedSessionIdRef = useRef<string | null>(null);
+
+  // Load history from REST API when sessionId is provided (not for new sessions with initialMessage)
+  useEffect(() => {
+    const hasInitialMessage =
+      typeof initialMessage === 'string' && initialMessage.length > 0;
+    const alreadyLoaded = loadedSessionIdRef.current === sessionId;
+
+    // Skip if no sessionId, has initialMessage, or already loaded for this session
+    if (!sessionId || hasInitialMessage || alreadyLoaded) {
+      return;
+    }
+
+    const loadHistory = async () => {
+      setIsLoadingHistory(true);
+      try {
+        const response = await fetch(`/api/v1/sessions/${sessionId}/events`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.events && data.events.length > 0) {
+            const loadedMessages = convertSDKMessagesToChat(data.events);
+            setMessages(loadedMessages);
+          }
+          loadedSessionIdRef.current = sessionId;
+        }
+      } catch (error) {
+        console.error('Failed to load history:', error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadHistory();
+  }, [sessionId, initialMessage]);
 
   useEffect(() => {
     // Don't connect if no sessionId
@@ -54,12 +214,16 @@ export function useAgent(options: UseAgentOptions = {}) {
     };
 
     ws.onmessage = (event) => {
-      const message: ServerMessage = JSON.parse(event.data);
+      const message = JSON.parse(event.data) as SDKMessage & {
+        error?: string;
+        session_id?: string;
+      };
 
+      // Handle control message: connected
       if (message.type === 'connected') {
         console.log('Connection established');
 
-        // Add initial message to UI (sent via POST, not WebSocket)
+        // For new sessions with initial message
         if (initialMessageRef.current && !initialMessageAddedRef.current) {
           initialMessageAddedRef.current = true;
 
@@ -75,12 +239,17 @@ export function useAgent(options: UseAgentOptions = {}) {
           currentResponseRef.current = '';
           currentMessageIdRef.current = `agent-${Date.now()}`;
         }
+        // For existing sessions - history is loaded via REST API
         return;
       }
 
-      if (message.type === 'init') {
-        console.log('Session initialized:', message.sessionId);
-        // Start processing state if not already set
+      // Handle SDK system message (init)
+      if (
+        message.type === 'system' &&
+        'subtype' in message &&
+        message.subtype === 'init'
+      ) {
+        console.log('Session initialized:', message.session_id);
         if (!initialMessageAddedRef.current) {
           setIsProcessing(true);
           currentResponseRef.current = '';
@@ -89,9 +258,18 @@ export function useAgent(options: UseAgentOptions = {}) {
         return;
       }
 
-      if (message.type === 'assistant_message' && message.content) {
-        // Accumulate response text
-        currentResponseRef.current += message.content;
+      // Handle SDK assistant message
+      if (message.type === 'assistant' && 'message' in message) {
+        const assistantMsg = message as SDKAssistantMessage;
+
+        // Process content blocks
+        for (const block of assistantMsg.message.content) {
+          if (block.type === 'text' && block.text) {
+            currentResponseRef.current += block.text;
+          } else if (block.type === 'tool_use' && block.name) {
+            currentResponseRef.current += `\n\n[Using tool: ${block.name}]\n`;
+          }
+        }
 
         // Update the message in real-time
         setMessages((prev) => {
@@ -116,24 +294,11 @@ export function useAgent(options: UseAgentOptions = {}) {
             return [...prev, newMessage];
           }
         });
-      } else if (message.type === 'tool_use') {
-        // Show tool usage
-        currentResponseRef.current += `\n\n[Using tool: ${message.toolName}]\n`;
-        setMessages((prev) => {
-          const existingIndex = prev.findIndex(
-            (m) => m.id === currentMessageIdRef.current
-          );
-          if (existingIndex >= 0) {
-            const updated = [...prev];
-            updated[existingIndex] = {
-              ...updated[existingIndex],
-              content: currentResponseRef.current.trim(),
-            };
-            return updated;
-          }
-          return prev;
-        });
-      } else if (message.type === 'error') {
+        return;
+      }
+
+      // Handle error message
+      if (message.type === 'error' && message.error) {
         currentResponseRef.current += `\n\nError: ${message.error}`;
         setMessages((prev) => {
           const existingIndex = prev.findIndex(
@@ -159,8 +324,11 @@ export function useAgent(options: UseAgentOptions = {}) {
           }
         });
         setIsProcessing(false);
-      } else if (message.type === 'result') {
-        // Mark processing as complete
+        return;
+      }
+
+      // Handle SDK result message
+      if (message.type === 'result') {
         setIsProcessing(false);
         currentResponseRef.current = '';
         currentMessageIdRef.current = '';
@@ -219,6 +387,7 @@ export function useAgent(options: UseAgentOptions = {}) {
     messages,
     isConnected,
     isProcessing,
+    isLoadingHistory,
     sendMessage,
     selectedModel,
     setSelectedModel,

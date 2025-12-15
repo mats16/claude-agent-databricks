@@ -51,6 +51,7 @@ claude_agent_app/
 - **DATABRICKS_TOKEN**: Personal Access Token (development only, fallback for Service Principal authentication)
 - **PORT**: Backend server port (default: `8000`)
 - **WORKSPACE_PATH**: Agent working directory (default: current directory)
+- **DB_URL**: PostgreSQL connection string for session/event persistence (e.g., `postgres://user:password@host:5432/database?sslmode=require`)
 
 ### Authentication Flow
 
@@ -132,14 +133,20 @@ Creates a new chat session with an initial message.
 }
 ```
 
-#### GET `/api/v1/sessions/:sessionId/events` - Get event history (TBD)
+#### GET `/api/v1/sessions/:sessionId/events` - Get event history
 
-Returns event history for a session. Data store not yet implemented.
+Returns event history for a session from PostgreSQL database.
 
 **Response:**
 ```json
 {
-  "events": []
+  "events": [
+    { "uuid": "...", "session_id": "...", "type": "user", "message": { "role": "user", "content": "..." } },
+    { "uuid": "...", "session_id": "...", "type": "init", "data": { "version": "...", "model": "..." } },
+    { "uuid": "...", "session_id": "...", "type": "assistant", "data": { "content": "..." } },
+    { "uuid": "...", "session_id": "...", "type": "tool_use", "data": { "tool_name": "...", "tool_id": "...", "tool_input": {...} } },
+    { "uuid": "...", "session_id": "...", "type": "result", "data": { "success": true } }
+  ]
 }
 ```
 
@@ -184,7 +191,16 @@ Connect to an existing session for real-time streaming.
 
 ## Notes
 
-- In-memory storage (data lost on restart)
+- PostgreSQL (Neon) is used for session and event persistence via Drizzle ORM
 - Agent has access to: Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 - Uses Vite for frontend development with hot reload
 - Uses tsx for TypeScript execution on the backend
+
+## Database Setup
+
+1. Set the `DB_URL` environment variable with your PostgreSQL connection string
+2. Run the migration SQL to create tables:
+   ```bash
+   cd app/backend
+   psql $DB_URL -f db/migrations/0001_init.sql
+   ```
