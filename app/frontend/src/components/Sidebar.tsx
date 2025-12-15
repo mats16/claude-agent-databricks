@@ -19,8 +19,8 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
   const [workspacePath, setWorkspacePath] = useState('');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [overwrite, setOverwrite] = useState(false);
-  const [autoSync, setAutoSync] = useState(false);
+  const [overwrite, setOverwrite] = useState(true);
+  const [autoSync, setAutoSync] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
 
@@ -170,7 +170,10 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
             >
               {workspacePath || 'Select workspace'}
             </button>
-            <label className="sidebar-flag">
+            <label
+              className="sidebar-flag"
+              data-tooltip="Overwrite existing files when downloading from Workspace"
+            >
               <input
                 type="checkbox"
                 checked={overwrite}
@@ -179,14 +182,17 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
               />
               <span>Overwrite</span>
             </label>
-            <label className="sidebar-flag">
+            <label
+              className="sidebar-flag"
+              data-tooltip="Automatically sync changes back to Workspace on task completion"
+            >
               <input
                 type="checkbox"
                 checked={autoSync}
                 onChange={(e) => setAutoSync(e.target.checked)}
                 disabled={isSubmitting}
               />
-              <span>Auto Sync</span>
+              <span>Auto sync</span>
             </label>
           </div>
         </form>
