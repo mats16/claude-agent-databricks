@@ -141,58 +141,60 @@ export default function SessionPage() {
       />
 
       <div className="chat-messages">
-        {messages.length === 0 && !isProcessing && !isLoadingHistory && (
-          <div className="chat-empty">
-            <p>Session started. Waiting for response...</p>
-          </div>
-        )}
-
-        {messages.map((message) => (
-          <div key={message.id} className={`chat-message ${message.role}`}>
-            <div className="chat-message-icon">
-              {message.role === 'user' ? '>' : '◆'}
-            </div>
-            <div className="chat-message-content">
-              <pre>{message.content}</pre>
-            </div>
-          </div>
-        ))}
-
-        {isProcessing &&
-          messages.length > 0 &&
-          messages[messages.length - 1].role === 'user' && (
-            <div className="chat-message agent">
-              <div className="chat-message-icon">◆</div>
-              <div className="chat-message-content">
-                <div className="typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div>
+        <div className="chat-messages-inner">
+          {messages.length === 0 && !isProcessing && !isLoadingHistory && (
+            <div className="chat-empty">
+              <p>Session started. Waiting for response...</p>
             </div>
           )}
 
-        <div ref={messagesEndRef} />
-      </div>
+          {messages.map((message) => (
+            <div key={message.id} className={`chat-message ${message.role}`}>
+              <div className="chat-message-icon">
+                {message.role === 'user' ? '>' : '◆'}
+              </div>
+              <div className="chat-message-content">
+                <pre>{message.content}</pre>
+              </div>
+            </div>
+          ))}
 
-      <form className="chat-input-form" onSubmit={handleSubmit}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
-          disabled={!isConnected || isProcessing}
-          className="chat-input"
-        />
-        <button
-          type="submit"
-          disabled={!isConnected || isProcessing || !input.trim()}
-          className="chat-submit"
-        >
-          Send
-        </button>
-      </form>
+          {isProcessing &&
+            messages.length > 0 &&
+            messages[messages.length - 1].role === 'user' && (
+              <div className="chat-message agent">
+                <div className="chat-message-icon">◆</div>
+                <div className="chat-message-content">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        <form className="chat-input-form" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            disabled={!isConnected || isProcessing}
+            className="chat-input"
+          />
+          <button
+            type="submit"
+            disabled={!isConnected || isProcessing || !input.trim()}
+            className="chat-submit"
+          >
+            ↑
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
