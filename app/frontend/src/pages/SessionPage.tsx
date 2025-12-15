@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useAgent } from '../hooks/useAgent';
+import TitleEditModal from '../components/TitleEditModal';
 
 interface LocationState {
   initialMessage?: string;
@@ -11,6 +12,8 @@ export default function SessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const location = useLocation();
   const [input, setInput] = useState('');
+  const [sessionTitle, setSessionTitle] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialMessageConsumedRef = useRef(false);
   const prevSessionIdRef = useRef<string | undefined>(undefined);
@@ -21,6 +24,49 @@ export default function SessionPage() {
     initialMessageConsumedRef.current = false;
     prevSessionIdRef.current = sessionId;
   }
+
+  // Fetch session title
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const fetchSession = async () => {
+      try {
+        const response = await fetch(`/api/v1/sessions`);
+        if (response.ok) {
+          const data = await response.json();
+          const session = data.sessions?.find(
+            (s: { id: string }) => s.id === sessionId
+          );
+          if (session?.title) {
+            setSessionTitle(session.title);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch session:', error);
+      }
+    };
+
+    fetchSession();
+  }, [sessionId]);
+
+  const handleSaveTitle = useCallback(
+    async (newTitle: string) => {
+      if (!sessionId) return;
+
+      const response = await fetch(`/api/v1/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle }),
+      });
+
+      if (response.ok) {
+        setSessionTitle(newTitle);
+      } else {
+        throw new Error('Failed to update title');
+      }
+    },
+    [sessionId]
+  );
 
   const locationState = location.state as LocationState | null;
   const initialMessage = !initialMessageConsumedRef.current
@@ -66,15 +112,33 @@ export default function SessionPage() {
     <div className="chat-panel">
       <div className="chat-header">
         <div className="chat-header-left">
-          <span className="chat-session-id">
-            Session: {sessionId?.slice(0, 8)}...
-          </span>
+          <button
+            className="chat-title-button"
+            onClick={() => setIsModalOpen(true)}
+            title="Click to edit title"
+          >
+            <span className="chat-title">
+              {sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
+            </span>
+            <span className="chat-title-edit-icon">&#9998;</span>
+          </button>
         </div>
         <div className="chat-header-right">
-          <span className="chat-model">{selectedModel.replace('databricks-claude-', '')}</span>
-          <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+          <span className="chat-model">
+            {selectedModel.replace('databricks-claude-', '')}
+          </span>
+          <span
+            className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}
+          ></span>
         </div>
       </div>
+
+      <TitleEditModal
+        isOpen={isModalOpen}
+        currentTitle={sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
+        onSave={handleSaveTitle}
+        onClose={() => setIsModalOpen(false)}
+      />
 
       <div className="chat-messages">
         {messages.length === 0 && !isProcessing && !isLoadingHistory && (

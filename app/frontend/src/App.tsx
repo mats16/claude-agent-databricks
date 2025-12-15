@@ -8,12 +8,18 @@ function WelcomePage() {
     <div className="welcome-panel">
       <div className="welcome-content">
         <div className="welcome-logo">
-          <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="10" y="30" width="80" height="50" rx="8" fill="#f5a623"/>
-            <rect x="20" y="20" width="60" height="15" rx="4" fill="#f5a623"/>
-            <circle cx="35" cy="50" r="8" fill="#1a1a1a"/>
-            <circle cx="65" cy="50" r="8" fill="#1a1a1a"/>
-            <rect x="30" y="65" width="40" height="5" rx="2" fill="#1a1a1a"/>
+          <svg
+            width="80"
+            height="80"
+            viewBox="0 0 100 100"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect x="10" y="30" width="80" height="50" rx="8" fill="#f5a623" />
+            <rect x="20" y="20" width="60" height="15" rx="4" fill="#f5a623" />
+            <circle cx="35" cy="50" r="8" fill="#1a1a1a" />
+            <circle cx="65" cy="50" r="8" fill="#1a1a1a" />
+            <rect x="30" y="65" width="40" height="5" rx="2" fill="#1a1a1a" />
           </svg>
         </div>
 

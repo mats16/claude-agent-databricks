@@ -35,27 +35,15 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="session-list-loading">
-        Loading sessions...
-      </div>
-    );
+    return <div className="session-list-loading">Loading sessions...</div>;
   }
 
   if (error) {
-    return (
-      <div className="session-list-error">
-        Error: {error}
-      </div>
-    );
+    return <div className="session-list-error">Error: {error}</div>;
   }
 
   if (sessions.length === 0) {
-    return (
-      <div className="session-list-empty">
-        No sessions yet
-      </div>
-    );
+    return <div className="session-list-empty">No sessions yet</div>;
   }
 
   return (

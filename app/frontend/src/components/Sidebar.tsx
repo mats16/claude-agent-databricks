@@ -9,7 +9,9 @@ interface SidebarProps {
 
 export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState('databricks-claude-sonnet-4-5');
+  const [selectedModel, setSelectedModel] = useState(
+    'databricks-claude-sonnet-4-5'
+  );
   const [workspacePath, setWorkspacePath] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -82,7 +84,12 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
   };
 
   return (
-    <aside className="sidebar" style={width ? { width: `${width}px`, minWidth: `${width}px` } : undefined}>
+    <aside
+      className="sidebar"
+      style={
+        width ? { width: `${width}px`, minWidth: `${width}px` } : undefined
+      }
+    >
       <div className="sidebar-header">
         <h1 className="sidebar-title">Claude Code on Databricks</h1>
       </div>

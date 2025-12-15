@@ -18,25 +18,31 @@ export default function Layout({ children }: LayoutProps) {
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    resizeRef.current = {
-      startX: e.clientX,
-      startWidth: sidebarWidth,
-    };
-  }, [sidebarWidth]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsResizing(true);
+      resizeRef.current = {
+        startX: e.clientX,
+        startWidth: sidebarWidth,
+      };
+    },
+    [sidebarWidth]
+  );
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isResizing || !resizeRef.current) return;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isResizing || !resizeRef.current) return;
 
-    const delta = e.clientX - resizeRef.current.startX;
-    const newWidth = Math.min(
-      MAX_SIDEBAR_WIDTH,
-      Math.max(MIN_SIDEBAR_WIDTH, resizeRef.current.startWidth + delta)
-    );
-    setSidebarWidth(newWidth);
-  }, [isResizing]);
+      const delta = e.clientX - resizeRef.current.startX;
+      const newWidth = Math.min(
+        MAX_SIDEBAR_WIDTH,
+        Math.max(MIN_SIDEBAR_WIDTH, resizeRef.current.startWidth + delta)
+      );
+      setSidebarWidth(newWidth);
+    },
+    [isResizing]
+  );
 
   const handleMouseUp = useCallback(() => {
     if (isResizing) {
@@ -69,9 +75,7 @@ export default function Layout({ children }: LayoutProps) {
         className={`resize-handle ${isResizing ? 'active' : ''}`}
         onMouseDown={handleMouseDown}
       />
-      <main className="main-content">
-        {children}
-      </main>
+      <main className="main-content">{children}</main>
     </div>
   );
 }
