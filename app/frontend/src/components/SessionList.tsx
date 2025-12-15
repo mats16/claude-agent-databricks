@@ -58,9 +58,12 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
             {session.title || 'Untitled session'}
           </div>
           <div className="session-item-meta">
-            <span className="session-item-date">
+            {session.workspacePath && (
+              <div className="session-item-path">{session.workspacePath}</div>
+            )}
+            <div className="session-item-date">
               {formatDate(session.createdAt)}
-            </span>
+            </div>
           </div>
         </div>
       ))}

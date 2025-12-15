@@ -280,8 +280,22 @@ body {
 }
 
 .session-item-meta {
-  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.session-item-path,
+.session-item-date {
+  font-size: 0.7rem;
   color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-item-path {
+  color: #777;
 }
 
 /* Main Content */

@@ -284,9 +284,11 @@ fastify.get('/api/v1/Workspace', async (_request, _reply) => {
 fastify.get<{ Params: { email: string } }>(
   '/api/v1/Workspace/Users/:email',
   async (request, reply) => {
+    // Prefer PAT from localStorage (x-databricks-token) over Databricks Apps proxy token
+    // because the proxy token may not have sufficient scope for SCIM API
     const token =
-      (request.headers['x-forwarded-access-token'] as string) ||
-      (request.headers['x-databricks-token'] as string);
+      (request.headers['x-databricks-token'] as string) ||
+      (request.headers['x-forwarded-access-token'] as string);
 
     if (!token) {
       return reply.status(401).send({ error: 'Token required' });
@@ -326,18 +328,26 @@ fastify.get<{ Params: { email: string } }>(
       return reply.status(400).send({ error: 'Email required' });
     }
 
-    const path = `/Workspace/Users/${email}`;
+    const workspacePath = `/Workspace/Users/${email}`;
 
     try {
       const response = await fetch(
-        `https://${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(path)}`,
+        `https://${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(workspacePath)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
       const data = (await response.json()) as {
         objects?: Array<{ path: string; object_type: string }>;
+        error_code?: string;
+        message?: string;
       };
+
+      // Check for API error
+      if (data.error_code) {
+        return { objects: [], error: data.message };
+      }
+
       // Filter to only return directories
       const directories = data.objects?.filter(
         (obj) => obj.object_type === 'DIRECTORY'
@@ -355,9 +365,10 @@ fastify.get<{ Params: { '*': string } }>(
   async (request, reply) => {
     const subpath = request.params['*'];
 
+    // Prefer PAT from localStorage (x-databricks-token) over Databricks Apps proxy token
     const token =
-      (request.headers['x-forwarded-access-token'] as string) ||
-      (request.headers['x-databricks-token'] as string);
+      (request.headers['x-databricks-token'] as string) ||
+      (request.headers['x-forwarded-access-token'] as string);
 
     if (!token) {
       return reply.status(401).send({ error: 'Token required' });
