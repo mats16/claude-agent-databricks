@@ -1,3 +1,6 @@
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 interface MessageRendererProps {
   content: string;
   role: 'user' | 'agent';
@@ -95,7 +98,9 @@ function parseAgentMessage(content: string): ParsedBlock[] {
   // Add remaining text after last tool call
   let remaining = content.slice(lastIndex).trim();
   // Remove any standalone [ToolResult] blocks
-  remaining = remaining.replace(/\[ToolResult\][\s\S]*?\[\/ToolResult\]/g, '').trim();
+  remaining = remaining
+    .replace(/\[ToolResult\][\s\S]*?\[\/ToolResult\]/g, '')
+    .trim();
   if (remaining) {
     blocks.push({
       type: 'text',
@@ -106,49 +111,68 @@ function parseAgentMessage(content: string): ParsedBlock[] {
   return blocks;
 }
 
-function renderTextBlock(text: string) {
-  // Split into paragraphs/lines
-  const lines = text.split('\n').filter((line) => line.trim());
-
-  if (lines.length === 0) {
-    return null;
-  }
-
-  if (lines.length === 1) {
-    return (
-      <div className="message-line">
-        <span className="message-line-text">{lines[0]}</span>
-      </div>
-    );
-  }
-
+function MarkdownContent({ content }: { content: string }) {
   return (
-    <>
-      {lines.map((line, idx) => (
-        <div key={idx} className="message-line">
-          <span className="message-line-text">{line}</span>
-        </div>
-      ))}
-    </>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        // Custom code block rendering
+        code({ className, children, ...props }) {
+          const match = /language-(\w+)/.exec(className || '');
+          const isInline = !match && !className;
+
+          if (isInline) {
+            return (
+              <code className="inline-code" {...props}>
+                {children}
+              </code>
+            );
+          }
+
+          return (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          );
+        },
+        // Custom pre rendering for code blocks
+        pre({ children }) {
+          return <pre className="code-block">{children}</pre>;
+        },
+        // Custom link rendering
+        a({ href, children }) {
+          return (
+            <a href={href} target="_blank" rel="noopener noreferrer">
+              {children}
+            </a>
+          );
+        },
+      }}
+    >
+      {content}
+    </ReactMarkdown>
   );
 }
 
-export default function MessageRenderer({ content, role }: MessageRendererProps) {
+export default function MessageRenderer({
+  content,
+  role,
+}: MessageRendererProps) {
   if (role === 'user') {
     return <pre className="message-text">{content}</pre>;
   }
 
   const blocks = parseAgentMessage(content);
 
-  // If no tool blocks, render as plain text with formatting
+  // If no tool blocks, render as markdown
   const hasToolBlocks = blocks.some((b) => b.type === 'tool');
 
   if (!hasToolBlocks) {
-    const lines = content.split('\n').filter((line) => line.trim());
-    if (lines.length <= 1) {
-      return <pre className="message-text">{content}</pre>;
-    }
-    return <div className="message-formatted">{renderTextBlock(content)}</div>;
+    return (
+      <div className="markdown-content">
+        <MarkdownContent content={content} />
+      </div>
+    );
   }
 
   return (
@@ -173,8 +197,8 @@ export default function MessageRenderer({ content, role }: MessageRendererProps)
           );
         } else {
           return (
-            <div key={idx} className="text-block">
-              {renderTextBlock(block.content)}
+            <div key={idx} className="text-block markdown-content">
+              <MarkdownContent content={block.content} />
             </div>
           );
         }
