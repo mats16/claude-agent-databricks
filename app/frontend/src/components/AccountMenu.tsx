@@ -35,10 +35,7 @@ export default function AccountMenu({ userEmail }: AccountMenuProps) {
   };
 
   const displayName = userEmail || 'User';
-  const initials = displayName
-    .split('@')[0]
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = displayName.split('@')[0].slice(0, 2).toUpperCase();
 
   return (
     <div className="account-menu-container" ref={menuRef}>
@@ -64,20 +61,37 @@ export default function AccountMenu({ userEmail }: AccountMenuProps) {
             }}
           >
             <span className="account-menu-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </span>
             <span>Personal Access Token</span>
           </button>
           <div className="account-menu-divider" />
-          <button className="account-menu-item account-menu-item-danger" onClick={handleLogout}>
+          <button
+            className="account-menu-item account-menu-item-danger"
+            onClick={handleLogout}
+          >
             <span className="account-menu-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/>
-                <line x1="21" y1="12" x2="9" y2="12"/>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
               </svg>
             </span>
             <span>Logout</span>
