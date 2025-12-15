@@ -477,9 +477,10 @@ fastify.register(async (fastify) => {
             const userMessage = message.content;
             const model = message.model || 'databricks-claude-sonnet-4-5';
 
-            // Fetch session to get workspacePath for resume
+            // Fetch session to get workspacePath and autoSync for resume
             const session = await getSessionById(sessionId);
             const workspacePath = session?.workspacePath ?? undefined;
+            const autoSync = session?.autoSync ?? false;
 
             // Save user message to database
             const userMsg = createUserMessage(sessionId, userMessage);
@@ -498,6 +499,31 @@ fastify.register(async (fastify) => {
               await saveMessage(sdkMessage);
               // Send to client
               socket.send(JSON.stringify(sdkMessage));
+
+              // Auto sync: import local changes back to workspace on result success
+              if (
+                autoSync &&
+                workspacePath &&
+                sdkMessage.type === 'result' &&
+                'subtype' in sdkMessage &&
+                sdkMessage.subtype === 'success'
+              ) {
+                const { exec } = await import('child_process');
+                const basePath = process.env.DATABRICKS_APP_NAME
+                  ? '/home/app'
+                  : './tmp';
+                const localPath = path.join(basePath, workspacePath);
+                const importCmd = `databricks workspace import-dir "${localPath}" "${workspacePath}" --overwrite`;
+
+                console.log(`Auto sync (background): ${importCmd}`);
+                exec(importCmd, (error, stdout, stderr) => {
+                  if (error) {
+                    console.error('import-dir error:', error.message);
+                  }
+                  if (stdout) console.log('import-dir stdout:', stdout);
+                  if (stderr) console.log('import-dir stderr:', stderr);
+                });
+              }
             }
           }
         } catch (error: any) {
