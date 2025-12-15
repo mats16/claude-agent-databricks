@@ -11,7 +11,7 @@ import {
   getSessionById,
   getSessions,
   getSessionsByUserEmail,
-  updateSessionTitle,
+  updateSession,
 } from './db/sessions.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -198,6 +198,7 @@ fastify.post<{ Body: CreateSessionBody }>(
               model,
               workspacePath,
               userEmail,
+              autoSync,
             });
 
             resolveInit?.();
@@ -272,21 +273,26 @@ fastify.get('/api/v1/sessions', async (request, _reply) => {
   return { sessions: sessionList };
 });
 
-// Update session title
-fastify.patch<{ Params: { sessionId: string }; Body: { title: string } }>(
-  '/api/v1/sessions/:sessionId',
-  async (request, reply) => {
-    const { sessionId } = request.params;
-    const { title } = request.body;
+// Update session settings (title, autoSync)
+fastify.patch<{
+  Params: { sessionId: string };
+  Body: { title?: string; autoSync?: boolean };
+}>('/api/v1/sessions/:sessionId', async (request, reply) => {
+  const { sessionId } = request.params;
+  const { title, autoSync } = request.body;
 
-    if (!title || typeof title !== 'string') {
-      return reply.status(400).send({ error: 'title is required' });
-    }
-
-    await updateSessionTitle(sessionId, title);
-    return { success: true };
+  // At least one field must be provided
+  if (title === undefined && autoSync === undefined) {
+    return reply.status(400).send({ error: 'title or autoSync is required' });
   }
-);
+
+  const updates: { title?: string; autoSync?: boolean } = {};
+  if (title !== undefined) updates.title = title;
+  if (autoSync !== undefined) updates.autoSync = autoSync;
+
+  await updateSession(sessionId, updates);
+  return { success: true };
+});
 
 // Get session events from database
 fastify.get<{ Params: { sessionId: string } }>(

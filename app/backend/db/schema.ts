@@ -5,6 +5,7 @@ import {
   jsonb,
   index,
   integer,
+  boolean,
 } from 'drizzle-orm/pg-core';
 
 // Sessions table
@@ -14,6 +15,7 @@ export const sessions = pgTable('sessions', {
   model: text('model').notNull(),
   workspacePath: text('workspace_path'),
   userEmail: text('user_email'),
+  autoSync: boolean('auto_sync').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

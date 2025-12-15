@@ -6,6 +6,7 @@ export interface Session {
   model: string;
   workspacePath: string | null;
   userEmail: string | null;
+  autoSync: boolean;
   createdAt: string;
   updatedAt: string;
 }

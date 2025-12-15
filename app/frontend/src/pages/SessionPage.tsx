@@ -14,6 +14,7 @@ export default function SessionPage() {
   const location = useLocation();
   const [input, setInput] = useState('');
   const [sessionTitle, setSessionTitle] = useState<string | null>(null);
+  const [sessionAutoSync, setSessionAutoSync] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialMessageConsumedRef = useRef(false);
@@ -26,7 +27,7 @@ export default function SessionPage() {
     prevSessionIdRef.current = sessionId;
   }
 
-  // Fetch session title
+  // Fetch session data
   useEffect(() => {
     if (!sessionId) return;
 
@@ -38,8 +39,11 @@ export default function SessionPage() {
           const session = data.sessions?.find(
             (s: { id: string }) => s.id === sessionId
           );
-          if (session?.title) {
-            setSessionTitle(session.title);
+          if (session) {
+            if (session.title) {
+              setSessionTitle(session.title);
+            }
+            setSessionAutoSync(session.autoSync ?? false);
           }
         }
       } catch (error) {
@@ -50,20 +54,21 @@ export default function SessionPage() {
     fetchSession();
   }, [sessionId]);
 
-  const handleSaveTitle = useCallback(
-    async (newTitle: string) => {
+  const handleSaveSettings = useCallback(
+    async (newTitle: string, autoSync: boolean) => {
       if (!sessionId) return;
 
       const response = await fetch(`/api/v1/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle }),
+        body: JSON.stringify({ title: newTitle, autoSync }),
       });
 
       if (response.ok) {
         setSessionTitle(newTitle);
+        setSessionAutoSync(autoSync);
       } else {
-        throw new Error('Failed to update title');
+        throw new Error('Failed to update session settings');
       }
     },
     [sessionId]
@@ -121,6 +126,9 @@ export default function SessionPage() {
             <span className="chat-title">
               {sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
             </span>
+            {sessionAutoSync && (
+              <span className="auto-sync-badge">Auto sync</span>
+            )}
             <span className="chat-title-edit-icon">&#9998;</span>
           </button>
         </div>
@@ -137,7 +145,8 @@ export default function SessionPage() {
       <TitleEditModal
         isOpen={isModalOpen}
         currentTitle={sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
-        onSave={handleSaveTitle}
+        currentAutoSync={sessionAutoSync}
+        onSave={handleSaveSettings}
         onClose={() => setIsModalOpen(false)}
       />
 

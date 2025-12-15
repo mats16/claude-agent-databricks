@@ -44,3 +44,14 @@ export async function updateSessionTitle(
     .set({ title, updatedAt: new Date() })
     .where(eq(sessions.id, id));
 }
+
+// Update session settings (title and autoSync)
+export async function updateSession(
+  id: string,
+  updates: { title?: string; autoSync?: boolean }
+): Promise<void> {
+  await db
+    .update(sessions)
+    .set({ ...updates, updatedAt: new Date() })
+    .where(eq(sessions.id, id));
+}
