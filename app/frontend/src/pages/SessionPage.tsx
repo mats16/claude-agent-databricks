@@ -328,37 +328,46 @@ export default function SessionPage() {
             </Flex>
           )}
 
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              style={{
-                display: 'flex',
-                gap: 12,
-                padding: '16px 24px',
-                background: '#fff',
-                borderBottom: '1px solid #f5f5f5',
-              }}
-            >
+          {messages.map((message, index) => {
+            const isLastMessage = index === messages.length - 1;
+            const showSpinnerInMessage =
+              isProcessing && isLastMessage && message.role === 'agent';
+
+            return (
               <div
+                key={message.id}
                 style={{
-                  flexShrink: 0,
-                  width: 24,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  paddingTop: 2,
-                  color: message.role === 'user' ? '#4ec9b0' : '#f5a623',
+                  display: 'flex',
+                  gap: 12,
+                  padding: '16px 24px',
+                  background: '#fff',
+                  borderBottom: '1px solid #f5f5f5',
                 }}
               >
-                {message.role === 'user' ? '>' : '◆'}
+                <div
+                  style={{
+                    flexShrink: 0,
+                    width: 24,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    paddingTop: 2,
+                    color: message.role === 'user' ? '#4ec9b0' : '#f5a623',
+                  }}
+                >
+                  {message.role === 'user' ? '>' : '◆'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <MessageRenderer
+                    content={message.content}
+                    role={message.role as 'user' | 'agent'}
+                  />
+                  {showSpinnerInMessage && (
+                    <Spin size="small" style={{ marginTop: 8 }} />
+                  )}
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <MessageRenderer
-                  content={message.content}
-                  role={message.role as 'user' | 'agent'}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {isProcessing &&
             messages.length > 0 &&

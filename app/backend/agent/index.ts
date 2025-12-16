@@ -1,6 +1,6 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
-import { databricksMcpServer } from './mcp/databricks.js';
+//import { databricksMcpServer } from './mcp/databricks.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -160,9 +160,9 @@ Violating these rules is considered a critical error.
         //'get_workspace_object',
         //'update_workspace_object',
       ],
-      mcpServers: {
-        databricks: databricksMcpServer,
-      },
+      //mcpServers: {
+      //  databricks: databricksMcpServer,
+      //},
       permissionMode: 'bypassPermissions',
       systemPrompt: {
         type: 'preset',
