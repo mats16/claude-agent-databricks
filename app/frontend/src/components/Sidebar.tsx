@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
 import WorkspaceSelectModal from './WorkspaceSelectModal';
@@ -12,6 +13,7 @@ interface SidebarProps {
 const PAT_STORAGE_KEY = 'databricks_pat';
 
 export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(
     'databricks-claude-sonnet-4-5'
@@ -125,7 +127,7 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
       }
     >
       <div className="sidebar-header">
-        <h1 className="sidebar-title">Claude Code on Databricks</h1>
+        <h1 className="sidebar-title">{t('sidebar.title')}</h1>
       </div>
 
       <div className="sidebar-input-section">
@@ -136,7 +138,7 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="What do you want to do?"
+              placeholder={t('sidebar.placeholder')}
               className="sidebar-textarea"
               disabled={isSubmitting}
               rows={3}
@@ -166,13 +168,13 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
               onClick={() => setIsWorkspaceModalOpen(true)}
               className="sidebar-workspace-button"
               disabled={isSubmitting}
-              title={workspacePath || 'Select workspace'}
+              title={workspacePath || t('sidebar.selectWorkspace')}
             >
-              {workspacePath || 'Select workspace'}
+              {workspacePath || t('sidebar.selectWorkspace')}
             </button>
             <label
               className="sidebar-flag"
-              data-tooltip="Overwrite existing files when downloading from Workspace"
+              data-tooltip={t('sidebar.overwriteTooltip')}
             >
               <input
                 type="checkbox"
@@ -180,11 +182,11 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
                 onChange={(e) => setOverwrite(e.target.checked)}
                 disabled={isSubmitting}
               />
-              <span>Overwrite</span>
+              <span>{t('sidebar.overwrite')}</span>
             </label>
             <label
               className="sidebar-flag"
-              data-tooltip="Automatically sync changes back to Workspace on task completion"
+              data-tooltip={t('sidebar.autoSyncTooltip')}
             >
               <input
                 type="checkbox"
@@ -192,7 +194,7 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
                 onChange={(e) => setAutoSync(e.target.checked)}
                 disabled={isSubmitting}
               />
-              <span>Auto sync</span>
+              <span>{t('sidebar.autoSync')}</span>
             </label>
           </div>
         </form>
@@ -200,7 +202,7 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
 
       <div className="sidebar-section">
         <div className="sidebar-section-header">
-          <span>Sessions</span>
+          <span>{t('sidebar.sessions')}</span>
         </div>
         <SessionList />
       </div>

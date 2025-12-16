@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const PAT_STORAGE_KEY = 'databricks_pat';
 
@@ -8,6 +9,7 @@ interface PATModalProps {
 }
 
 export default function PATModal({ isOpen, onClose }: PATModalProps) {
+  const { t } = useTranslation();
   const [token, setToken] = useState('');
   const [savedToken, setSavedToken] = useState<string | null>(null);
   const [showToken, setShowToken] = useState(false);
@@ -40,9 +42,9 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
       localStorage.setItem(PAT_STORAGE_KEY, token.trim());
       setSavedToken(token.trim());
       setToken('');
-      setMessage({ type: 'success', text: 'Token saved successfully' });
+      setMessage({ type: 'success', text: t('patModal.tokenSaved') });
     } catch {
-      setMessage({ type: 'error', text: 'Failed to save token' });
+      setMessage({ type: 'error', text: t('patModal.saveFailed') });
     } finally {
       setIsSaving(false);
     }
@@ -51,7 +53,7 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
   const handleDelete = () => {
     localStorage.removeItem(PAT_STORAGE_KEY);
     setSavedToken(null);
-    setMessage({ type: 'success', text: 'Token deleted' });
+    setMessage({ type: 'success', text: t('patModal.tokenDeleted') });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -76,28 +78,29 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
         onKeyDown={handleKeyDown}
       >
         <div className="modal-header">
-          <h2>Personal Access Token</h2>
+          <h2>{t('patModal.title')}</h2>
           <button className="modal-close" onClick={onClose}>
             &times;
           </button>
         </div>
 
         <div className="modal-body">
-          <p className="pat-description">
-            Enter your Databricks Personal Access Token to authenticate API
-            requests.
-          </p>
+          <p className="pat-description">{t('patModal.description')}</p>
 
           {savedToken && (
             <div className="pat-current">
-              <label className="pat-label">Current Token</label>
+              <label className="pat-label">{t('patModal.currentToken')}</label>
               <div className="pat-token-display">
                 <code>{showToken ? savedToken : maskedToken}</code>
                 <button
                   type="button"
                   className="pat-toggle-button"
                   onClick={() => setShowToken(!showToken)}
-                  title={showToken ? 'Hide token' : 'Show token'}
+                  title={
+                    showToken
+                      ? t('patModal.hideToken')
+                      : t('patModal.showToken')
+                  }
                 >
                   {showToken ? (
                     <svg
@@ -129,7 +132,7 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
                   type="button"
                   className="pat-delete-button"
                   onClick={handleDelete}
-                  title="Delete token"
+                  title={t('patModal.deleteToken')}
                 >
                   <svg
                     width="16"
@@ -149,14 +152,16 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
 
           <div className="pat-input-section">
             <label className="pat-label">
-              {savedToken ? 'Replace Token' : 'Enter Token'}
+              {savedToken
+                ? t('patModal.replaceToken')
+                : t('patModal.enterToken')}
             </label>
             <input
               ref={inputRef}
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="dapi..."
+              placeholder={t('patModal.placeholder')}
               className="modal-input"
               disabled={isSaving}
             />
@@ -176,7 +181,7 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
             className="modal-button modal-button-cancel"
             disabled={isSaving}
           >
-            Close
+            {t('common.close')}
           </button>
           <button
             type="button"
@@ -184,7 +189,7 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
             disabled={!token.trim() || isSaving}
             className="modal-button modal-button-save"
           >
-            {isSaving ? 'Saving...' : 'Save'}
+            {isSaving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>

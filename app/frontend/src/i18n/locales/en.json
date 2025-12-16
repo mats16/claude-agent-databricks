@@ -1,0 +1,81 @@
+{
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "close": "Close",
+    "select": "Select",
+    "loading": "Loading...",
+    "error": "Error"
+  },
+  "sidebar": {
+    "title": "Claude Code on Databricks",
+    "placeholder": "What do you want to do?",
+    "sessions": "Sessions",
+    "selectWorkspace": "Select workspace",
+    "overwrite": "Overwrite",
+    "overwriteTooltip": "Overwrite existing files when downloading from Workspace",
+    "autoSync": "Auto sync",
+    "autoSyncTooltip": "Automatically sync changes back to Workspace on task completion"
+  },
+  "accountMenu": {
+    "accountSettings": "Account settings",
+    "pat": "Personal Access Token",
+    "logout": "Logout",
+    "language": "Language"
+  },
+  "patModal": {
+    "title": "Personal Access Token",
+    "description": "Enter your Databricks Personal Access Token to authenticate API requests.",
+    "currentToken": "Current Token",
+    "replaceToken": "Replace Token",
+    "enterToken": "Enter Token",
+    "placeholder": "dapi...",
+    "showToken": "Show token",
+    "hideToken": "Hide token",
+    "deleteToken": "Delete token",
+    "tokenSaved": "Token saved successfully",
+    "tokenDeleted": "Token deleted",
+    "saveFailed": "Failed to save token"
+  },
+  "workspaceModal": {
+    "title": "Select Workspace Directory",
+    "current": "Current:",
+    "noSubdirectories": "No subdirectories",
+    "patNotConfigured": "PAT not configured",
+    "fetchFailed": "Failed to fetch directories",
+    "homeFetchFailed": "Failed to fetch home directory"
+  },
+  "titleEditModal": {
+    "title": "Session Settings",
+    "sessionTitle": "Session title",
+    "titlePlaceholder": "Enter session title...",
+    "autoSyncHint": "Automatically sync changes back to Databricks Workspace on task completion"
+  },
+  "sessionList": {
+    "loadingSessions": "Loading sessions...",
+    "noSessions": "No sessions yet",
+    "untitledSession": "Untitled session",
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  },
+  "sessionPage": {
+    "clickToEdit": "Click to edit title",
+    "connected": "Connected",
+    "reconnecting": "Reconnecting...",
+    "disconnected": "Disconnected",
+    "waitingForResponse": "Session started. Waiting for response...",
+    "typeMessage": "Type your message...",
+    "openInDatabricks": "Open in Databricks"
+  },
+  "welcome": {
+    "exploreTitle": "Explore workspace files",
+    "exploreDescription": "List and read files in Databricks Workspace",
+    "performanceTitle": "Find performance issues",
+    "performanceDescription": "Identify slow code paths",
+    "bugTitle": "Fix a bug",
+    "bugDescription": "Debug and resolve issues in your code"
+  }
+}

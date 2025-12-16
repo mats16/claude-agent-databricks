@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAgent } from '../hooks/useAgent';
 import TitleEditModal from '../components/TitleEditModal';
 import MessageRenderer from '../components/MessageRenderer';
@@ -10,6 +11,7 @@ interface LocationState {
 }
 
 export default function SessionPage() {
+  const { t } = useTranslation();
   const { sessionId } = useParams<{ sessionId: string }>();
   const location = useLocation();
   const [input, setInput] = useState('');
@@ -158,13 +160,13 @@ export default function SessionPage() {
           <button
             className="chat-title-button"
             onClick={() => setIsModalOpen(true)}
-            title="Click to edit title"
+            title={t('sessionPage.clickToEdit')}
           >
             <span className="chat-title">
               {sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
             </span>
             {sessionAutoSync && (
-              <span className="auto-sync-badge">Auto sync</span>
+              <span className="auto-sync-badge">{t('sidebar.autoSync')}</span>
             )}
             <span className="chat-title-edit-icon">&#9998;</span>
           </button>
@@ -176,7 +178,7 @@ export default function SessionPage() {
               <button
                 className="workspace-link-button"
                 onClick={handleWorkspacePathClick}
-                title="Open in Databricks"
+                title={t('sessionPage.openInDatabricks')}
               >
                 <svg
                   width="12"
@@ -197,10 +199,10 @@ export default function SessionPage() {
             className={`status-dot ${isConnected ? 'connected' : isReconnecting ? 'reconnecting' : 'disconnected'}`}
             title={
               isConnected
-                ? 'Connected'
+                ? t('sessionPage.connected')
                 : isReconnecting
-                  ? 'Reconnecting...'
-                  : 'Disconnected'
+                  ? t('sessionPage.reconnecting')
+                  : t('sessionPage.disconnected')
             }
           ></span>
         </div>
@@ -218,7 +220,7 @@ export default function SessionPage() {
         <div className="chat-messages-inner">
           {messages.length === 0 && !isProcessing && !isLoadingHistory && (
             <div className="chat-empty">
-              <p>Session started. Waiting for response...</p>
+              <p>{t('sessionPage.waitingForResponse')}</p>
             </div>
           )}
 
@@ -259,7 +261,7 @@ export default function SessionPage() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
+            placeholder={t('sessionPage.typeMessage')}
             disabled={!isConnected || isProcessing}
             className="chat-input"
           />

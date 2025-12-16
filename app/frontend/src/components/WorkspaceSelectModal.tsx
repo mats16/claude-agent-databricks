@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const PAT_STORAGE_KEY = 'databricks_pat';
 
@@ -20,6 +21,7 @@ export default function WorkspaceSelectModal({
   onSelect,
   initialPath,
 }: WorkspaceSelectModalProps) {
+  const { t } = useTranslation();
   const [currentPath, setCurrentPath] = useState(initialPath || '');
   const [directories, setDirectories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +31,7 @@ export default function WorkspaceSelectModal({
   const fetchDirectories = async (path: string) => {
     const token = localStorage.getItem(PAT_STORAGE_KEY);
     if (!token) {
-      setError('PAT not configured');
+      setError(t('workspaceModal.patNotConfigured'));
       return;
     }
 
@@ -55,7 +57,7 @@ export default function WorkspaceSelectModal({
       }
     } catch (e) {
       console.error('Failed to fetch directories:', e);
-      setError('Failed to fetch directories');
+      setError(t('workspaceModal.fetchFailed'));
       setDirectories([]);
     } finally {
       setIsLoading(false);
@@ -78,7 +80,7 @@ export default function WorkspaceSelectModal({
   const fetchHomeDirectory = async () => {
     const token = localStorage.getItem(PAT_STORAGE_KEY);
     if (!token) {
-      setError('PAT not configured');
+      setError(t('workspaceModal.patNotConfigured'));
       return;
     }
 
@@ -100,7 +102,7 @@ export default function WorkspaceSelectModal({
       }
     } catch (e) {
       console.error('Failed to fetch home directory:', e);
-      setError('Failed to fetch home directory');
+      setError(t('workspaceModal.homeFetchFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -145,7 +147,7 @@ export default function WorkspaceSelectModal({
         onKeyDown={handleKeyDown}
       >
         <div className="modal-header">
-          <h2>Select Workspace Directory</h2>
+          <h2>{t('workspaceModal.title')}</h2>
           <button className="modal-close" onClick={onClose}>
             &times;
           </button>
@@ -153,7 +155,9 @@ export default function WorkspaceSelectModal({
 
         <div className="modal-body">
           <div className="workspace-current-path">
-            <span className="workspace-path-label">Current:</span>
+            <span className="workspace-path-label">
+              {t('workspaceModal.current')}
+            </span>
             <code className="workspace-path-value">{currentPath}</code>
           </div>
 
@@ -172,9 +176,11 @@ export default function WorkspaceSelectModal({
             )}
 
             {isLoading ? (
-              <div className="workspace-loading">Loading...</div>
+              <div className="workspace-loading">{t('common.loading')}</div>
             ) : directories.length === 0 ? (
-              <div className="workspace-empty">No subdirectories</div>
+              <div className="workspace-empty">
+                {t('workspaceModal.noSubdirectories')}
+              </div>
             ) : (
               directories.map((dir) => (
                 <button
@@ -196,7 +202,7 @@ export default function WorkspaceSelectModal({
             onClick={onClose}
             className="modal-button modal-button-cancel"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -204,7 +210,7 @@ export default function WorkspaceSelectModal({
             className="modal-button modal-button-save"
             disabled={!currentPath}
           >
-            Select
+            {t('common.select')}
           </button>
         </div>
       </div>

@@ -1114,6 +1114,44 @@ body {
   color: #dc3545;
 }
 
+.account-menu-item-with-submenu {
+  position: relative;
+}
+
+.account-menu-lang-current {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.account-menu-submenu {
+  position: absolute;
+  left: 100%;
+  bottom: 0;
+  margin-left: 0.25rem;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 120px;
+  z-index: 1001;
+}
+
+.account-menu-submenu .account-menu-item {
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.account-menu-submenu .account-menu-item.active {
+  background: #f0f0f0;
+}
+
+.account-menu-check {
+  color: #007bff;
+  font-weight: bold;
+}
+
 /* PAT Modal Styles */
 .pat-description {
   font-size: 0.85rem;

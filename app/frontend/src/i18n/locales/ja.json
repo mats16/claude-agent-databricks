@@ -1,0 +1,81 @@
+{
+  "common": {
+    "save": "保存",
+    "saving": "保存中...",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "select": "選択",
+    "loading": "読み込み中...",
+    "error": "エラー"
+  },
+  "sidebar": {
+    "title": "Claude Code on Databricks",
+    "placeholder": "何をしますか？",
+    "sessions": "セッション",
+    "selectWorkspace": "ワークスペースを選択",
+    "overwrite": "上書き",
+    "overwriteTooltip": "Workspaceからダウンロード時に既存ファイルを上書き",
+    "autoSync": "自動同期",
+    "autoSyncTooltip": "タスク完了時にWorkspaceへ自動的に変更を同期"
+  },
+  "accountMenu": {
+    "accountSettings": "アカウント設定",
+    "pat": "Personal Access Token",
+    "logout": "ログアウト",
+    "language": "言語"
+  },
+  "patModal": {
+    "title": "Personal Access Token",
+    "description": "APIリクエストの認証に使用するDatabricks Personal Access Tokenを入力してください。",
+    "currentToken": "現在のトークン",
+    "replaceToken": "トークンを置換",
+    "enterToken": "トークンを入力",
+    "placeholder": "dapi...",
+    "showToken": "トークンを表示",
+    "hideToken": "トークンを非表示",
+    "deleteToken": "トークンを削除",
+    "tokenSaved": "トークンを保存しました",
+    "tokenDeleted": "トークンを削除しました",
+    "saveFailed": "トークンの保存に失敗しました"
+  },
+  "workspaceModal": {
+    "title": "ワークスペースディレクトリを選択",
+    "current": "現在:",
+    "noSubdirectories": "サブディレクトリがありません",
+    "patNotConfigured": "PATが設定されていません",
+    "fetchFailed": "ディレクトリの取得に失敗しました",
+    "homeFetchFailed": "ホームディレクトリの取得に失敗しました"
+  },
+  "titleEditModal": {
+    "title": "セッション設定",
+    "sessionTitle": "セッションタイトル",
+    "titlePlaceholder": "セッションタイトルを入力...",
+    "autoSyncHint": "タスク完了時にDatabricks Workspaceへ自動的に変更を同期"
+  },
+  "sessionList": {
+    "loadingSessions": "セッションを読み込み中...",
+    "noSessions": "セッションがありません",
+    "untitledSession": "無題のセッション",
+    "justNow": "たった今",
+    "minutesAgo": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "daysAgo": "{{count}}日前"
+  },
+  "sessionPage": {
+    "clickToEdit": "クリックしてタイトルを編集",
+    "connected": "接続中",
+    "reconnecting": "再接続中...",
+    "disconnected": "切断",
+    "waitingForResponse": "セッションを開始しました。応答を待っています...",
+    "typeMessage": "メッセージを入力...",
+    "openInDatabricks": "Databricksで開く"
+  },
+  "welcome": {
+    "exploreTitle": "ワークスペースファイルを探索",
+    "exploreDescription": "Databricks Workspace内のファイルを一覧・閲覧",
+    "performanceTitle": "パフォーマンス問題を発見",
+    "performanceDescription": "遅いコードパスを特定",
+    "bugTitle": "バグを修正",
+    "bugDescription": "コードの問題をデバッグして解決"
+  }
+}

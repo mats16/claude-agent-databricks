@@ -1,9 +1,12 @@
 import { Routes, Route } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Layout from './components/Layout';
 import SessionPage from './pages/SessionPage';
 import './App.css';
 
 function WelcomePage() {
+  const { t } = useTranslation();
+
   return (
     <div className="welcome-panel">
       <div className="welcome-content">
@@ -26,8 +29,8 @@ function WelcomePage() {
         <div className="welcome-actions">
           <div className="action-card">
             <div className="action-card-content">
-              <h3>Explore workspace files</h3>
-              <p>List and read files in Databricks Workspace</p>
+              <h3>{t('welcome.exploreTitle')}</h3>
+              <p>{t('welcome.exploreDescription')}</p>
             </div>
             <div className="action-card-icon">
               <span>📁</span>
@@ -36,8 +39,8 @@ function WelcomePage() {
 
           <div className="action-card">
             <div className="action-card-content">
-              <h3>Find performance issues</h3>
-              <p>Identify slow code paths</p>
+              <h3>{t('welcome.performanceTitle')}</h3>
+              <p>{t('welcome.performanceDescription')}</p>
             </div>
             <div className="action-card-icon">
               <span>⚡</span>
@@ -46,8 +49,8 @@ function WelcomePage() {
 
           <div className="action-card">
             <div className="action-card-content">
-              <h3>Fix a bug</h3>
-              <p>Debug and resolve issues in your code</p>
+              <h3>{t('welcome.bugTitle')}</h3>
+              <p>{t('welcome.bugDescription')}</p>
             </div>
             <div className="action-card-icon">
               <span>🔧</span>

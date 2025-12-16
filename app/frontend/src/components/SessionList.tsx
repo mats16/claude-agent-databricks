@@ -1,33 +1,35 @@
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useSessions, Session } from '../hooks/useSessions';
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-
-  return date.toLocaleDateString('ja-JP', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 interface SessionListProps {
   onSessionSelect?: () => void;
 }
 
 export default function SessionList({ onSessionSelect }: SessionListProps) {
+  const { t, i18n } = useTranslation();
   const { sessions, isLoading, error } = useSessions();
   const navigate = useNavigate();
   const { sessionId: currentSessionId } = useParams<{ sessionId: string }>();
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return t('sessionList.justNow');
+    if (diffMins < 60) return t('sessionList.minutesAgo', { count: diffMins });
+    if (diffHours < 24) return t('sessionList.hoursAgo', { count: diffHours });
+    if (diffDays < 7) return t('sessionList.daysAgo', { count: diffDays });
+
+    return date.toLocaleDateString(i18n.language === 'ja' ? 'ja-JP' : 'en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
 
   const handleSessionClick = (session: Session) => {
     navigate(`/sessions/${session.id}`);
@@ -35,15 +37,25 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
   };
 
   if (isLoading) {
-    return <div className="session-list-loading">Loading sessions...</div>;
+    return (
+      <div className="session-list-loading">
+        {t('sessionList.loadingSessions')}
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="session-list-error">Error: {error}</div>;
+    return (
+      <div className="session-list-error">
+        {t('common.error')}: {error}
+      </div>
+    );
   }
 
   if (sessions.length === 0) {
-    return <div className="session-list-empty">No sessions yet</div>;
+    return (
+      <div className="session-list-empty">{t('sessionList.noSessions')}</div>
+    );
   }
 
   return (
@@ -55,7 +67,7 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
           onClick={() => handleSessionClick(session)}
         >
           <div className="session-item-title">
-            {session.title || 'Untitled session'}
+            {session.title || t('sessionList.untitledSession')}
           </div>
           <div className="session-item-meta">
             {session.workspacePath && (
