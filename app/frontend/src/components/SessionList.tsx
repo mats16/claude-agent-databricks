@@ -1,6 +1,9 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Typography, Spin, Empty, Flex } from 'antd';
 import { useSessions, Session } from '../hooks/useSessions';
+
+const { Text } = Typography;
 
 interface SessionListProps {
   onSessionSelect?: () => void;
@@ -38,47 +41,99 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
 
   if (isLoading) {
     return (
-      <div className="session-list-loading">
-        {t('sessionList.loadingSessions')}
-      </div>
+      <Flex justify="center" align="center" style={{ padding: 16 }}>
+        <Spin size="small" />
+        <Text type="secondary" style={{ marginLeft: 8 }}>
+          {t('sessionList.loadingSessions')}
+        </Text>
+      </Flex>
     );
   }
 
   if (error) {
     return (
-      <div className="session-list-error">
-        {t('common.error')}: {error}
+      <div style={{ padding: 16, textAlign: 'center' }}>
+        <Text type="danger">
+          {t('common.error')}: {error}
+        </Text>
       </div>
     );
   }
 
   if (sessions.length === 0) {
     return (
-      <div className="session-list-empty">{t('sessionList.noSessions')}</div>
+      <Empty
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+        description={t('sessionList.noSessions')}
+        style={{ padding: 24 }}
+      />
     );
   }
 
   return (
-    <div className="session-list">
-      {sessions.map((session) => (
-        <div
-          key={session.id}
-          className={`session-item ${currentSessionId === session.id ? 'active' : ''}`}
-          onClick={() => handleSessionClick(session)}
-        >
-          <div className="session-item-title">
-            {session.title || t('sessionList.untitledSession')}
-          </div>
-          <div className="session-item-meta">
-            {session.workspacePath && (
-              <div className="session-item-path">{session.workspacePath}</div>
-            )}
-            <div className="session-item-date">
-              {formatDate(session.createdAt)}
+    <div>
+      {sessions.map((session) => {
+        const isActive = currentSessionId === session.id;
+        return (
+          <div
+            key={session.id}
+            onClick={() => handleSessionClick(session)}
+            style={{
+              padding: '12px 20px',
+              cursor: 'pointer',
+              borderBottom: '1px solid #f5f5f5',
+              background: isActive ? '#fff8e6' : 'transparent',
+              borderLeft: isActive ? '3px solid #f5a623' : '3px solid transparent',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.background = '#f9f9f9';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.background = 'transparent';
+              }
+            }}
+          >
+            <Text
+              strong
+              style={{
+                display: 'block',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                marginBottom: 4,
+              }}
+            >
+              {session.title || t('sessionList.untitledSession')}
+            </Text>
+            <div>
+              {session.workspacePath && (
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: 11,
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {session.workspacePath}
+                </Text>
+              )}
+              <Text
+                type="secondary"
+                style={{ fontSize: 11 }}
+              >
+                {formatDate(session.createdAt)}
+              </Text>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

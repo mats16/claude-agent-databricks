@@ -1,5 +1,8 @@
 import { ReactNode, useState, useCallback, useEffect, useRef } from 'react';
+import { Layout as AntLayout } from 'antd';
 import Sidebar from './Sidebar';
+
+const { Sider, Content } = AntLayout;
 
 interface LayoutProps {
   children: ReactNode;
@@ -69,13 +72,31 @@ export default function Layout({ children }: LayoutProps) {
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
   return (
-    <div className="layout">
-      <Sidebar width={sidebarWidth} />
+    <AntLayout style={{ height: '100vh', overflow: 'hidden' }}>
+      <Sider
+        width={sidebarWidth}
+        theme="light"
+        style={{
+          background: '#fff',
+          borderRight: 'none',
+          height: '100%',
+          overflow: 'hidden',
+        }}
+      >
+        <Sidebar width={sidebarWidth} />
+      </Sider>
       <div
         className={`resize-handle ${isResizing ? 'active' : ''}`}
         onMouseDown={handleMouseDown}
       />
-      <main className="main-content">{children}</main>
-    </div>
+      <Content
+        style={{
+          background: '#fafafa',
+          overflow: 'hidden',
+        }}
+      >
+        {children}
+      </Content>
+    </AntLayout>
   );
 }

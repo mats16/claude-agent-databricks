@@ -1,10 +1,27 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { SendOutlined, SyncOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Input,
+  Select,
+  Checkbox,
+  Tooltip,
+  Typography,
+  Flex,
+  Space,
+} from 'antd';
+import {
+  SendOutlined,
+  SyncOutlined,
+  FolderOutlined,
+} from '@ant-design/icons';
 import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
 import WorkspaceSelectModal from './WorkspaceSelectModal';
+
+const { TextArea } = Input;
+const { Text } = Typography;
 
 interface SidebarProps {
   width?: number;
@@ -13,7 +30,7 @@ interface SidebarProps {
 
 const PAT_STORAGE_KEY = 'databricks_pat';
 
-export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
+export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(
@@ -25,7 +42,6 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
   const [overwrite, setOverwrite] = useState(true);
   const [autoSync, setAutoSync] = useState(true);
   const [hasPat, setHasPat] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
 
   // Check if PAT is configured
@@ -36,7 +52,6 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
     };
     checkPat();
 
-    // Listen for storage changes (e.g., when PAT is saved in another component)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === PAT_STORAGE_KEY) {
         checkPat();
@@ -44,7 +59,6 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
     };
     window.addEventListener('storage', handleStorageChange);
 
-    // Also listen for custom event for same-tab updates
     const handlePatChange = () => checkPat();
     window.addEventListener('pat-changed', handlePatChange);
 
@@ -66,8 +80,6 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
         });
         const data = await res.json();
         if (data.objects && data.objects.length > 0) {
-          // Extract home directory from first object's path
-          // e.g., /Workspace/Users/user@example.com/subdir -> /Workspace/Users/user@example.com
           const firstPath = data.objects[0].path;
           const homePath = firstPath.split('/').slice(0, 4).join('/');
           setWorkspacePath(homePath);
@@ -79,16 +91,7 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
     fetchHomeDirectory();
   }, []);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
-    }
-  }, [input]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!input.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
@@ -140,111 +143,152 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Don't submit during IME composition (e.g., Japanese input)
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSubmit();
     }
   };
 
   return (
-    <aside
-      className="sidebar"
-      style={
-        width ? { width: `${width}px`, minWidth: `${width}px` } : undefined
-      }
+    <Flex
+      vertical
+      style={{
+        height: '100%',
+        background: '#fff',
+      }}
     >
-      <div className="sidebar-header">
-        <Link to="/" className="sidebar-title-link">
-          <h1 className="sidebar-title">{t('sidebar.title')}</h1>
+      {/* Header */}
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
+        <Link to="/" style={{ textDecoration: 'none' }}>
+          <Typography.Title
+            level={5}
+            style={{ margin: 0, color: '#1a1a1a', fontWeight: 700 }}
+          >
+            {t('sidebar.title')}
+          </Typography.Title>
         </Link>
       </div>
 
-      <div className="sidebar-input-section">
-        <form onSubmit={handleSubmit}>
-          <div className="sidebar-chat-container">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t('sidebar.placeholder')}
-              className="sidebar-textarea"
+      {/* Input Section */}
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
+        <div
+          style={{
+            border: '1px solid #e5e5e5',
+            borderRadius: 12,
+            padding: '12px',
+            background: '#fff',
+          }}
+        >
+          <TextArea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t('sidebar.placeholder')}
+            disabled={isSubmitting}
+            autoSize={{ minRows: 3, maxRows: 6 }}
+            variant="borderless"
+            style={{ padding: 0, marginBottom: 8 }}
+          />
+          <Flex justify="flex-end" align="center" gap={8}>
+            <Select
+              value={selectedModel}
+              onChange={setSelectedModel}
               disabled={isSubmitting}
-              rows={3}
+              style={{ width: 120 }}
+              size="small"
+              options={[
+                { value: 'databricks-claude-opus-4-5', label: 'Opus 4.5' },
+                { value: 'databricks-claude-sonnet-4-5', label: 'Sonnet 4.5' },
+              ]}
             />
-            <div className="sidebar-chat-controls">
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="sidebar-model-select"
-                disabled={isSubmitting}
-              >
-                <option value="databricks-claude-opus-4-5">Opus 4.5</option>
-                <option value="databricks-claude-sonnet-4-5">Sonnet 4.5</option>
-              </select>
-              <div
-                className="sidebar-send-button-wrapper"
-                data-tooltip={!hasPat ? t('sidebar.patRequired') : undefined}
-              >
-                <button
-                  type="submit"
-                  disabled={!input.trim() || isSubmitting || !hasPat}
-                  className="sidebar-send-button"
-                >
-                  {isSubmitting ? '...' : <SendOutlined />}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="sidebar-workspace-row">
-            <button
-              type="button"
-              onClick={() => setIsWorkspaceModalOpen(true)}
-              className="sidebar-workspace-button"
-              disabled={isSubmitting}
-              title={workspacePath || t('sidebar.selectWorkspace')}
+            <Tooltip title={!hasPat ? t('sidebar.patRequired') : ''}>
+              <Button
+                type="primary"
+                shape="circle"
+                icon={<SendOutlined />}
+                loading={isSubmitting}
+                disabled={!input.trim() || !hasPat}
+                onClick={handleSubmit}
+              />
+            </Tooltip>
+          </Flex>
+        </div>
+
+        <Flex
+          align="center"
+          gap={8}
+          wrap="wrap"
+          style={{ marginTop: 8 }}
+        >
+          <Button
+            size="small"
+            icon={<FolderOutlined />}
+            onClick={() => setIsWorkspaceModalOpen(true)}
+            disabled={isSubmitting}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              textAlign: 'left',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            title={workspacePath || t('sidebar.selectWorkspace')}
+          >
+            <span
+              style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
             >
               {workspacePath || t('sidebar.selectWorkspace')}
-            </button>
-            <label
-              className="sidebar-flag"
-              data-tooltip={t('sidebar.overwriteTooltip')}
+            </span>
+          </Button>
+          <Tooltip title={t('sidebar.overwriteTooltip')}>
+            <Checkbox
+              checked={overwrite}
+              onChange={(e) => setOverwrite(e.target.checked)}
+              disabled={isSubmitting}
             >
-              <input
-                type="checkbox"
-                checked={overwrite}
-                onChange={(e) => setOverwrite(e.target.checked)}
-                disabled={isSubmitting}
-              />
-              <span>{t('sidebar.overwrite')}</span>
-            </label>
-            <label
-              className="sidebar-flag"
-              data-tooltip={t('sidebar.autoSyncTooltip')}
+              <Text style={{ fontSize: 12 }}>{t('sidebar.overwrite')}</Text>
+            </Checkbox>
+          </Tooltip>
+          <Tooltip title={t('sidebar.autoSyncTooltip')}>
+            <Checkbox
+              checked={autoSync}
+              onChange={(e) => setAutoSync(e.target.checked)}
+              disabled={isSubmitting}
             >
-              <input
-                type="checkbox"
-                checked={autoSync}
-                onChange={(e) => setAutoSync(e.target.checked)}
-                disabled={isSubmitting}
-              />
-              <span>
-                <SyncOutlined /> {t('sidebar.autoSync')}
-              </span>
-            </label>
-          </div>
-        </form>
+              <Text style={{ fontSize: 12 }}>
+                <SyncOutlined style={{ marginRight: 4 }} />
+                {t('sidebar.autoSync')}
+              </Text>
+            </Checkbox>
+          </Tooltip>
+        </Flex>
       </div>
 
-      <div className="sidebar-section">
-        <div className="sidebar-section-header">
-          <span>{t('sidebar.sessions')}</span>
+      {/* Sessions Section */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{
+            padding: '12px 20px 8px',
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#999',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}
+        >
+          {t('sidebar.sessions')}
         </div>
-        <SessionList />
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          <SessionList />
+        </div>
       </div>
 
-      <div className="sidebar-footer">
+      {/* Footer */}
+      <div style={{ padding: '12px 20px', borderTop: '1px solid #f0f0f0' }}>
         <AccountMenu />
       </div>
 
@@ -254,6 +298,6 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
         onSelect={setWorkspacePath}
         initialPath={workspacePath}
       />
-    </aside>
+    </Flex>
   );
 }

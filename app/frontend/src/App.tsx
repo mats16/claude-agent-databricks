@@ -1,16 +1,52 @@
 import { Routes, Route } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Card, Typography, Flex } from 'antd';
+import { FolderOutlined, ThunderboltOutlined, ToolOutlined } from '@ant-design/icons';
 import Layout from './components/Layout';
 import SessionPage from './pages/SessionPage';
 import './App.css';
 
+const { Title, Text } = Typography;
+
 function WelcomePage() {
   const { t } = useTranslation();
 
+  const actionCards = [
+    {
+      icon: <FolderOutlined style={{ fontSize: 24, color: '#f5a623' }} />,
+      title: t('welcome.exploreTitle'),
+      description: t('welcome.exploreDescription'),
+    },
+    {
+      icon: <ThunderboltOutlined style={{ fontSize: 24, color: '#f5a623' }} />,
+      title: t('welcome.performanceTitle'),
+      description: t('welcome.performanceDescription'),
+    },
+    {
+      icon: <ToolOutlined style={{ fontSize: 24, color: '#f5a623' }} />,
+      title: t('welcome.bugTitle'),
+      description: t('welcome.bugDescription'),
+    },
+  ];
+
   return (
-    <div className="welcome-panel">
-      <div className="welcome-content">
-        <div className="welcome-logo">
+    <Flex
+      vertical
+      justify="center"
+      align="center"
+      style={{
+        height: '100%',
+        padding: 32,
+        background: '#fafafa',
+      }}
+    >
+      <Flex
+        vertical
+        align="center"
+        style={{ maxWidth: 600, width: '100%' }}
+      >
+        {/* Logo */}
+        <div style={{ marginBottom: 40 }}>
           <svg
             width="80"
             height="80"
@@ -26,39 +62,48 @@ function WelcomePage() {
           </svg>
         </div>
 
-        <div className="welcome-actions">
-          <div className="action-card">
-            <div className="action-card-content">
-              <h3>{t('welcome.exploreTitle')}</h3>
-              <p>{t('welcome.exploreDescription')}</p>
-            </div>
-            <div className="action-card-icon">
-              <span>📁</span>
-            </div>
-          </div>
-
-          <div className="action-card">
-            <div className="action-card-content">
-              <h3>{t('welcome.performanceTitle')}</h3>
-              <p>{t('welcome.performanceDescription')}</p>
-            </div>
-            <div className="action-card-icon">
-              <span>⚡</span>
-            </div>
-          </div>
-
-          <div className="action-card">
-            <div className="action-card-content">
-              <h3>{t('welcome.bugTitle')}</h3>
-              <p>{t('welcome.bugDescription')}</p>
-            </div>
-            <div className="action-card-icon">
-              <span>🔧</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Action Cards */}
+        <Flex vertical gap={12} style={{ width: '100%' }}>
+          {actionCards.map((card, index) => (
+            <Card
+              key={index}
+              size="small"
+              style={{
+                borderRadius: 12,
+                border: '1px solid #f0f0f0',
+                boxShadow: 'none',
+              }}
+              hoverable
+            >
+              <Flex justify="space-between" align="center">
+                <div style={{ flex: 1 }}>
+                  <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
+                    {card.title}
+                  </Title>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    {card.description}
+                  </Text>
+                </div>
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 8,
+                    background: '#fff8e6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: 16,
+                  }}
+                >
+                  {card.icon}
+                </div>
+              </Flex>
+            </Card>
+          ))}
+        </Flex>
+      </Flex>
+    </Flex>
   );
 }
 

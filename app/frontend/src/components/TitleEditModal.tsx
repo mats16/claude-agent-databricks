@@ -1,5 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Modal, Input, Checkbox, Typography } from 'antd';
+import { SyncOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
 
 interface TitleEditModalProps {
   isOpen: boolean;
@@ -20,19 +24,15 @@ export default function TitleEditModal({
   const [title, setTitle] = useState(currentTitle);
   const [autoSync, setAutoSync] = useState(currentAutoSync);
   const [isSaving, setIsSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setTitle(currentTitle);
       setAutoSync(currentAutoSync);
-      // Focus input when modal opens
-      setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [isOpen, currentTitle, currentAutoSync]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleOk = async () => {
     if (!title.trim() || isSaving) return;
 
     setIsSaving(true);
@@ -44,76 +44,51 @@ export default function TitleEditModal({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose();
-    }
-  };
-
-  if (!isOpen) return null;
-
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-      >
-        <div className="modal-header">
-          <h2>{t('titleEditModal.title')}</h2>
-          <button className="modal-close" onClick={onClose}>
-            &times;
-          </button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            <div className="modal-field">
-              <label className="modal-label">
-                {t('titleEditModal.sessionTitle')}
-              </label>
-              <input
-                ref={inputRef}
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={t('titleEditModal.titlePlaceholder')}
-                className="modal-input"
-                disabled={isSaving}
-              />
-            </div>
-            <div className="modal-field">
-              <label className="modal-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={autoSync}
-                  onChange={(e) => setAutoSync(e.target.checked)}
-                  disabled={isSaving}
-                  className="modal-checkbox"
-                />
-                <span>{t('sidebar.autoSync')}</span>
-              </label>
-              <p className="modal-hint">{t('titleEditModal.autoSyncHint')}</p>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button
-              type="button"
-              onClick={onClose}
-              className="modal-button modal-button-cancel"
-              disabled={isSaving}
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              type="submit"
-              disabled={!title.trim() || isSaving}
-              className="modal-button modal-button-save"
-            >
-              {isSaving ? t('common.saving') : t('common.save')}
-            </button>
-          </div>
-        </form>
+    <Modal
+      title={t('titleEditModal.title')}
+      open={isOpen}
+      onOk={handleOk}
+      onCancel={onClose}
+      okText={isSaving ? t('common.saving') : t('common.save')}
+      cancelText={t('common.cancel')}
+      okButtonProps={{
+        disabled: !title.trim(),
+        loading: isSaving,
+      }}
+      cancelButtonProps={{
+        disabled: isSaving,
+      }}
+    >
+      <div style={{ marginBottom: 16 }}>
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
+          {t('titleEditModal.sessionTitle')}
+        </Text>
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={t('titleEditModal.titlePlaceholder')}
+          disabled={isSaving}
+          autoFocus
+          onPressEnter={handleOk}
+        />
       </div>
-    </div>
+      <div>
+        <Checkbox
+          checked={autoSync}
+          onChange={(e) => setAutoSync(e.target.checked)}
+          disabled={isSaving}
+        >
+          <SyncOutlined style={{ marginRight: 4 }} />
+          {t('sidebar.autoSync')}
+        </Checkbox>
+        <Text
+          type="secondary"
+          style={{ display: 'block', marginTop: 4, marginLeft: 24, fontSize: 12 }}
+        >
+          {t('titleEditModal.autoSyncHint')}
+        </Text>
+      </div>
+    </Modal>
   );
 }

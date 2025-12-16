@@ -1,5 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Modal, Input, Button, Alert, Typography, Flex, Tooltip } from 'antd';
+import { EyeOutlined, EyeInvisibleOutlined, DeleteOutlined, WarningOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
 
 const PAT_STORAGE_KEY = 'databricks_pat';
 
@@ -18,17 +22,14 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
     type: 'success' | 'error';
     text: string;
   } | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      // Load existing token
       const existing = localStorage.getItem(PAT_STORAGE_KEY);
       setSavedToken(existing);
       setToken('');
       setShowToken(false);
       setMessage(null);
-      setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [isOpen]);
 
@@ -43,7 +44,6 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
       setSavedToken(token.trim());
       setToken('');
       setMessage({ type: 'success', text: t('patModal.tokenSaved') });
-      // Dispatch custom event to notify other components
       window.dispatchEvent(new Event('pat-changed'));
     } catch {
       setMessage({ type: 'error', text: t('patModal.saveFailed') });
@@ -56,148 +56,112 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
     localStorage.removeItem(PAT_STORAGE_KEY);
     setSavedToken(null);
     setMessage({ type: 'success', text: t('patModal.tokenDeleted') });
-    // Dispatch custom event to notify other components
     window.dispatchEvent(new Event('pat-changed'));
   };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose();
-    } else if (e.key === 'Enter' && token.trim()) {
-      handleSave();
-    }
-  };
-
-  if (!isOpen) return null;
 
   const maskedToken = savedToken
     ? `${savedToken.slice(0, 8)}${'*'.repeat(20)}${savedToken.slice(-4)}`
     : null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-      >
-        <div className="modal-header">
-          <h2>{t('patModal.title')}</h2>
-          <button className="modal-close" onClick={onClose}>
-            &times;
-          </button>
-        </div>
-
-        <div className="modal-body">
-          <p className="pat-description">{t('patModal.description')}</p>
-          <p className="pat-obo-warning">{t('patModal.oboWarning')}</p>
-
-          {savedToken && (
-            <div className="pat-current">
-              <label className="pat-label">{t('patModal.currentToken')}</label>
-              <div className="pat-token-display">
-                <code>{showToken ? savedToken : maskedToken}</code>
-                <button
-                  type="button"
-                  className="pat-toggle-button"
-                  onClick={() => setShowToken(!showToken)}
-                  title={
-                    showToken
-                      ? t('patModal.hideToken')
-                      : t('patModal.showToken')
-                  }
-                >
-                  {showToken ? (
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="pat-delete-button"
-                  onClick={handleDelete}
-                  title={t('patModal.deleteToken')}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="pat-input-section">
-            <label className="pat-label">
-              {savedToken
-                ? t('patModal.replaceToken')
-                : t('patModal.enterToken')}
-            </label>
-            <input
-              ref={inputRef}
-              type="password"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder={t('patModal.placeholder')}
-              className="modal-input"
-              disabled={isSaving}
-            />
-          </div>
-
-          {message && (
-            <div className={`pat-message pat-message-${message.type}`}>
-              {message.text}
-            </div>
-          )}
-        </div>
-
-        <div className="modal-footer">
-          <button
-            type="button"
-            onClick={onClose}
-            className="modal-button modal-button-cancel"
-            disabled={isSaving}
-          >
-            {t('common.close')}
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!token.trim() || isSaving}
-            className="modal-button modal-button-save"
-          >
-            {isSaving ? t('common.saving') : t('common.save')}
-          </button>
-        </div>
+    <Modal
+      title={t('patModal.title')}
+      open={isOpen}
+      onOk={handleSave}
+      onCancel={onClose}
+      okText={isSaving ? t('common.saving') : t('common.save')}
+      cancelText={t('common.close')}
+      okButtonProps={{
+        disabled: !token.trim(),
+        loading: isSaving,
+      }}
+      cancelButtonProps={{
+        disabled: isSaving,
+      }}
+      width={480}
+    >
+      <div style={{ marginBottom: 16 }}>
+        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+          {t('patModal.description')}
+        </Text>
+        <Alert
+          type="warning"
+          icon={<WarningOutlined />}
+          message={t('patModal.oboWarning')}
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
       </div>
-    </div>
+
+      {savedToken && (
+        <div style={{ marginBottom: 16 }}>
+          <Text strong style={{ display: 'block', marginBottom: 8 }}>
+            {t('patModal.currentToken')}
+          </Text>
+          <Flex
+            align="center"
+            gap={8}
+            style={{
+              padding: '8px 12px',
+              background: '#f5f5f5',
+              borderRadius: 6,
+              fontFamily: 'monospace',
+              fontSize: 13,
+            }}
+          >
+            <Text
+              code
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                wordBreak: 'break-all',
+              }}
+            >
+              {showToken ? savedToken : maskedToken}
+            </Text>
+            <Tooltip title={showToken ? t('patModal.hideToken') : t('patModal.showToken')}>
+              <Button
+                type="text"
+                size="small"
+                icon={showToken ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                onClick={() => setShowToken(!showToken)}
+              />
+            </Tooltip>
+            <Tooltip title={t('patModal.deleteToken')}>
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleDelete}
+              />
+            </Tooltip>
+          </Flex>
+        </div>
+      )}
+
+      <div style={{ marginBottom: 16 }}>
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
+          {savedToken ? t('patModal.replaceToken') : t('patModal.enterToken')}
+        </Text>
+        <Input.Password
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder={t('patModal.placeholder')}
+          disabled={isSaving}
+          autoFocus
+          onPressEnter={handleSave}
+        />
+      </div>
+
+      {message && (
+        <Alert
+          type={message.type}
+          message={message.text}
+          showIcon
+        />
+      )}
+    </Modal>
   );
 }
