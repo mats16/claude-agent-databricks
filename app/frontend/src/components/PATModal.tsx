@@ -43,6 +43,8 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
       setSavedToken(token.trim());
       setToken('');
       setMessage({ type: 'success', text: t('patModal.tokenSaved') });
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new Event('pat-changed'));
     } catch {
       setMessage({ type: 'error', text: t('patModal.saveFailed') });
     } finally {
@@ -54,6 +56,8 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
     localStorage.removeItem(PAT_STORAGE_KEY);
     setSavedToken(null);
     setMessage({ type: 'success', text: t('patModal.tokenDeleted') });
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new Event('pat-changed'));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -86,6 +90,7 @@ export default function PATModal({ isOpen, onClose }: PATModalProps) {
 
         <div className="modal-body">
           <p className="pat-description">{t('patModal.description')}</p>
+          <p className="pat-obo-warning">{t('patModal.oboWarning')}</p>
 
           {savedToken && (
             <div className="pat-current">

@@ -23,8 +23,35 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [overwrite, setOverwrite] = useState(true);
   const [autoSync, setAutoSync] = useState(true);
+  const [hasPat, setHasPat] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
+
+  // Check if PAT is configured
+  useEffect(() => {
+    const checkPat = () => {
+      const token = localStorage.getItem(PAT_STORAGE_KEY);
+      setHasPat(!!token);
+    };
+    checkPat();
+
+    // Listen for storage changes (e.g., when PAT is saved in another component)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === PAT_STORAGE_KEY) {
+        checkPat();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also listen for custom event for same-tab updates
+    const handlePatChange = () => checkPat();
+    window.addEventListener('pat-changed', handlePatChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('pat-changed', handlePatChange);
+    };
+  }, []);
 
   // Fetch home directory as default
   useEffect(() => {
@@ -153,13 +180,18 @@ export default function Sidebar({ width, onSessionCreated }: SidebarProps) {
                 <option value="databricks-claude-opus-4-5">Opus 4.5</option>
                 <option value="databricks-claude-sonnet-4-5">Sonnet 4.5</option>
               </select>
-              <button
-                type="submit"
-                disabled={!input.trim() || isSubmitting}
-                className="sidebar-send-button"
+              <div
+                className="sidebar-send-button-wrapper"
+                data-tooltip={!hasPat ? t('sidebar.patRequired') : undefined}
               >
-                {isSubmitting ? '...' : '↑'}
-              </button>
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isSubmitting || !hasPat}
+                  className="sidebar-send-button"
+                >
+                  {isSubmitting ? '...' : '↑'}
+                </button>
+              </div>
             </div>
           </div>
           <div className="sidebar-workspace-row">

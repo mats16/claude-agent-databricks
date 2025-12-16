@@ -16,7 +16,8 @@
     "overwrite": "上書き",
     "overwriteTooltip": "Workspaceからダウンロード時に既存ファイルを上書き",
     "autoSync": "自動同期",
-    "autoSyncTooltip": "タスク完了時にWorkspaceへ自動的に変更を同期"
+    "autoSyncTooltip": "タスク完了時にWorkspaceへ自動的に変更を同期",
+    "patRequired": "PATが未設定です。チャットを開始するには、アカウント設定からPersonal Access Tokenを登録してください。"
   },
   "accountMenu": {
     "accountSettings": "アカウント設定",
@@ -27,6 +28,7 @@
   "patModal": {
     "title": "Personal Access Token",
     "description": "APIリクエストの認証に使用するDatabricks Personal Access Tokenを入力してください。",
+    "oboWarning": "ユーザー代理認可（OBO）ではWorkspace APIへのアクセスに必要なスコープが不足しています。暫定対応として、Personal Access Tokenの登録が必要です。",
     "currentToken": "現在のトークン",
     "replaceToken": "トークンを置換",
     "enterToken": "トークンを入力",

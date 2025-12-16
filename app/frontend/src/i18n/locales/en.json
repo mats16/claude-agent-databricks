@@ -16,7 +16,8 @@
     "overwrite": "Overwrite",
     "overwriteTooltip": "Overwrite existing files when downloading from Workspace",
     "autoSync": "Auto sync",
-    "autoSyncTooltip": "Automatically sync changes back to Workspace on task completion"
+    "autoSyncTooltip": "Automatically sync changes back to Workspace on task completion",
+    "patRequired": "PAT not configured. Please register your Personal Access Token in Account Settings to start chatting."
   },
   "accountMenu": {
     "accountSettings": "Account settings",
@@ -27,6 +28,7 @@
   "patModal": {
     "title": "Personal Access Token",
     "description": "Enter your Databricks Personal Access Token to authenticate API requests.",
+    "oboWarning": "On-behalf-of-user authorization (OBO) does not have sufficient scopes for Workspace API access. As a temporary workaround, please register a Personal Access Token.",
     "currentToken": "Current Token",
     "replaceToken": "Replace Token",
     "enterToken": "Enter Token",
