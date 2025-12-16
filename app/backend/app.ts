@@ -677,24 +677,23 @@ fastify.register(async (fastify) => {
               if (
                 autoSync &&
                 workspacePath &&
+                storedAccessToken &&
                 sdkMessage.type === 'result' &&
                 'subtype' in sdkMessage &&
                 sdkMessage.subtype === 'success'
               ) {
-                const { exec } = await import('child_process');
                 const basePath = process.env.DATABRICKS_APP_NAME
                   ? '/home/app'
                   : './tmp';
                 const localPath = path.join(basePath, workspacePath);
-                const importCmd = `databricks workspace import-dir "${localPath}" "${workspacePath}" --overwrite`;
 
-                console.log(`Auto sync (background): ${importCmd}`);
-                exec(importCmd, (error, stdout, stderr) => {
-                  if (error) {
-                    console.error('import-dir error:', error.message);
-                  }
-                  if (stdout) console.log('import-dir stdout:', stdout);
-                  if (stderr) console.log('import-dir stderr:', stderr);
+                console.log(`Auto sync: ${localPath} -> ${workspacePath}`);
+                syncToWorkspace(
+                  localPath,
+                  workspacePath,
+                  storedAccessToken
+                ).catch((error) => {
+                  console.error('Auto sync error:', error.message);
                 });
               }
 
