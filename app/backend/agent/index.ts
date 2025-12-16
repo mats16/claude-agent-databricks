@@ -6,8 +6,6 @@ import path from 'path';
 
 export type { SDKMessage };
 
-export const isLocal = !process.env.DATABRICKS_APP_URL;
-
 export const databricksHost =
   `https://${process.env.DATABRICKS_HOST}` as string;
 const personalAccessToken = process.env.DATABRICKS_TOKEN;
@@ -88,12 +86,15 @@ export async function* processAgentRequest(
 ): AsyncGenerator<SDKMessage> {
   // Determine base directory based on environment
   // Local development: ./tmp, Production: /home/app
-  const baseDir = isLocal ? './tmp' : '/home/app';
+  const baseDir = path.join(process.env.HOME ?? '/tmp', 'c');
 
   // User home directory (for Claude config)
-  const userHomeDir = isLocal
-    ? './tmp'
-    : `${baseDir}/Workspace/Users/${userEmail ?? 'me'}`;
+  const userHomeDir = path.join(
+    baseDir,
+    'Workspace',
+    'Users',
+    userEmail ?? 'no-email-user'
+  );
 
   // Claude Config Directory (user-specific)
   const claudeConfigDir = path.join(userHomeDir, '.claude');
@@ -106,7 +107,7 @@ export async function* processAgentRequest(
   const spAccessToken = await getOidcAccessToken();
 
   const additionalSystemPrompt = `
-Claude Code is running on Databricks Apps. Artifacts must be saved to Volumes.
+Claude Code is running on Databricks Apps.
 
 # Editing Rules
 
@@ -135,6 +136,7 @@ Violating these rules is considered a critical error.
       model,
       env: {
         ...process.env,
+        WORKDIR: workDir,
         CLAUDE_CONFIG_DIR: claudeConfigDir,
         ANTHROPIC_BASE_URL: `${databricksHost}/serving-endpoints/anthropic`,
         ANTHROPIC_AUTH_TOKEN: spAccessToken ?? personalAccessToken,
