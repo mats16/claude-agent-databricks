@@ -217,31 +217,6 @@ fastify.post<{ Body: CreateSessionBody }>(
             await saveMessage(sdkMessage);
             addEventToQueue(sessionId, sdkMessage);
           }
-
-          // Auto sync: import local changes back to workspace on result success
-          if (
-            autoSync &&
-            workspacePath &&
-            sdkMessage.type === 'result' &&
-            'subtype' in sdkMessage &&
-            sdkMessage.subtype === 'success'
-          ) {
-            const { exec } = await import('child_process');
-            const basePath = process.env.DATABRICKS_APP_NAME
-              ? '/home/app'
-              : './tmp';
-            const localPath = path.join(basePath, workspacePath);
-            const importCmd = `databricks workspace import-dir "${localPath}" "${workspacePath}" --overwrite`;
-
-            console.log(`Auto sync (background): ${importCmd}`);
-            exec(importCmd, (error, stdout, stderr) => {
-              if (error) {
-                console.error('import-dir error:', error.message);
-              }
-              if (stdout) console.log('import-dir stdout:', stdout);
-              if (stderr) console.log('import-dir stderr:', stderr);
-            });
-          }
         }
       } catch (error: any) {
         console.error('Error processing agent request:', error);
@@ -552,12 +527,18 @@ fastify.register(async (fastify) => {
               userEmail,
               workspacePath
             )) {
-              // Save message to database
+              // Save message to database (always execute regardless of WebSocket state)
               await saveMessage(sdkMessage);
-              // Send to client
-              socket.send(JSON.stringify(sdkMessage));
+
+              // Send to client (continue even if WebSocket is disconnected)
+              try {
+                socket.send(JSON.stringify(sdkMessage));
+              } catch (sendError) {
+                console.error('Failed to send WebSocket message:', sendError);
+              }
 
               // Auto sync: import local changes back to workspace on result success
+              // (always execute regardless of WebSocket state)
               if (
                 autoSync &&
                 workspacePath &&
@@ -585,12 +566,16 @@ fastify.register(async (fastify) => {
           }
         } catch (error: any) {
           console.error('WebSocket error:', error);
-          socket.send(
-            JSON.stringify({
-              type: 'error',
-              error: error.message || 'Unknown error occurred',
-            })
-          );
+          try {
+            socket.send(
+              JSON.stringify({
+                type: 'error',
+                error: error.message || 'Unknown error occurred',
+              })
+            );
+          } catch (sendError) {
+            console.error('Failed to send error message:', sendError);
+          }
         }
       });
 
