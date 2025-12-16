@@ -14,10 +14,10 @@
     "sessions": "セッション",
     "selectWorkspace": "ワークスペースを選択",
     "overwrite": "上書き",
-    "overwriteTooltip": "セッション開始時にWorkspaceからファイルをダウンロードする際に既存のローカルファイルを上書きする",
+    "overwriteTooltip": "セッション開始時に Workspace からファイルをダウンロードする際に既存のローカルファイルを上書きする",
     "autoSync": "自動同期",
-    "autoSyncTooltip": "タスク完了時にWorkspaceへ自動的に変更を同期",
-    "patRequired": "PATが未設定です。チャットを開始するには、アカウント設定からPersonal Access Tokenを登録してください。"
+    "autoSyncTooltip": "タスク完了時に Workspace へ自動的に変更を同期",
+    "patRequired": "PAT が未設定です。チャットを開始するには、アカウント設定から Personal Access Token を登録してください。"
   },
   "accountMenu": {
     "accountSettings": "アカウント設定",
@@ -28,7 +28,7 @@
   "patModal": {
     "title": "Personal Access Token",
     "description": "APIリクエストの認証に使用するDatabricks Personal Access Tokenを入力してください。",
-    "oboWarning": "ユーザー代理認可（OBO）ではWorkspace APIへのアクセスに必要なスコープが不足しています。暫定対応として、Personal Access Tokenの登録が必要です。",
+    "oboWarning": "ユーザー代理認可 (OBO) では Workspace API へのアクセスに必要なスコープが不足しています。暫定対応として、Personal Access Token の登録が必要です。",
     "currentToken": "現在のトークン",
     "replaceToken": "トークンを置換",
     "enterToken": "トークンを入力",
@@ -44,7 +44,7 @@
     "title": "ワークスペースディレクトリを選択",
     "current": "現在:",
     "noSubdirectories": "サブディレクトリがありません",
-    "patNotConfigured": "PATが設定されていません",
+    "patNotConfigured": "PAT が設定されていません",
     "fetchFailed": "ディレクトリの取得に失敗しました",
     "homeFetchFailed": "ホームディレクトリの取得に失敗しました"
   },
@@ -52,7 +52,7 @@
     "title": "セッション設定",
     "sessionTitle": "セッションタイトル",
     "titlePlaceholder": "セッションタイトルを入力...",
-    "autoSyncHint": "タスク完了時にDatabricks Workspaceへ自動的に変更を同期"
+    "autoSyncHint": "タスク完了時に Databricks Workspace へ自動的に変更を同期"
   },
   "sessionList": {
     "loadingSessions": "セッションを読み込み中...",
@@ -70,14 +70,14 @@
     "disconnected": "切断",
     "waitingForResponse": "セッションを開始しました。応答を待っています...",
     "typeMessage": "メッセージを入力...",
-    "openInDatabricks": "Databricksで開く"
+    "openInDatabricks": "Databricks で開く"
   },
   "welcome": {
     "exploreTitle": "ワークスペースファイルを探索",
-    "exploreDescription": "Databricks Workspace内のファイルを一覧・閲覧",
-    "edaTitle": "notebookによるEDA",
-    "edaDescription": "Databricksノートブックで探索的データ分析",
-    "appsTitle": "Databricks Appsの開発",
-    "appsDescription": "Databricks上でアプリケーションを構築・デプロイ"
+    "exploreDescription": "Databricks Workspace 内のファイルを一覧・閲覧",
+    "edaTitle": "ノートブックによる EDA",
+    "edaDescription": "Databricks ノートブックで探索的データ分析",
+    "appsTitle": "Databricks Apps の開発",
+    "appsDescription": "Databricks 上でアプリケーションを構築・デプロイ"
   }
 }
