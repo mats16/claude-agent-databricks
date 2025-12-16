@@ -160,75 +160,115 @@ fastify.post<{ Body: CreateSessionBody }>(
       });
     }
 
-    // Promise to wait for init message
+    // Promise to wait for init message with timeout and error handling
     let sessionId = '';
     let resolveInit: (() => void) | undefined;
-    const initReceived = new Promise<void>((resolve) => {
+    let rejectInit: ((error: Error) => void) | undefined;
+    const initReceived = new Promise<void>((resolve, reject) => {
       resolveInit = resolve;
+      rejectInit = reject;
     });
 
-    // Start processing in background
-    const agentIterator = processAgentRequest(
-      userMessage,
-      model,
-      undefined,
-      userAccessToken,
-      userEmail,
-      workspacePath
-    );
+    // Retry configuration
+    const maxRetries = 3;
+    let retryCount = 0;
 
-    // Process events in background
-    (async () => {
-      try {
-        let userMessageSaved = false;
-        for await (const sdkMessage of agentIterator) {
-          // Extract sessionId from init message
-          if (
-            sdkMessage.type === 'system' &&
-            'subtype' in sdkMessage &&
-            sdkMessage.subtype === 'init'
-          ) {
-            sessionId = sdkMessage.session_id;
-            getOrCreateQueue(sessionId);
+    const startAgentProcessing = () => {
+      // Start processing in background
+      const agentIterator = processAgentRequest(
+        userMessage,
+        model,
+        undefined,
+        userAccessToken,
+        userEmail,
+        workspacePath
+      );
 
-            // Save session to database
-            await createSession({
-              id: sessionId,
-              title: userMessage.slice(0, 100), // Use first 100 chars of message as title
-              model,
-              workspacePath,
-              userEmail,
-              autoSync,
-            });
+      // Process events in background
+      (async () => {
+        try {
+          let userMessageSaved = false;
+          for await (const sdkMessage of agentIterator) {
+            // Extract sessionId from init message
+            if (
+              sdkMessage.type === 'system' &&
+              'subtype' in sdkMessage &&
+              sdkMessage.subtype === 'init'
+            ) {
+              sessionId = sdkMessage.session_id;
+              getOrCreateQueue(sessionId);
 
-            resolveInit?.();
+              // Save session to database
+              await createSession({
+                id: sessionId,
+                title: userMessage.slice(0, 100), // Use first 100 chars of message as title
+                model,
+                workspacePath,
+                userEmail,
+                autoSync,
+              });
 
-            // Save user message after getting sessionId
-            if (!userMessageSaved) {
-              const userMsg = createUserMessage(sessionId, userMessage);
-              await saveMessage(userMsg);
-              addEventToQueue(sessionId, userMsg);
-              userMessageSaved = true;
+              resolveInit?.();
+
+              // Save user message after getting sessionId
+              if (!userMessageSaved) {
+                const userMsg = createUserMessage(sessionId, userMessage);
+                await saveMessage(userMsg);
+                addEventToQueue(sessionId, userMsg);
+                userMessageSaved = true;
+              }
+            }
+
+            // Save all messages to database
+            if (sessionId) {
+              await saveMessage(sdkMessage);
+              addEventToQueue(sessionId, sdkMessage);
             }
           }
+        } catch (error: any) {
+          console.error('Error processing agent request:', error);
 
-          // Save all messages to database
+          // If init message was not received yet, retry or reject
+          if (!sessionId) {
+            retryCount++;
+            if (retryCount < maxRetries) {
+              console.log(
+                `Retrying agent request (attempt ${retryCount + 1}/${maxRetries})...`
+              );
+              // Small delay before retry
+              await new Promise((r) => setTimeout(r, 1000));
+              startAgentProcessing();
+            } else {
+              rejectInit?.(
+                new Error(`Agent failed after ${maxRetries} attempts: ${error.message}`)
+              );
+            }
+          }
+        } finally {
           if (sessionId) {
-            await saveMessage(sdkMessage);
-            addEventToQueue(sessionId, sdkMessage);
+            markQueueCompleted(sessionId);
           }
         }
-      } catch (error: any) {
-        console.error('Error processing agent request:', error);
-      } finally {
-        if (sessionId) {
-          markQueueCompleted(sessionId);
-        }
-      }
-    })();
+      })();
+    };
 
-    // Wait for init message only
-    await initReceived;
+    // Start initial processing
+    startAgentProcessing();
+
+    // Wait for init message with timeout
+    const timeoutMs = 60000; // 60 seconds timeout
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Timeout waiting for agent init message'));
+      }, timeoutMs);
+    });
+
+    try {
+      await Promise.race([initReceived, timeoutPromise]);
+    } catch (error: any) {
+      console.error('Failed to initialize agent session:', error.message);
+      return reply.status(500).send({ error: error.message });
+    }
 
     return {
       session_id: sessionId,
