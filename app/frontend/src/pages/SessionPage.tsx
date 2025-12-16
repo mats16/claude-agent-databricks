@@ -15,6 +15,9 @@ export default function SessionPage() {
   const [input, setInput] = useState('');
   const [sessionTitle, setSessionTitle] = useState<string | null>(null);
   const [sessionAutoSync, setSessionAutoSync] = useState(false);
+  const [sessionWorkspacePath, setSessionWorkspacePath] = useState<
+    string | null
+  >(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialMessageConsumedRef = useRef(false);
@@ -44,6 +47,7 @@ export default function SessionPage() {
               setSessionTitle(session.title);
             }
             setSessionAutoSync(session.autoSync ?? false);
+            setSessionWorkspacePath(session.workspacePath ?? null);
           }
         }
       } catch (error) {
@@ -73,6 +77,38 @@ export default function SessionPage() {
     },
     [sessionId]
   );
+
+  const handleWorkspacePathClick = useCallback(async () => {
+    if (!sessionWorkspacePath) return;
+
+    try {
+      const token = localStorage.getItem('databricks_pat');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['x-databricks-token'] = token;
+      }
+
+      const response = await fetch('/api/v1/workspace/status', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ path: sessionWorkspacePath }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.browse_url) {
+          // Open Databricks workspace folder in new tab
+          window.open(data.browse_url, '_blank');
+        }
+      } else {
+        console.error('Failed to get workspace status');
+      }
+    } catch (error) {
+      console.error('Error fetching workspace status:', error);
+    }
+  }, [sessionWorkspacePath]);
 
   const locationState = location.state as LocationState | null;
   const initialMessage = !initialMessageConsumedRef.current
@@ -132,14 +168,40 @@ export default function SessionPage() {
             )}
             <span className="chat-title-edit-icon">&#9998;</span>
           </button>
+          {sessionWorkspacePath && (
+            <div className="workspace-path-container">
+              <span className="workspace-path" title={sessionWorkspacePath}>
+                {sessionWorkspacePath}
+              </span>
+              <button
+                className="workspace-link-button"
+                onClick={handleWorkspacePathClick}
+                title="Open in Databricks"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" />
+                  <path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
         <div className="chat-header-right">
-          <span className="chat-model">
-            {selectedModel}
-          </span>
+          <span className="chat-model">{selectedModel}</span>
           <span
             className={`status-dot ${isConnected ? 'connected' : isReconnecting ? 'reconnecting' : 'disconnected'}`}
-            title={isConnected ? 'Connected' : isReconnecting ? 'Reconnecting...' : 'Disconnected'}
+            title={
+              isConnected
+                ? 'Connected'
+                : isReconnecting
+                  ? 'Reconnecting...'
+                  : 'Disconnected'
+            }
           ></span>
         </div>
       </div>

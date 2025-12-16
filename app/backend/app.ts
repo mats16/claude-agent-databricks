@@ -393,6 +393,63 @@ fastify.get<{ Params: { email: string } }>(
   }
 );
 
+// Workspace API - Get workspace object status (includes object_id)
+fastify.post<{ Body: { path: string } }>(
+  '/api/v1/workspace/status',
+  async (request, reply) => {
+    const { path: workspacePath } = request.body;
+
+    if (!workspacePath) {
+      return reply.status(400).send({ error: 'path is required' });
+    }
+
+    // Prefer PAT from localStorage (x-databricks-token) over Databricks Apps proxy token
+    const token =
+      (request.headers['x-databricks-token'] as string) ||
+      (request.headers['x-forwarded-access-token'] as string);
+
+    if (!token) {
+      return reply.status(401).send({ error: 'Token required' });
+    }
+
+    const databricksHost = process.env.DATABRICKS_HOST;
+
+    try {
+      const response = await fetch(
+        `https://${databricksHost}/api/2.0/workspace/get-status?path=${encodeURIComponent(workspacePath)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = (await response.json()) as {
+        path?: string;
+        object_type?: string;
+        object_id?: number;
+        error_code?: string;
+        message?: string;
+      };
+
+      if (data.error_code) {
+        return reply.status(404).send({ error: data.message });
+      }
+
+      // Build browse URL for Databricks console
+      const browseUrl = data.object_id
+        ? `https://${databricksHost}/browse/folders/${data.object_id}`
+        : null;
+
+      return {
+        path: data.path,
+        object_type: data.object_type,
+        object_id: data.object_id,
+        browse_url: browseUrl,
+      };
+    } catch (error: any) {
+      return reply.status(500).send({ error: error.message });
+    }
+  }
+);
+
 // Workspace API - List any workspace path (Shared, Repos, etc.)
 fastify.get<{ Params: { '*': string } }>(
   '/api/v1/Workspace/*',
