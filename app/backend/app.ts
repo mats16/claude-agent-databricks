@@ -240,7 +240,9 @@ fastify.post<{ Body: CreateSessionBody }>(
               startAgentProcessing();
             } else {
               rejectInit?.(
-                new Error(`Agent failed after ${maxRetries} attempts: ${error.message}`)
+                new Error(
+                  `Agent failed after ${maxRetries} attempts: ${error.message}`
+                )
               );
             }
           }

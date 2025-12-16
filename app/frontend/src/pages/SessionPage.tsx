@@ -10,6 +10,8 @@ interface LocationState {
   model?: string;
 }
 
+const PAT_STORAGE_KEY = 'databricks_pat';
+
 export default function SessionPage() {
   const { t } = useTranslation();
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -21,9 +23,36 @@ export default function SessionPage() {
     string | null
   >(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [hasPat, setHasPat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialMessageConsumedRef = useRef(false);
   const prevSessionIdRef = useRef<string | undefined>(undefined);
+
+  // Check if PAT is configured
+  useEffect(() => {
+    const checkPat = () => {
+      const token = localStorage.getItem(PAT_STORAGE_KEY);
+      setHasPat(!!token);
+    };
+    checkPat();
+
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === PAT_STORAGE_KEY) {
+        checkPat();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Listen for custom event for same-tab updates
+    const handlePatChange = () => checkPat();
+    window.addEventListener('pat-changed', handlePatChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('pat-changed', handlePatChange);
+    };
+  }, []);
 
   // Synchronous reset - runs during render, before initialMessage is computed
   // This must be outside useEffect to ensure the ref is reset before initialMessage is evaluated
@@ -262,16 +291,23 @@ export default function SessionPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t('sessionPage.typeMessage')}
-            disabled={!isConnected || isProcessing}
+            disabled={!isConnected || isProcessing || !hasPat}
             className="chat-input"
           />
-          <button
-            type="submit"
-            disabled={!isConnected || isProcessing || !input.trim()}
-            className="chat-submit"
+          <div
+            className="chat-submit-wrapper"
+            data-tooltip={!hasPat ? t('sidebar.patRequired') : undefined}
           >
-            ↑
-          </button>
+            <button
+              type="submit"
+              disabled={
+                !isConnected || isProcessing || !input.trim() || !hasPat
+              }
+              className="chat-submit"
+            >
+              ↑
+            </button>
+          </div>
         </form>
       </div>
     </div>
