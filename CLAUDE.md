@@ -4,7 +4,7 @@ A web application that serves as a Claude Code-like coding agent running on Data
 
 ## Architecture
 
-- **Frontend**: React + Vite + Tailwind CSS
+- **Frontend**: React + Vite + Ant Design v5
 - **Backend**: Node.js + Fastify + WebSocket (ws) + REStful API
 - **Agent**: Claude Agent SDK integrated directly on the server (TypeScript SDK V2)
 
@@ -195,6 +195,68 @@ Connect to an existing session for real-time streaming.
 - Agent has access to: Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 - Uses Vite for frontend development with hot reload
 - Uses tsx for TypeScript execution on the backend
+
+## UI/Design
+
+### Design Concept
+
+- **Style**: Clean, minimal, professional (inspired by Claude Code on Web)
+- **Brand Color**: `#f5a623` (Orange/Gold)
+- **Font**: Noto Sans JP (with system font fallbacks)
+
+### Ant Design Theme Configuration
+
+The theme is configured in `app/frontend/src/main.tsx` via ConfigProvider:
+
+```tsx
+const theme = {
+  token: {
+    colorPrimary: '#f5a623',
+    colorSuccess: '#4caf50',
+    colorError: '#f44336',
+    colorWarning: '#ff9800',
+    borderRadius: 8,
+    fontFamily: "'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif",
+  },
+  components: {
+    Button: { primaryShadow: 'none' },
+    Input: { activeBorderColor: '#f5a623', hoverBorderColor: '#f5a623' },
+    Modal: { borderRadiusLG: 12 },
+  },
+};
+```
+
+### Key UI Components
+
+| Component | Ant Design Components Used |
+|-----------|---------------------------|
+| Layout.tsx | Layout, Sider, Content (with custom resize handle) |
+| Sidebar.tsx | Input.TextArea, Select, Button, Checkbox, Tooltip, Typography, Flex |
+| SessionPage.tsx | Input, Button, Tag, Typography, Flex, Tooltip, Spin |
+| SessionList.tsx | Typography, Spin, Empty, Flex |
+| AccountMenu.tsx | Dropdown, Avatar, Menu |
+| TitleEditModal.tsx | Modal, Input, Checkbox, Typography |
+| PATModal.tsx | Modal, Input.Password, Button, Alert, Tooltip |
+| WorkspaceSelectModal.tsx | Modal, List, Spin, Empty, Alert, Flex |
+| App.tsx (WelcomePage) | Card, Typography, Flex |
+
+### Icons
+
+All icons use `@ant-design/icons`. Common icons:
+- `SendOutlined` - Send button
+- `FolderOutlined`, `FolderOpenOutlined` - Workspace/folder
+- `SyncOutlined` - Auto sync
+- `UserOutlined` - Account
+- `EditOutlined` - Edit
+- `DeleteOutlined` - Delete
+- `EyeOutlined`, `EyeInvisibleOutlined` - Show/hide password
+
+### Layout Notes
+
+- Sidebar uses custom resize handle (CSS in App.css: `.resize-handle`)
+- Layout height is fixed to `100vh` to enable proper scrolling
+- Session list scrolls within its container (parent has `overflow: auto`)
+- Message formatting styles (markdown, code blocks, tool output) are in App.css
 
 ## Database Setup
 
