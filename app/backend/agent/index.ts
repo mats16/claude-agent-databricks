@@ -76,22 +76,23 @@ export async function* processAgentRequest(
   sessionId?: string,
   userAccessToken?: string,
   userEmail?: string,
-  workspacePath?: string
+  workspacePath: string = '/Workspace/Users/me'
 ): AsyncGenerator<SDKMessage> {
   // Determine base directory based on environment
-  // Local development: ./tmp, Production: /home/app/Workspace/Users/{email}
+  // Local development: ./tmp, Production: /home/app
   const baseDir = isLocal ? './tmp' : '/home/app';
-  const userHomeDir = isLocal ? './tmp' : `${baseDir}/Workspace/Users/${userEmail ?? 'me'}`;
 
-  // Claude Config Directory
-  const claudeConfigDir = `${userHomeDir}/.claude`
+  // User home directory (for Claude config)
+  const userHomeDir = isLocal
+    ? './tmp'
+    : `${baseDir}/Workspace/Users/${userEmail ?? 'me'}`;
+
+  // Claude Config Directory (user-specific)
+  const claudeConfigDir = path.join(userHomeDir, '.claude');
   fs.mkdirSync(claudeConfigDir, { recursive: true });
 
-  // Create working directory
-  // Note: export-dir is handled in app.ts (fire and forget), so we just ensure the directory exists
-  const workDir: string = workspacePath
-    ? path.join(baseDir, workspacePath)
-    : userHomeDir;
+  // Working directory based on workspacePath
+  const workDir = path.join(baseDir, workspacePath);
   fs.mkdirSync(workDir, { recursive: true });
 
   const spAccessToken = await getOidcAccessToken(
