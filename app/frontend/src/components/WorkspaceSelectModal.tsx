@@ -1,20 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Modal,
-  Button,
-  Typography,
-  List,
-  Spin,
-  Empty,
-  Alert,
-  Flex,
-} from 'antd';
+import { Modal, Typography, List, Spin, Empty, Alert, Flex } from 'antd';
 import { FolderOutlined, FolderOpenOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
-
-const PAT_STORAGE_KEY = 'databricks_pat';
 
 interface WorkspaceObject {
   path: string;
@@ -41,20 +30,19 @@ export default function WorkspaceSelectModal({
   const [error, setError] = useState<string | null>(null);
 
   const fetchDirectories = async (path: string) => {
-    const token = localStorage.getItem(PAT_STORAGE_KEY);
-    if (!token) {
-      setError(t('workspaceModal.patNotConfigured'));
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
     try {
       const apiPath = path.replace(/^\/Workspace/, '');
-      const res = await fetch(`/api/v1/Workspace${apiPath}`, {
-        headers: { 'x-databricks-token': token },
-      });
+      const res = await fetch(`/api/v1/Workspace${apiPath}`);
+
+      if (res.status === 403) {
+        setError(t('workspaceModal.noPermission'));
+        setDirectories([]);
+        return;
+      }
+
       const data = await res.json();
 
       if (data.error) {
@@ -87,19 +75,17 @@ export default function WorkspaceSelectModal({
   }, [isOpen, initialPath]);
 
   const fetchHomeDirectory = async () => {
-    const token = localStorage.getItem(PAT_STORAGE_KEY);
-    if (!token) {
-      setError(t('workspaceModal.patNotConfigured'));
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
     try {
-      const res = await fetch('/api/v1/Workspace/Users/me', {
-        headers: { 'x-databricks-token': token },
-      });
+      const res = await fetch('/api/v1/Workspace/Users/me');
+
+      if (res.status === 403) {
+        setError(t('workspaceModal.noPermission'));
+        return;
+      }
+
       const data = await res.json();
 
       if (data.objects && data.objects.length > 0) {

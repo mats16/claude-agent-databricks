@@ -6,9 +6,10 @@ import path from 'path';
 
 export type { SDKMessage };
 
-const isLocal = !process.env.DATABRICKS_APP_URL;
+export const isLocal = !process.env.DATABRICKS_APP_URL;
 
-const databricksHost = `https://${process.env.DATABRICKS_HOST}` as string;
+export const databricksHost =
+  `https://${process.env.DATABRICKS_HOST}` as string;
 const personalAccessToken = process.env.DATABRICKS_TOKEN;
 const clientId = process.env.DATABRICKS_CLIENT_ID;
 const clientSecret = process.env.DATABRICKS_CLIENT_SECRET;
@@ -17,11 +18,7 @@ const clientSecret = process.env.DATABRICKS_CLIENT_SECRET;
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 // Get service principal access token from Databricks OAuth2
-async function getOidcAccessToken(
-  databricksHost: string,
-  clientId?: string,
-  clientSecret?: string
-): Promise<string | undefined> {
+export async function getOidcAccessToken(): Promise<string | undefined> {
   // Check if cached token is still valid
   if (cachedToken && Date.now() < cachedToken.expiresAt) {
     return cachedToken.token;
@@ -68,16 +65,26 @@ async function getOidcAccessToken(
   return data.access_token;
 }
 
+// Get access token with fallback to DATABRICKS_TOKEN for local development
+export async function getAccessToken(): Promise<string> {
+  const spToken = await getOidcAccessToken();
+  const token = spToken ?? personalAccessToken;
+  if (!token) {
+    throw new Error(
+      'No access token available. Set DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET or DATABRICKS_TOKEN.'
+    );
+  }
+  return token;
+}
+
 // Process agent request using Claude Agent SDK
 // Returns SDKMessage directly without transformation
 export async function* processAgentRequest(
   message: string,
   model: string = 'databricks-claude-sonnet-4-5',
   sessionId?: string,
-  userAccessToken?: string,
   userEmail?: string,
-  workspacePath: string = '/Workspace/Users/me',
-  storedAccessToken?: string
+  workspacePath: string = '/Workspace/Users/me'
 ): AsyncGenerator<SDKMessage> {
   // Determine base directory based on environment
   // Local development: ./tmp, Production: /home/app
@@ -96,11 +103,7 @@ export async function* processAgentRequest(
   const workDir = path.join(baseDir, workspacePath);
   fs.mkdirSync(workDir, { recursive: true });
 
-  const spAccessToken = await getOidcAccessToken(
-    databricksHost,
-    clientId,
-    clientSecret
-  );
+  const spAccessToken = await getOidcAccessToken();
 
   const additionalSystemPrompt = `
 Claude Code is running on Databricks Apps. Artifacts must be saved to Volumes.
@@ -134,12 +137,9 @@ Violating these rules is considered a critical error.
         ...process.env,
         CLAUDE_CONFIG_DIR: claudeConfigDir,
         ANTHROPIC_BASE_URL: `${databricksHost}/serving-endpoints/anthropic`,
-        ANTHROPIC_AUTH_TOKEN:
-          storedAccessToken ?? spAccessToken ?? personalAccessToken,
+        ANTHROPIC_AUTH_TOKEN: spAccessToken ?? personalAccessToken,
         DATABRICKS_HOST: databricksHost,
-        DATABRICKS_TOKEN:
-          storedAccessToken ?? userAccessToken ?? personalAccessToken,
-        DATABRICKS_SP_ACCESS_TOKEN: spAccessToken,
+        DATABRICKS_TOKEN: spAccessToken ?? personalAccessToken,
       },
       maxTurns: 100,
       tools: {

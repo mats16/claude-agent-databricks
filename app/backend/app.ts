@@ -4,7 +4,12 @@ import staticPlugin from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { processAgentRequest, SDKMessage } from './agent/index.js';
+import {
+  processAgentRequest,
+  SDKMessage,
+  getAccessToken,
+  databricksHost,
+} from './agent/index.js';
 import { saveMessage, getMessagesBySessionId } from './db/events.js';
 import {
   createSession,
@@ -33,8 +38,9 @@ const fastify = Fastify({
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8000;
 
-// Default user ID for local development (when X-Forwarded-User header is not present)
-const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000000';
+// Default user ID and email for local development (when headers are not present)
+const DEFAULT_USER_ID = '3635764964872574@5099015744649857';
+const DEFAULT_USER_EMAIL = 'kazuki.matsuda@databricks.com';
 
 // Session event queue for streaming events to WebSocket
 interface SessionQueue {
@@ -128,19 +134,12 @@ fastify.post<{ Body: CreateSessionBody }>(
     const { events, session_context } = request.body;
 
     // Get user info from request headers
-    const userAccessToken = request.headers['x-forwarded-access-token'] as
-      | string
-      | undefined;
-    const userEmail = request.headers['x-forwarded-email'] as
-      | string
-      | undefined;
+    const userEmail =
+      (request.headers['x-forwarded-email'] as string | undefined) ||
+      DEFAULT_USER_EMAIL;
     const userId =
       (request.headers['x-forwarded-user'] as string | undefined) ||
       DEFAULT_USER_ID;
-
-    // Fetch stored access token from user settings
-    const userSettings = await getSettingsDirect(userId);
-    const storedAccessToken = userSettings?.accessToken ?? undefined;
 
     // Extract first user message
     const userEvent = events.find((e) => e.type === 'user');
@@ -157,38 +156,35 @@ fastify.post<{ Body: CreateSessionBody }>(
     // Execute workspace export-dir if workspacePath is provided (fire and forget)
     if (workspacePath) {
       const { exec } = await import('child_process');
-      const databricksHost = process.env.DATABRICKS_HOST;
-      const token = storedAccessToken ?? userAccessToken;
 
-      // Create workspace directory if it doesn't exist
-      if (token && databricksHost) {
-        try {
-          const mkdirsResponse = await fetch(
-            `https://${databricksHost}/api/2.0/workspace/mkdirs`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ path: workspacePath }),
-            }
-          );
-          if (mkdirsResponse.ok) {
-            console.log(`Created workspace directory: ${workspacePath}`);
-          } else {
-            const errorData = (await mkdirsResponse.json()) as {
-              error_code?: string;
-              message?: string;
-            };
-            // RESOURCE_ALREADY_EXISTS is not an error - directory exists
-            if (errorData.error_code !== 'RESOURCE_ALREADY_EXISTS') {
-              console.error('mkdirs error:', errorData.message);
-            }
+      // Create workspace directory if it doesn't exist (using SP token)
+      try {
+        const spToken = await getAccessToken();
+        const mkdirsResponse = await fetch(
+          `${databricksHost}/api/2.0/workspace/mkdirs`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${spToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ path: workspacePath }),
           }
-        } catch (mkdirsError: any) {
-          console.error('mkdirs request failed:', mkdirsError.message);
+        );
+        if (mkdirsResponse.ok) {
+          console.log(`Created workspace directory: ${workspacePath}`);
+        } else {
+          const errorData = (await mkdirsResponse.json()) as {
+            error_code?: string;
+            message?: string;
+          };
+          // RESOURCE_ALREADY_EXISTS is not an error - directory exists
+          if (errorData.error_code !== 'RESOURCE_ALREADY_EXISTS') {
+            console.error('mkdirs error:', errorData.message);
+          }
         }
+      } catch (mkdirsError: any) {
+        console.error('mkdirs request failed:', mkdirsError.message);
       }
 
       // Target path mirrors the workspace path structure under base directory
@@ -229,10 +225,8 @@ fastify.post<{ Body: CreateSessionBody }>(
         userMessage,
         model,
         undefined,
-        userAccessToken,
         userEmail,
-        workspacePath,
-        storedAccessToken
+        workspacePath
       );
 
       // Process events in background
@@ -380,34 +374,53 @@ fastify.get<{ Params: { sessionId: string } }>(
   }
 );
 
-// Create user (register)
-fastify.post('/api/v1/users', async (request, _reply) => {
-  const userId =
-    (request.headers['x-forwarded-user'] as string | undefined) ||
-    DEFAULT_USER_ID;
-  const userEmail = request.headers['x-forwarded-email'] as string | undefined;
-
-  await upsertUser(userId, userEmail);
-
-  return { success: true, userId };
-});
-
-// Get current user info
+// Get current user info (includes workspace permission check)
+// Creates user if not exists
 fastify.get('/api/v1/users/me', async (request, _reply) => {
   const userId =
     (request.headers['x-forwarded-user'] as string | undefined) ||
     DEFAULT_USER_ID;
-  const userEmail = request.headers['x-forwarded-email'] as string | undefined;
+  const userEmail =
+    (request.headers['x-forwarded-email'] as string | undefined) ||
+    DEFAULT_USER_EMAIL;
+
+  // Ensure user exists (create if not)
+  await upsertUser(userId, userEmail);
 
   // Workspace home is derived from user email
-  const workspaceHome = userEmail
-    ? `/Workspace/Users/${userEmail}`
-    : null;
+  const workspaceHome = userEmail ? `/Workspace/Users/${userEmail}` : null;
+
+  // Check workspace permission using SP token
+  // When SP has no permission, the API returns empty {} instead of error
+  // When SP has permission, the API returns { objects: [...] }
+  let hasWorkspacePermission = false;
+  if (workspaceHome) {
+    try {
+      const token = await getAccessToken();
+      const response = await fetch(
+        `${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(workspaceHome)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = (await response.json()) as {
+        objects?: Array<{ path: string; object_type: string }>;
+        error_code?: string;
+      };
+      // Permission exists if 'objects' field is present (even if empty array)
+      hasWorkspacePermission =
+        'objects' in data && data.error_code !== 'PERMISSION_DENIED';
+    } catch (error: any) {
+      console.error('Failed to check workspace permission:', error);
+      hasWorkspacePermission = false;
+    }
+  }
 
   return {
     userId,
     email: userEmail ?? null,
     workspaceHome,
+    hasWorkspacePermission,
   };
 });
 
@@ -452,7 +465,9 @@ fastify.patch<{
   }
 
   // Ensure user exists before creating settings
-  const userEmail = request.headers['x-forwarded-email'] as string | undefined;
+  const userEmail =
+    (request.headers['x-forwarded-email'] as string | undefined) ||
+    DEFAULT_USER_EMAIL;
   await upsertUser(userId, userEmail);
 
   const updates: { accessToken?: string; claudeConfigSync?: boolean } = {};
@@ -462,6 +477,43 @@ fastify.patch<{
 
   await upsertSettings(userId, updates);
   return { success: true };
+});
+
+// Get service principal info
+fastify.get('/api/v1/service-principal', async (_request, reply) => {
+  try {
+    const token = await getAccessToken();
+
+    // Fetch SP info from Databricks SCIM API
+    const response = await fetch(
+      `${databricksHost}/api/2.0/preview/scim/v2/Me`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return reply.status(500).send({
+        error: `Failed to fetch service principal info: ${errorText}`,
+      });
+    }
+
+    const data = (await response.json()) as {
+      displayName?: string;
+      applicationId?: string;
+      id?: string;
+      userName?: string;
+    };
+
+    return {
+      displayName: data.displayName ?? data.userName ?? 'Service Principal',
+      applicationId: data.applicationId ?? data.id ?? null,
+      databricksHost: process.env.DATABRICKS_HOST ?? null,
+    };
+  } catch (error: any) {
+    return reply.status(500).send({ error: error.message });
+  }
 });
 
 // Workspace API - List root workspace (returns Users and Shared)
@@ -474,48 +526,15 @@ fastify.get('/api/v1/Workspace', async (_request, _reply) => {
   };
 });
 
-// Workspace API - List user's workspace directory
+// Workspace API - List user's workspace directory (uses Service Principal token)
 fastify.get<{ Params: { email: string } }>(
   '/api/v1/Workspace/Users/:email',
   async (request, reply) => {
-    // Prefer PAT from localStorage (x-databricks-token) over Databricks Apps proxy token
-    // because the proxy token may not have sufficient scope for SCIM API
-    const token =
-      (request.headers['x-databricks-token'] as string) ||
-      (request.headers['x-forwarded-access-token'] as string);
-
-    if (!token) {
-      return reply.status(401).send({ error: 'Token required' });
-    }
-
-    const databricksHost = process.env.DATABRICKS_HOST;
     let email: string | undefined = request.params.email;
 
-    // Resolve 'me' to actual email
+    // Resolve 'me' to actual email from header
     if (email === 'me') {
-      // Try x-forwarded-email header first (Databricks Apps)
       email = request.headers['x-forwarded-email'] as string | undefined;
-
-      // If not available, fetch from Databricks SCIM API
-      if (!email) {
-        try {
-          const meResponse = await fetch(
-            `https://${databricksHost}/api/2.0/preview/scim/v2/Me`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-          const meData = (await meResponse.json()) as {
-            userName?: string;
-            emails?: Array<{ value: string }>;
-          };
-          email = meData.userName || meData.emails?.[0]?.value;
-        } catch (error: any) {
-          return reply
-            .status(500)
-            .send({ error: 'Failed to resolve current user' });
-        }
-      }
     }
 
     if (!email) {
@@ -525,8 +544,9 @@ fastify.get<{ Params: { email: string } }>(
     const workspacePath = `/Workspace/Users/${email}`;
 
     try {
+      const token = await getAccessToken();
       const response = await fetch(
-        `https://${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(workspacePath)}`,
+        `${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(workspacePath)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -537,9 +557,15 @@ fastify.get<{ Params: { email: string } }>(
         message?: string;
       };
 
-      // Check for API error
+      // Check for permission error - return 403
+      // Empty response {} also means no permission
+      if (data.error_code === 'PERMISSION_DENIED' || !('objects' in data)) {
+        return reply.status(403).send({ error: 'PERMISSION_DENIED' });
+      }
+
+      // Check for other API errors
       if (data.error_code) {
-        return { objects: [], error: data.message };
+        return reply.status(400).send({ error: data.message });
       }
 
       // Filter to only return directories
@@ -553,7 +579,7 @@ fastify.get<{ Params: { email: string } }>(
   }
 );
 
-// Workspace API - Get workspace object status (includes object_id)
+// Workspace API - Get workspace object status (includes object_id, uses Service Principal token)
 fastify.post<{ Body: { path: string } }>(
   '/api/v1/workspace/status',
   async (request, reply) => {
@@ -563,20 +589,10 @@ fastify.post<{ Body: { path: string } }>(
       return reply.status(400).send({ error: 'path is required' });
     }
 
-    // Prefer PAT from localStorage (x-databricks-token) over Databricks Apps proxy token
-    const token =
-      (request.headers['x-databricks-token'] as string) ||
-      (request.headers['x-forwarded-access-token'] as string);
-
-    if (!token) {
-      return reply.status(401).send({ error: 'Token required' });
-    }
-
-    const databricksHost = process.env.DATABRICKS_HOST;
-
     try {
+      const token = await getAccessToken();
       const response = await fetch(
-        `https://${databricksHost}/api/2.0/workspace/get-status?path=${encodeURIComponent(workspacePath)}`,
+        `${databricksHost}/api/2.0/workspace/get-status?path=${encodeURIComponent(workspacePath)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -589,13 +605,19 @@ fastify.post<{ Body: { path: string } }>(
         message?: string;
       };
 
+      // Check for permission error - return 403
+      if (data.error_code === 'PERMISSION_DENIED') {
+        return reply.status(403).send({ error: 'PERMISSION_DENIED' });
+      }
+
       if (data.error_code) {
         return reply.status(404).send({ error: data.message });
       }
 
       // Build browse URL for Databricks console
+      const host = process.env.DATABRICKS_HOST;
       const browseUrl = data.object_id
-        ? `https://${databricksHost}/browse/folders/${data.object_id}`
+        ? `https://${host}/browse/folders/${data.object_id}`
         : null;
 
       return {
@@ -610,34 +632,33 @@ fastify.post<{ Body: { path: string } }>(
   }
 );
 
-// Workspace API - List any workspace path (Shared, Repos, etc.)
+// Workspace API - List any workspace path (Shared, Repos, etc., uses Service Principal token)
 fastify.get<{ Params: { '*': string } }>(
   '/api/v1/Workspace/*',
   async (request, reply) => {
     const subpath = request.params['*'];
-
-    // Prefer PAT from localStorage (x-databricks-token) over Databricks Apps proxy token
-    const token =
-      (request.headers['x-databricks-token'] as string) ||
-      (request.headers['x-forwarded-access-token'] as string);
-
-    if (!token) {
-      return reply.status(401).send({ error: 'Token required' });
-    }
-
-    const databricksHost = process.env.DATABRICKS_HOST;
-    const path = `/Workspace/${subpath}`;
+    const wsPath = `/Workspace/${subpath}`;
 
     try {
+      const token = await getAccessToken();
       const response = await fetch(
-        `https://${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(path)}`,
+        `${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(wsPath)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
       const data = (await response.json()) as {
         objects?: Array<{ path: string; object_type: string }>;
+        error_code?: string;
+        message?: string;
       };
+
+      // Check for permission error - return 403
+      // Empty response {} also means no permission
+      if (data.error_code === 'PERMISSION_DENIED' || !('objects' in data)) {
+        return reply.status(403).send({ error: 'PERMISSION_DENIED' });
+      }
+
       // Filter to only return directories
       const directories = data.objects?.filter(
         (obj) => obj.object_type === 'DIRECTORY'
@@ -659,10 +680,9 @@ fastify.register(async (fastify) => {
       console.log(`Client connected to WebSocket for session: ${sessionId}`);
 
       // Get user info from request headers
-      const userAccessToken = req.headers['x-forwarded-access-token'] as
-        | string
-        | undefined;
-      const userEmail = req.headers['x-forwarded-email'] as string | undefined;
+      const userEmail =
+        (req.headers['x-forwarded-email'] as string | undefined) ||
+        DEFAULT_USER_EMAIL;
       const userId =
         (req.headers['x-forwarded-user'] as string | undefined) ||
         DEFAULT_USER_ID;
@@ -702,9 +722,8 @@ fastify.register(async (fastify) => {
             const workspacePath = session?.workspacePath ?? undefined;
             const autoSync = session?.autoSync ?? false;
 
-            // Fetch user settings to get stored access token and claude config sync
+            // Fetch user settings for claude config sync
             const userSettings = await getSettingsDirect(userId);
-            const storedAccessToken = userSettings?.accessToken ?? undefined;
             const claudeConfigSync = userSettings?.claudeConfigSync ?? false;
 
             // Save user message to database
@@ -716,10 +735,8 @@ fastify.register(async (fastify) => {
               userMessage,
               model,
               sessionId,
-              userAccessToken,
               userEmail,
-              workspacePath,
-              storedAccessToken
+              workspacePath
             )) {
               // Save message to database (always execute regardless of WebSocket state)
               await saveMessage(sdkMessage);
@@ -736,7 +753,6 @@ fastify.register(async (fastify) => {
               if (
                 autoSync &&
                 workspacePath &&
-                storedAccessToken &&
                 sdkMessage.type === 'result' &&
                 'subtype' in sdkMessage &&
                 sdkMessage.subtype === 'success'
@@ -747,20 +763,19 @@ fastify.register(async (fastify) => {
                 const localPath = path.join(basePath, workspacePath);
 
                 console.log(`Auto sync: ${localPath} -> ${workspacePath}`);
-                syncToWorkspace(
-                  localPath,
-                  workspacePath,
-                  storedAccessToken
-                ).catch((error) => {
-                  console.error('Auto sync error:', error.message);
-                });
+                getAccessToken()
+                  .then((spToken) =>
+                    syncToWorkspace(localPath, workspacePath, spToken)
+                  )
+                  .catch((error) => {
+                    console.error('Auto sync error:', error.message);
+                  });
               }
 
               // Claude config sync: sync .claude directory to workspace on result success
               if (
                 claudeConfigSync &&
                 userEmail &&
-                storedAccessToken &&
                 sdkMessage.type === 'result' &&
                 'subtype' in sdkMessage &&
                 sdkMessage.subtype === 'success'
@@ -780,13 +795,17 @@ fastify.register(async (fastify) => {
                 console.log(
                   `Claude config sync: ${claudeLocalPath} -> ${claudeWorkspacePath}`
                 );
-                syncToWorkspace(
-                  claudeLocalPath,
-                  claudeWorkspacePath,
-                  storedAccessToken
-                ).catch((error) => {
-                  console.error('Claude config sync error:', error.message);
-                });
+                getAccessToken()
+                  .then((spToken) =>
+                    syncToWorkspace(
+                      claudeLocalPath,
+                      claudeWorkspacePath,
+                      spToken
+                    )
+                  )
+                  .catch((error) => {
+                    console.error('Claude config sync error:', error.message);
+                  });
               }
             }
           }

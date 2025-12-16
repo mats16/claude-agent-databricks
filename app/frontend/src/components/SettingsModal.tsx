@@ -1,25 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Modal,
-  Input,
   Button,
   Alert,
   Typography,
   Flex,
-  Tooltip,
   Switch,
   Divider,
+  Steps,
+  Spin,
 } from 'antd';
 import {
-  EyeOutlined,
-  EyeInvisibleOutlined,
-  DeleteOutlined,
   SyncOutlined,
-  KeyOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  ReloadOutlined,
+  FolderOpenOutlined,
 } from '@ant-design/icons';
 
-const { Text, Title } = Typography;
+const { Text, Title, Link } = Typography;
 
 export interface UserSettings {
   userId: string;
@@ -27,22 +27,29 @@ export interface UserSettings {
   claudeConfigSync: boolean;
 }
 
+interface ServicePrincipalInfo {
+  displayName: string;
+  applicationId: string | null;
+  databricksHost: string | null;
+}
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   isInitialSetup?: boolean;
+  onPermissionGranted?: () => void;
 }
 
 export default function SettingsModal({
   isOpen,
   onClose,
   isInitialSetup = false,
+  onPermissionGranted,
 }: SettingsModalProps) {
   const { t } = useTranslation();
-  const [token, setToken] = useState('');
-  const [hasExistingToken, setHasExistingToken] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [spInfo, setSpInfo] = useState<ServicePrincipalInfo | null>(null);
   const [claudeConfigSync, setClaudeConfigSync] = useState(false);
-  const [showToken, setShowToken] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{
@@ -50,63 +57,70 @@ export default function SettingsModal({
     text: string;
   } | null>(null);
 
-  // Fetch current settings when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchSettings();
-    }
-  }, [isOpen]);
-
-  const fetchSettings = async () => {
+  const checkPermission = useCallback(async () => {
     setIsLoading(true);
+    setMessage(null);
     try {
-      const response = await fetch('/api/v1/users/me/settings');
-      if (response.ok) {
-        const data: UserSettings = await response.json();
-        setHasExistingToken(data.hasAccessToken);
-        setClaudeConfigSync(data.claudeConfigSync);
+      // Get user info (includes permission check)
+      const userRes = await fetch('/api/v1/users/me');
+      if (userRes.ok) {
+        const userData = await userRes.json();
+
+        if (userData.hasWorkspacePermission) {
+          setHasPermission(true);
+          onPermissionGranted?.();
+        } else {
+          setHasPermission(false);
+          // Fetch SP info for instructions
+          const spRes = await fetch('/api/v1/service-principal');
+          if (spRes.ok) {
+            const spData = await spRes.json();
+            setSpInfo(spData);
+          }
+        }
+      } else {
+        setHasPermission(false);
+      }
+
+      // Fetch settings
+      const settingsRes = await fetch('/api/v1/users/me/settings');
+      if (settingsRes.ok) {
+        const settingsData: UserSettings = await settingsRes.json();
+        setClaudeConfigSync(settingsData.claudeConfigSync);
       }
     } catch (error) {
-      console.error('Failed to fetch settings:', error);
+      console.error('Failed to check permission:', error);
+      setHasPermission(false);
     } finally {
       setIsLoading(false);
-      setToken('');
-      setShowToken(false);
-      setMessage(null);
     }
-  };
+  }, [onPermissionGranted]);
+
+  useEffect(() => {
+    if (isOpen) {
+      checkPermission();
+    }
+  }, [isOpen, checkPermission]);
 
   const handleSave = async () => {
     setIsSaving(true);
     setMessage(null);
 
     try {
-      const updates: { accessToken?: string; claudeConfigSync?: boolean } = {};
-
-      if (token.trim()) {
-        updates.accessToken = token.trim();
-      }
-      updates.claudeConfigSync = claudeConfigSync;
-
       const response = await fetch('/api/v1/users/me/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ claudeConfigSync }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save settings');
       }
 
-      if (token.trim()) {
-        setHasExistingToken(true);
-        setToken('');
-      }
       setMessage({ type: 'success', text: t('settingsModal.saved') });
       window.dispatchEvent(new Event('settings-changed'));
 
-      // Auto close after save for initial setup
-      if (isInitialSetup) {
+      if (isInitialSetup && hasPermission) {
         setTimeout(() => {
           onClose();
         }, 1000);
@@ -118,129 +132,68 @@ export default function SettingsModal({
     }
   };
 
-  const handleDeleteToken = async () => {
-    setIsSaving(true);
-    try {
-      const response = await fetch('/api/v1/users/me/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken: '' }),
-      });
+  const renderPermissionInstructions = () => (
+    <div>
+      <Alert
+        type="warning"
+        icon={<ExclamationCircleOutlined />}
+        message={t('settingsModal.noPermission')}
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
 
-      if (!response.ok) {
-        throw new Error('Failed to delete token');
-      }
+      <Steps
+        direction="vertical"
+        size="small"
+        current={-1}
+        items={[
+          {
+            title: (
+              <Link
+                href={`https://${spInfo?.databricksHost}/browse`}
+                target="_blank"
+              >
+                {t('settingsModal.step1')}
+              </Link>
+            ),
+          },
+          {
+            title: (
+              <>
+                {t('settingsModal.step2Prefix')}{' '}
+                <Text strong>{spInfo?.displayName || 'Service Principal'}</Text>{' '}
+                {t('settingsModal.step2Suffix')} <Text code>Can Edit</Text>{' '}
+                {t('settingsModal.step2Permission')}
+              </>
+            ),
+          },
+        ]}
+      />
 
-      setHasExistingToken(false);
-      setMessage({ type: 'success', text: t('settingsModal.tokenDeleted') });
-      window.dispatchEvent(new Event('settings-changed'));
-    } catch {
-      setMessage({ type: 'error', text: t('settingsModal.saveFailed') });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+      <Flex justify="center" style={{ marginTop: 24 }}>
+        <Button
+          type="primary"
+          icon={<ReloadOutlined />}
+          onClick={checkPermission}
+          loading={isLoading}
+        >
+          {t('settingsModal.checkAgain')}
+        </Button>
+      </Flex>
+    </div>
+  );
 
-  const canSave = isInitialSetup ? token.trim() : true;
-
-  return (
-    <Modal
-      title={
-        isInitialSetup
-          ? t('settingsModal.initialTitle')
-          : t('settingsModal.title')
-      }
-      open={isOpen}
-      onOk={handleSave}
-      onCancel={isInitialSetup ? undefined : onClose}
-      okText={isSaving ? t('common.saving') : t('common.save')}
-      cancelText={t('common.close')}
-      okButtonProps={{
-        disabled: !canSave,
-        loading: isSaving,
-      }}
-      cancelButtonProps={{
-        disabled: isSaving,
-        style: isInitialSetup ? { display: 'none' } : undefined,
-      }}
-      closable={!isInitialSetup}
-      maskClosable={!isInitialSetup}
-      keyboard={!isInitialSetup}
-      width={520}
-    >
+  const renderSettings = () => (
+    <div>
       {isInitialSetup && (
         <Alert
-          type="info"
-          message={t('settingsModal.initialMessage')}
-          style={{ marginBottom: 16 }}
+          type="success"
+          icon={<CheckCircleOutlined />}
+          message={t('settingsModal.permissionGranted')}
           showIcon
+          style={{ marginBottom: 16 }}
         />
       )}
-
-      {/* Access Token Section */}
-      <div style={{ marginBottom: 24 }}>
-        <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-          <KeyOutlined style={{ color: '#f5a623' }} />
-          <Title level={5} style={{ margin: 0 }}>
-            {t('settingsModal.accessTokenTitle')}
-          </Title>
-        </Flex>
-
-        <Alert
-          type="warning"
-          message={t('settingsModal.oboWarning')}
-          style={{ marginBottom: 12 }}
-          showIcon
-        />
-
-        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-          {t('settingsModal.accessTokenDescription')}
-        </Text>
-
-        {hasExistingToken && (
-          <Flex
-            align="center"
-            gap={8}
-            style={{
-              padding: '8px 12px',
-              background: '#f5f5f5',
-              borderRadius: 6,
-              marginBottom: 12,
-            }}
-          >
-            <Text style={{ flex: 1, color: '#52c41a' }}>
-              {t('settingsModal.tokenConfigured')}
-            </Text>
-            <Tooltip title={t('settingsModal.deleteToken')}>
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={handleDeleteToken}
-                loading={isSaving}
-              />
-            </Tooltip>
-          </Flex>
-        )}
-
-        <Text strong style={{ display: 'block', marginBottom: 8 }}>
-          {hasExistingToken
-            ? t('settingsModal.replaceToken')
-            : t('settingsModal.enterToken')}
-        </Text>
-        <Input.Password
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          placeholder={t('settingsModal.tokenPlaceholder')}
-          disabled={isSaving || isLoading}
-          iconRender={(visible) =>
-            visible ? <EyeOutlined /> : <EyeInvisibleOutlined />
-          }
-        />
-      </div>
-
-      <Divider style={{ margin: '16px 0' }} />
 
       {/* Claude Config Sync Section */}
       <div style={{ marginBottom: 16 }}>
@@ -272,6 +225,65 @@ export default function SettingsModal({
           showIcon
           style={{ marginTop: 16 }}
         />
+      )}
+    </div>
+  );
+
+  const canClose = !isInitialSetup || hasPermission === true;
+
+  return (
+    <Modal
+      title={
+        <Flex align="center" gap={8}>
+          <FolderOpenOutlined style={{ color: '#f5a623' }} />
+          {isInitialSetup
+            ? t('settingsModal.initialTitle')
+            : t('settingsModal.title')}
+        </Flex>
+      }
+      open={isOpen}
+      onOk={hasPermission ? handleSave : undefined}
+      onCancel={canClose ? onClose : undefined}
+      okText={isSaving ? t('common.saving') : t('common.save')}
+      cancelText={t('common.close')}
+      okButtonProps={{
+        disabled: !hasPermission,
+        loading: isSaving,
+        style: hasPermission ? undefined : { display: 'none' },
+      }}
+      cancelButtonProps={{
+        disabled: isSaving,
+        style: canClose ? undefined : { display: 'none' },
+      }}
+      closable={canClose}
+      maskClosable={canClose}
+      keyboard={canClose}
+      width={440}
+    >
+      {isLoading && hasPermission === null ? (
+        <Flex justify="center" align="center" style={{ minHeight: 200 }}>
+          <Spin size="large" />
+        </Flex>
+      ) : hasPermission ? (
+        renderSettings()
+      ) : (
+        renderPermissionInstructions()
+      )}
+
+      {!isLoading && hasPermission && (
+        <>
+          <Divider style={{ margin: '16px 0' }} />
+          <Flex justify="center">
+            <Button
+              type="link"
+              icon={<ReloadOutlined />}
+              onClick={checkPermission}
+              size="small"
+            >
+              {t('settingsModal.recheckPermission')}
+            </Button>
+          </Flex>
+        </>
       )}
     </Modal>
   );

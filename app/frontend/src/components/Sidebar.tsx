@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,7 +9,6 @@ import {
   Tooltip,
   Typography,
   Flex,
-  Space,
 } from 'antd';
 import {
   SendOutlined,
@@ -20,6 +19,7 @@ import {
 import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
 import WorkspaceSelectModal from './WorkspaceSelectModal';
+import SettingsModal from './SettingsModal';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -28,8 +28,6 @@ interface SidebarProps {
   width?: number;
   onSessionCreated?: (sessionId: string) => void;
 }
-
-const PAT_STORAGE_KEY = 'databricks_pat';
 
 export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const { t } = useTranslation();
@@ -42,57 +40,44 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [overwrite, setOverwrite] = useState(true);
   const [autoSync, setAutoSync] = useState(true);
-  const [hasPat, setHasPat] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const navigate = useNavigate();
 
-  // Check if PAT is configured
-  useEffect(() => {
-    const checkPat = () => {
-      const token = localStorage.getItem(PAT_STORAGE_KEY);
-      setHasPat(!!token);
-    };
-    checkPat();
-
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === PAT_STORAGE_KEY) {
-        checkPat();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-
-    const handlePatChange = () => checkPat();
-    window.addEventListener('pat-changed', handlePatChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('pat-changed', handlePatChange);
-    };
-  }, []);
-
-  // Fetch home directory as default (with /sandbox suffix)
-  useEffect(() => {
-    const fetchHomeDirectory = async () => {
-      const token = localStorage.getItem(PAT_STORAGE_KEY);
-      if (!token || workspacePath) return;
-
-      try {
-        const res = await fetch('/api/v1/Workspace/Users/me', {
-          headers: { 'x-databricks-token': token },
-        });
+  // Check workspace permission and get home directory via /api/v1/users/me
+  const checkPermission = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/users/me');
+      if (res.ok) {
         const data = await res.json();
-        if (data.objects && data.objects.length > 0) {
-          const firstPath = data.objects[0].path;
-          // Get home path (e.g., /Workspace/Users/user@example.com)
-          // and add /sandbox suffix to avoid syncing unnecessary files
-          const homePath = firstPath.split('/').slice(0, 4).join('/');
-          setWorkspacePath(`${homePath}/sandbox`);
+        const granted = data.hasWorkspacePermission === true;
+        setHasPermission(granted);
+
+        // Set default workspace path from workspaceHome
+        if (granted && data.workspaceHome && !workspacePath) {
+          setWorkspacePath(data.workspaceHome);
         }
-      } catch (e) {
-        console.error('Failed to fetch home directory:', e);
+
+        return granted;
+      } else {
+        setHasPermission(false);
+        return false;
       }
-    };
-    fetchHomeDirectory();
-  }, []);
+    } catch (e) {
+      console.error('Failed to check permission:', e);
+      setHasPermission(false);
+      return false;
+    }
+  }, [workspacePath]);
+
+  // Check permission on mount
+  useEffect(() => {
+    checkPermission().then((granted) => {
+      if (!granted) {
+        setShowPermissionModal(true);
+      }
+    });
+  }, [checkPermission]);
 
   const handleSubmit = async () => {
     if (!input.trim() || isSubmitting) return;
@@ -152,6 +137,11 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
     }
   };
 
+  const handlePermissionGranted = () => {
+    setHasPermission(true);
+    setShowPermissionModal(false);
+  };
+
   return (
     <Flex
       vertical
@@ -204,13 +194,15 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
                 { value: 'databricks-claude-sonnet-4-5', label: 'Sonnet 4.5' },
               ]}
             />
-            <Tooltip title={!hasPat ? t('sidebar.patRequired') : ''}>
+            <Tooltip
+              title={!hasPermission ? t('sidebar.permissionRequired') : ''}
+            >
               <Button
                 type="primary"
                 shape="circle"
                 icon={<SendOutlined />}
                 loading={isSubmitting}
-                disabled={!input.trim() || !hasPat}
+                disabled={!input.trim() || !hasPermission}
                 onClick={handleSubmit}
               />
             </Tooltip>
@@ -305,6 +297,13 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
         onClose={() => setIsWorkspaceModalOpen(false)}
         onSelect={setWorkspacePath}
         initialPath={workspacePath}
+      />
+
+      <SettingsModal
+        isOpen={showPermissionModal}
+        onClose={() => setShowPermissionModal(false)}
+        isInitialSetup={!hasPermission}
+        onPermissionGranted={handlePermissionGranted}
       />
     </Flex>
   );

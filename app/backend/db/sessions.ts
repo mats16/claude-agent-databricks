@@ -40,7 +40,9 @@ export async function getSessionById(
 }
 
 // Get session by ID without RLS (for internal use when user context is already verified)
-export async function getSessionByIdDirect(id: string): Promise<Session | null> {
+export async function getSessionByIdDirect(
+  id: string
+): Promise<Session | null> {
   const result = await db
     .select()
     .from(sessions)

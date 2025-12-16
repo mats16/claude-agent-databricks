@@ -21,8 +21,6 @@ interface LocationState {
   model?: string;
 }
 
-const PAT_STORAGE_KEY = 'databricks_pat';
-
 export default function SessionPage() {
   const { t } = useTranslation();
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -34,33 +32,9 @@ export default function SessionPage() {
     string | null
   >(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [hasPat, setHasPat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialMessageConsumedRef = useRef(false);
   const prevSessionIdRef = useRef<string | undefined>(undefined);
-
-  useEffect(() => {
-    const checkPat = () => {
-      const token = localStorage.getItem(PAT_STORAGE_KEY);
-      setHasPat(!!token);
-    };
-    checkPat();
-
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === PAT_STORAGE_KEY) {
-        checkPat();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-
-    const handlePatChange = () => checkPat();
-    window.addEventListener('pat-changed', handlePatChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('pat-changed', handlePatChange);
-    };
-  }, []);
 
   if (prevSessionIdRef.current !== sessionId) {
     initialMessageConsumedRef.current = false;
@@ -118,17 +92,9 @@ export default function SessionPage() {
     if (!sessionWorkspacePath) return;
 
     try {
-      const token = localStorage.getItem('databricks_pat');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['x-databricks-token'] = token;
-      }
-
       const response = await fetch('/api/v1/workspace/status', {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: sessionWorkspacePath }),
       });
 
@@ -426,21 +392,17 @@ export default function SessionPage() {
                 }
               }}
               placeholder={t('sessionPage.typeMessage')}
-              disabled={!isConnected || isProcessing || !hasPat}
+              disabled={!isConnected || isProcessing}
               variant="borderless"
               style={{ flex: 1 }}
             />
-            <Tooltip title={!hasPat ? t('sidebar.patRequired') : ''}>
-              <Button
-                type="primary"
-                shape="circle"
-                icon={<SendOutlined />}
-                disabled={
-                  !isConnected || isProcessing || !input.trim() || !hasPat
-                }
-                onClick={handleSubmit}
-              />
-            </Tooltip>
+            <Button
+              type="primary"
+              shape="circle"
+              icon={<SendOutlined />}
+              disabled={!isConnected || isProcessing || !input.trim()}
+              onClick={handleSubmit}
+            />
           </Flex>
         </div>
       </div>

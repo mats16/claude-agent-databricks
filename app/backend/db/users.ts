@@ -3,10 +3,7 @@ import { db } from './index.js';
 import { users, type User, type NewUser } from './schema.js';
 
 // Create or update a user (upsert)
-export async function upsertUser(
-  id: string,
-  email?: string
-): Promise<User> {
+export async function upsertUser(id: string, email?: string): Promise<User> {
   const existing = await db
     .select()
     .from(users)
@@ -43,11 +40,7 @@ export async function upsertUser(
 
 // Get user by ID
 export async function getUserById(id: string): Promise<User | null> {
-  const result = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
 
   return result[0] ?? null;
 }
