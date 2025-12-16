@@ -13,6 +13,12 @@ import {
   getSessionsByUserEmail,
   updateSession,
 } from './db/sessions.js';
+import {
+  getSettings,
+  getSettingsDirect,
+  upsertSettings,
+} from './db/settings.js';
+import { syncToWorkspace } from './utils/workspace-sync.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +31,9 @@ const fastify = Fastify({
 });
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8000;
+
+// Default user ID for local development (when X-Forwarded-User header is not present)
+const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 // Session event queue for streaming events to WebSocket
 interface SessionQueue {
@@ -124,6 +133,13 @@ fastify.post<{ Body: CreateSessionBody }>(
     const userEmail = request.headers['x-forwarded-email'] as
       | string
       | undefined;
+    const userId =
+      (request.headers['x-forwarded-user'] as string | undefined) ||
+      DEFAULT_USER_ID;
+
+    // Fetch stored access token from user settings
+    const userSettings = await getSettingsDirect(userId);
+    const storedAccessToken = userSettings?.accessToken ?? undefined;
 
     // Extract first user message
     const userEvent = events.find((e) => e.type === 'user');
@@ -181,7 +197,8 @@ fastify.post<{ Body: CreateSessionBody }>(
         undefined,
         userAccessToken,
         userEmail,
-        workspacePath
+        workspacePath,
+        storedAccessToken
       );
 
       // Process events in background
@@ -320,6 +337,55 @@ fastify.get<{ Params: { sessionId: string } }>(
     return { events: messages };
   }
 );
+
+// Get user settings
+fastify.get('/api/v1/settings', async (request, _reply) => {
+  const userId =
+    (request.headers['x-forwarded-user'] as string | undefined) ||
+    DEFAULT_USER_ID;
+
+  const userSettings = await getSettings(userId);
+
+  if (!userSettings) {
+    return {
+      userId,
+      hasAccessToken: false,
+      claudeConfigSync: false,
+    };
+  }
+
+  return {
+    userId: userSettings.userId,
+    hasAccessToken: !!userSettings.accessToken,
+    claudeConfigSync: userSettings.claudeConfigSync,
+  };
+});
+
+// Update user settings
+fastify.put<{
+  Body: { accessToken?: string; claudeConfigSync?: boolean };
+}>('/api/v1/settings', async (request, reply) => {
+  const userId =
+    (request.headers['x-forwarded-user'] as string | undefined) ||
+    DEFAULT_USER_ID;
+
+  const { accessToken, claudeConfigSync } = request.body;
+
+  // At least one field must be provided
+  if (accessToken === undefined && claudeConfigSync === undefined) {
+    return reply
+      .status(400)
+      .send({ error: 'accessToken or claudeConfigSync is required' });
+  }
+
+  const updates: { accessToken?: string; claudeConfigSync?: boolean } = {};
+  if (accessToken !== undefined) updates.accessToken = accessToken;
+  if (claudeConfigSync !== undefined)
+    updates.claudeConfigSync = claudeConfigSync;
+
+  await upsertSettings(userId, updates);
+  return { success: true };
+});
 
 // Workspace API - List root workspace (returns Users and Shared)
 fastify.get('/api/v1/Workspace', async (_request, _reply) => {
@@ -520,6 +586,9 @@ fastify.register(async (fastify) => {
         | string
         | undefined;
       const userEmail = req.headers['x-forwarded-email'] as string | undefined;
+      const userId =
+        (req.headers['x-forwarded-user'] as string | undefined) ||
+        DEFAULT_USER_ID;
 
       const queue = sessionQueues.get(sessionId);
 
@@ -556,6 +625,11 @@ fastify.register(async (fastify) => {
             const workspacePath = session?.workspacePath ?? undefined;
             const autoSync = session?.autoSync ?? false;
 
+            // Fetch user settings to get stored access token and claude config sync
+            const userSettings = await getSettingsDirect(userId);
+            const storedAccessToken = userSettings?.accessToken ?? undefined;
+            const claudeConfigSync = userSettings?.claudeConfigSync ?? false;
+
             // Save user message to database
             const userMsg = createUserMessage(sessionId, userMessage);
             await saveMessage(userMsg);
@@ -567,7 +641,8 @@ fastify.register(async (fastify) => {
               sessionId,
               userAccessToken,
               userEmail,
-              workspacePath
+              workspacePath,
+              storedAccessToken
             )) {
               // Save message to database (always execute regardless of WebSocket state)
               await saveMessage(sdkMessage);
@@ -602,6 +677,39 @@ fastify.register(async (fastify) => {
                   }
                   if (stdout) console.log('import-dir stdout:', stdout);
                   if (stderr) console.log('import-dir stderr:', stderr);
+                });
+              }
+
+              // Claude config sync: sync .claude directory to workspace on result success
+              if (
+                claudeConfigSync &&
+                userEmail &&
+                storedAccessToken &&
+                sdkMessage.type === 'result' &&
+                'subtype' in sdkMessage &&
+                sdkMessage.subtype === 'success'
+              ) {
+                const basePath = process.env.DATABRICKS_APP_NAME
+                  ? '/home/app'
+                  : './tmp';
+                const claudeLocalPath = path.join(
+                  basePath,
+                  'Workspace',
+                  'Users',
+                  userEmail,
+                  '.claude'
+                );
+                const claudeWorkspacePath = `/Workspace/Users/${userEmail}/.claude`;
+
+                console.log(
+                  `Claude config sync: ${claudeLocalPath} -> ${claudeWorkspacePath}`
+                );
+                syncToWorkspace(
+                  claudeLocalPath,
+                  claudeWorkspacePath,
+                  storedAccessToken
+                ).catch((error) => {
+                  console.error('Claude config sync error:', error.message);
                 });
               }
             }

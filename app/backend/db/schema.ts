@@ -47,3 +47,15 @@ export const events = pgTable(
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+
+// Settings table (with RLS by user_id)
+export const settings = pgTable('settings', {
+  userId: text('user_id').primaryKey(),
+  accessToken: text('access_token'),
+  claudeConfigSync: boolean('claude_config_sync').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type Settings = typeof settings.$inferSelect;
+export type NewSettings = typeof settings.$inferInsert;

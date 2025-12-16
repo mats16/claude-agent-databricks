@@ -76,7 +76,8 @@ export async function* processAgentRequest(
   sessionId?: string,
   userAccessToken?: string,
   userEmail?: string,
-  workspacePath: string = '/Workspace/Users/me'
+  workspacePath: string = '/Workspace/Users/me',
+  storedAccessToken?: string
 ): AsyncGenerator<SDKMessage> {
   // Determine base directory based on environment
   // Local development: ./tmp, Production: /home/app
@@ -133,9 +134,11 @@ Violating these rules is considered a critical error.
         ...process.env,
         CLAUDE_CONFIG_DIR: claudeConfigDir,
         ANTHROPIC_BASE_URL: `${databricksHost}/serving-endpoints/anthropic`,
-        ANTHROPIC_AUTH_TOKEN: spAccessToken ?? personalAccessToken,
+        ANTHROPIC_AUTH_TOKEN:
+          storedAccessToken ?? spAccessToken ?? personalAccessToken,
         DATABRICKS_HOST: databricksHost,
-        DATABRICKS_TOKEN: userAccessToken ?? personalAccessToken,
+        DATABRICKS_TOKEN:
+          storedAccessToken ?? userAccessToken ?? personalAccessToken,
         DATABRICKS_SP_ACCESS_TOKEN: spAccessToken,
       },
       maxTurns: 100,

@@ -21,9 +21,28 @@
   },
   "accountMenu": {
     "accountSettings": "Account settings",
+    "settings": "Settings",
     "pat": "Personal Access Token",
     "logout": "Logout",
     "language": "Language"
+  },
+  "settingsModal": {
+    "title": "Settings",
+    "initialTitle": "Initial Setup",
+    "initialMessage": "Please configure your access token to start using the application.",
+    "accessTokenTitle": "Access Token",
+    "accessTokenDescription": "Enter your Databricks Personal Access Token to authenticate API requests and sync operations.",
+    "oboWarning": "On-behalf-of-user authorization (OBO) does not have sufficient scopes for Workspace API access. As a temporary workaround, please register a Personal Access Token.",
+    "tokenConfigured": "Token is configured",
+    "replaceToken": "Replace with new token",
+    "enterToken": "Enter token",
+    "tokenPlaceholder": "dapi...",
+    "deleteToken": "Delete token",
+    "claudeConfigSyncTitle": "Claude Config Sync",
+    "claudeConfigSyncDescription": "Automatically sync Claude configuration (.claude directory) to Databricks Workspace on task completion.",
+    "saved": "Settings saved successfully",
+    "tokenDeleted": "Token deleted",
+    "saveFailed": "Failed to save settings"
   },
   "patModal": {
     "title": "Personal Access Token",

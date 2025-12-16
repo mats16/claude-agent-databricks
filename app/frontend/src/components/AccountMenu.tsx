@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dropdown, Avatar, MenuProps } from 'antd';
 import {
   UserOutlined,
-  LockOutlined,
+  SettingOutlined,
   GlobalOutlined,
   LogoutOutlined,
   CheckOutlined,
 } from '@ant-design/icons';
-import PATModal from './PATModal';
+import SettingsModal, { UserSettings } from './SettingsModal';
 
 interface AccountMenuProps {
   userEmail?: string;
@@ -21,15 +21,51 @@ const LANGUAGES = [
 
 export default function AccountMenu({ userEmail }: AccountMenuProps) {
   const { t, i18n } = useTranslation();
-  const [isPATModalOpen, setIsPATModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isInitialSetup, setIsInitialSetup] = useState(false);
+  const [hasCheckedSettings, setHasCheckedSettings] = useState(false);
+
+  // Check settings on mount
+  useEffect(() => {
+    const checkSettings = async () => {
+      try {
+        const response = await fetch('/api/v1/settings');
+        if (response.ok) {
+          const data: UserSettings = await response.json();
+          // Show initial setup modal if no token configured
+          if (!data.hasAccessToken) {
+            setIsInitialSetup(true);
+            setIsSettingsModalOpen(true);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check settings:', error);
+      } finally {
+        setHasCheckedSettings(true);
+      }
+    };
+
+    if (!hasCheckedSettings) {
+      checkSettings();
+    }
+  }, [hasCheckedSettings]);
 
   const handleLogout = () => {
-    localStorage.removeItem('databricks_pat');
     window.location.href = '/';
   };
 
   const handleLanguageChange = (langCode: string) => {
     i18n.changeLanguage(langCode);
+  };
+
+  const handleOpenSettings = () => {
+    setIsInitialSetup(false);
+    setIsSettingsModalOpen(true);
+  };
+
+  const handleCloseSettings = () => {
+    setIsSettingsModalOpen(false);
+    setIsInitialSetup(false);
   };
 
   const displayName = userEmail || 'User';
@@ -67,10 +103,10 @@ export default function AccountMenu({ userEmail }: AccountMenuProps) {
     },
     { type: 'divider' },
     {
-      key: 'pat',
-      icon: <LockOutlined />,
-      label: t('accountMenu.pat'),
-      onClick: () => setIsPATModalOpen(true),
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: t('accountMenu.settings'),
+      onClick: handleOpenSettings,
     },
     {
       key: 'language',
@@ -114,9 +150,10 @@ export default function AccountMenu({ userEmail }: AccountMenuProps) {
         />
       </Dropdown>
 
-      <PATModal
-        isOpen={isPATModalOpen}
-        onClose={() => setIsPATModalOpen(false)}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={handleCloseSettings}
+        isInitialSetup={isInitialSetup}
       />
     </>
   );
