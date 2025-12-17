@@ -59,6 +59,9 @@
     "title": "セッション設定",
     "sessionTitle": "セッションタイトル",
     "titlePlaceholder": "セッションタイトルを入力...",
+    "workspacePath": "ワークスペースパス",
+    "noWorkspacePath": "ワークスペースパス未設定",
+    "workspacePathHint": "任意: ファイルを同期するワークスペースディレクトリを選択",
     "autoSyncHint": "タスク完了時に Databricks Workspace へ自動的に変更を同期"
   },
   "sessionList": {

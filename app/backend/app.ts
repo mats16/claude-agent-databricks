@@ -454,13 +454,17 @@ fastify.get('/api/v1/sessions', async (request, reply) => {
   return { sessions: sessionList };
 });
 
-// Update session settings (title, autoWorkspacePush)
+// Update session settings (title, autoWorkspacePush, workspacePath)
 fastify.patch<{
   Params: { sessionId: string };
-  Body: { title?: string; autoWorkspacePush?: boolean };
+  Body: {
+    title?: string;
+    autoWorkspacePush?: boolean;
+    workspacePath?: string | null;
+  };
 }>('/api/v1/sessions/:sessionId', async (request, reply) => {
   const { sessionId } = request.params;
-  const { title, autoWorkspacePush } = request.body;
+  const { title, autoWorkspacePush, workspacePath } = request.body;
   const userId =
     (request.headers['x-forwarded-user'] as string | undefined) ||
     DEFAULT_USER_ID;
@@ -473,16 +477,26 @@ fastify.patch<{
   }
 
   // At least one field must be provided
-  if (title === undefined && autoWorkspacePush === undefined) {
-    return reply
-      .status(400)
-      .send({ error: 'title or autoWorkspacePush is required' });
+  if (
+    title === undefined &&
+    autoWorkspacePush === undefined &&
+    workspacePath === undefined
+  ) {
+    return reply.status(400).send({
+      error: 'title, autoWorkspacePush, or workspacePath is required',
+    });
   }
 
-  const updates: { title?: string; autoWorkspacePush?: boolean } = {};
+  const updates: {
+    title?: string;
+    autoWorkspacePush?: boolean;
+    workspacePath?: string | null;
+  } = {};
   if (title !== undefined) updates.title = title;
   if (autoWorkspacePush !== undefined)
     updates.autoWorkspacePush = autoWorkspacePush;
+  if (workspacePath !== undefined)
+    updates.workspacePath = workspacePath || null;
 
   await updateSession(sessionId, updates, userId);
   return { success: true };

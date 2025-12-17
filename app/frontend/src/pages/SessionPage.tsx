@@ -83,19 +83,32 @@ export default function SessionPage() {
   }, [sessionId, getSession]);
 
   const handleSaveSettings = useCallback(
-    async (newTitle: string, autoWorkspacePush: boolean) => {
+    async (
+      newTitle: string,
+      autoWorkspacePush: boolean,
+      workspacePath: string | null
+    ) => {
       if (!sessionId) return;
 
       const response = await fetch(`/api/v1/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle, autoWorkspacePush }),
+        body: JSON.stringify({
+          title: newTitle,
+          autoWorkspacePush,
+          workspacePath,
+        }),
       });
 
       if (response.ok) {
         setSessionTitle(newTitle);
         setSessionAutoWorkspacePush(autoWorkspacePush);
-        updateSessionLocally(sessionId, { title: newTitle, autoWorkspacePush });
+        setSessionWorkspacePath(workspacePath);
+        updateSessionLocally(sessionId, {
+          title: newTitle,
+          autoWorkspacePush,
+          workspacePath,
+        });
       } else {
         throw new Error('Failed to update session settings');
       }
@@ -367,6 +380,7 @@ export default function SessionPage() {
         isOpen={isModalOpen}
         currentTitle={sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
         currentAutoWorkspacePush={sessionAutoWorkspacePush}
+        currentWorkspacePath={sessionWorkspacePath}
         onSave={handleSaveSettings}
         onClose={() => setIsModalOpen(false)}
       />

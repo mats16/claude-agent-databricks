@@ -59,6 +59,9 @@
     "title": "Session Settings",
     "sessionTitle": "Session title",
     "titlePlaceholder": "Enter session title...",
+    "workspacePath": "Workspace Path",
+    "noWorkspacePath": "No workspace path set",
+    "workspacePathHint": "Optional: Select workspace directory to sync files",
     "autoSyncHint": "Automatically sync changes back to Databricks Workspace on task completion"
   },
   "sessionList": {

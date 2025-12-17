@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Input, Checkbox, Typography } from 'antd';
-import { SyncOutlined } from '@ant-design/icons';
+import { Modal, Input, Checkbox, Typography, Button } from 'antd';
+import { SyncOutlined, FolderOutlined } from '@ant-design/icons';
+import WorkspaceSelectModal from './WorkspaceSelectModal';
+import { useUser } from '../contexts/UserContext';
 
 const { Text } = Typography;
 
@@ -9,7 +11,12 @@ interface TitleEditModalProps {
   isOpen: boolean;
   currentTitle: string;
   currentAutoWorkspacePush: boolean;
-  onSave: (newTitle: string, autoWorkspacePush: boolean) => void;
+  currentWorkspacePath: string | null;
+  onSave: (
+    newTitle: string,
+    autoWorkspacePush: boolean,
+    workspacePath: string | null
+  ) => void;
   onClose: () => void;
 }
 
@@ -17,29 +24,36 @@ export default function TitleEditModal({
   isOpen,
   currentTitle,
   currentAutoWorkspacePush,
+  currentWorkspacePath,
   onSave,
   onClose,
 }: TitleEditModalProps) {
   const { t } = useTranslation();
+  const { userInfo } = useUser();
   const [title, setTitle] = useState(currentTitle);
   const [autoWorkspacePush, setAutoWorkspacePush] = useState(
     currentAutoWorkspacePush
   );
+  const [workspacePath, setWorkspacePath] = useState<string | null>(
+    currentWorkspacePath
+  );
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setTitle(currentTitle);
       setAutoWorkspacePush(currentAutoWorkspacePush);
+      setWorkspacePath(currentWorkspacePath);
     }
-  }, [isOpen, currentTitle, currentAutoWorkspacePush]);
+  }, [isOpen, currentTitle, currentAutoWorkspacePush, currentWorkspacePath]);
 
   const handleOk = async () => {
     if (!title.trim() || isSaving) return;
 
     setIsSaving(true);
     try {
-      await onSave(title.trim(), autoWorkspacePush);
+      await onSave(title.trim(), autoWorkspacePush, workspacePath);
       onClose();
     } finally {
       setIsSaving(false);
@@ -75,6 +89,38 @@ export default function TitleEditModal({
           onPressEnter={handleOk}
         />
       </div>
+      <div style={{ marginBottom: 16 }}>
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
+          {t('titleEditModal.workspacePath')}
+        </Text>
+        <Button
+          icon={<FolderOutlined />}
+          onClick={() => setIsWorkspaceModalOpen(true)}
+          disabled={isSaving}
+          block
+          style={{
+            textAlign: 'left',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {workspacePath || t('titleEditModal.noWorkspacePath')}
+          </span>
+        </Button>
+        <Text
+          type="secondary"
+          style={{ display: 'block', marginTop: 4, fontSize: 12 }}
+        >
+          {t('titleEditModal.workspacePathHint')}
+        </Text>
+      </div>
       <div>
         <Checkbox
           checked={autoWorkspacePush}
@@ -96,6 +142,15 @@ export default function TitleEditModal({
           {t('titleEditModal.autoSyncHint')}
         </Text>
       </div>
+      <WorkspaceSelectModal
+        isOpen={isWorkspaceModalOpen}
+        onClose={() => setIsWorkspaceModalOpen(false)}
+        onSelect={(path) => {
+          setWorkspacePath(path);
+          setIsWorkspaceModalOpen(false);
+        }}
+        initialPath={workspacePath || userInfo?.workspaceHome}
+      />
     </Modal>
   );
 }

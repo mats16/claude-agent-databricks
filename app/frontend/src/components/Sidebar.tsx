@@ -63,17 +63,6 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
 
   const hasPermission = userInfo?.hasWorkspacePermission ?? null;
 
-  // Set default workspace path from userInfo
-  useEffect(() => {
-    if (
-      userInfo?.hasWorkspacePermission &&
-      userInfo.workspaceHome &&
-      !workspacePath
-    ) {
-      setWorkspacePath(userInfo.workspaceHome);
-    }
-  }, [userInfo, workspacePath]);
-
   // Show permission modal if no permission after loading, hide if permission granted
   useEffect(() => {
     if (!isLoading) {
@@ -457,7 +446,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
         isOpen={isWorkspaceModalOpen}
         onClose={() => setIsWorkspaceModalOpen(false)}
         onSelect={setWorkspacePath}
-        initialPath={workspacePath}
+        initialPath={workspacePath || userInfo?.workspaceHome}
       />
 
       <SettingsModal
