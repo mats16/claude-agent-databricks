@@ -190,7 +190,8 @@ Violating these rules is considered a critical error.
       settingSources: ['user', 'project', 'local'],
       model,
       env: {
-        ...process.env,
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
         WORKDIR: localWorkPath,
         CLAUDE_CONFIG_DIR: localClaudeConfigPath,
         ANTHROPIC_BASE_URL: `${databricksHost}/serving-endpoints/anthropic`,
