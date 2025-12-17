@@ -18,6 +18,7 @@ import {
   CloudSyncOutlined,
   CloudServerOutlined,
   FolderOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import { useAgent } from '../hooks/useAgent';
 import { useSessions } from '../contexts/SessionsContext';
@@ -433,31 +434,45 @@ export default function SessionPage() {
             const isLastMessage = index === messages.length - 1;
             const showSpinnerInMessage =
               isProcessing && isLastMessage && message.role === 'agent';
+            const isUser = message.role === 'user';
 
             return (
               <div
                 key={message.id}
                 style={{
                   display: 'flex',
-                  gap: 12,
+                  justifyContent: isUser ? 'flex-end' : 'flex-start',
                   padding: '16px 24px',
-                  background: '#fff',
-                  borderBottom: '1px solid #f5f5f5',
+                  borderBottom: isUser ? 'none' : '1px solid #f5f5f5',
                 }}
               >
+                {!isUser && (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: 24,
+                      fontSize: 16,
+                      paddingTop: 2,
+                      color: '#000000',
+                      marginRight: 12,
+                    }}
+                  >
+                    <RobotOutlined />
+                  </div>
+                )}
                 <div
                   style={{
-                    flexShrink: 0,
-                    width: 24,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    paddingTop: 2,
-                    color: message.role === 'user' ? '#4ec9b0' : '#f5a623',
+                    maxWidth: isUser ? '80%' : '100%',
+                    minWidth: 0,
+                    ...(isUser
+                      ? {
+                          background: '#F7F7F7',
+                          borderRadius: 12,
+                          padding: '12px 16px',
+                        }
+                      : { flex: 1 }),
                   }}
                 >
-                  {message.role === 'user' ? '>' : '◆'}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
                   <MessageRenderer
                     content={message.content}
                     role={message.role as 'user' | 'agent'}
@@ -477,9 +492,8 @@ export default function SessionPage() {
               <div
                 style={{
                   display: 'flex',
-                  gap: 12,
+                  justifyContent: 'flex-start',
                   padding: '16px 24px',
-                  background: '#fff',
                   borderBottom: '1px solid #f5f5f5',
                 }}
               >
@@ -487,13 +501,13 @@ export default function SessionPage() {
                   style={{
                     flexShrink: 0,
                     width: 24,
-                    fontSize: 14,
-                    fontWeight: 600,
+                    fontSize: 16,
                     paddingTop: 2,
-                    color: '#f5a623',
+                    color: '#000000',
+                    marginRight: 12,
                   }}
                 >
-                  ◆
+                  <RobotOutlined />
                 </div>
                 <Spin size="small" />
               </div>
