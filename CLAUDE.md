@@ -55,6 +55,8 @@ Development servers:
 - `DATABRICKS_TOKEN` - PAT for development (fallback)
 - `PORT` - Backend port (default: 8000)
 - `DB_URL` - PostgreSQL connection string
+- `DEFAULT_USER_ID` - User ID for local development (when x-forwarded-user header not present)
+- `DEFAULT_USER_EMAIL` - User email for local development (when x-forwarded-email header not present)
 
 ## Database Schema
 
@@ -91,30 +93,40 @@ The frontend connects via WebSocket for real-time streaming. SDK messages flow:
 Configured in `app/backend/agent/index.ts`:
 - Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 
-### Workspace Sync (SDK Hooks)
-Sync between local storage and Databricks Workspace is handled via Claude Agent SDK hooks in `app/backend/agent/hooks.ts`:
+### Workspace Sync
+Sync between local storage and Databricks Workspace uses Databricks CLI commands defined in `app/backend/utils/databricks.ts`:
 
-- **UserPromptSubmit hook** (new session only): `workspacePull()` - workspace -> local (`databricks workspace export-dir`)
-- **Stop hook**: `workspacePush()` - local -> workspace (`databricks sync`)
+**Pull (workspace → local)**: New session creation triggers background workspace pull in `app/backend/app.ts` (non-blocking):
+- Uses `databricks workspace export-dir` command
+- Runs in background via fire-and-forget pattern
+- Agent starts immediately without waiting for sync completion
+
+**Push (local → workspace)**: Handled by Stop hooks in `app/backend/agent/index.ts`:
+- Uses `databricks sync` command with exclusions (.gitignore, .bundle, node_modules, etc.)
+- Only runs when `autoWorkspacePush` or `claudeConfigSync` flags are enabled
+- Executes at session end via SDK Stop hooks
 
 #### Sync Flags
 Sync behavior is controlled by these flags passed to `processAgentRequest()`:
 
-| Flag | Pull (new session) | Push (all sessions) |
+| Flag | Pull (new session) | Push (session end) |
 |------|-------------------|---------------------|
 | `overwrite` | Adds `--overwrite` to workspace pull | - |
-| `autoWorkspacePush` | - | Enables workspace push |
+| `autoWorkspacePush` | - | Enables workspace directory push |
 | `claudeConfigSync` | Enables claude config pull | Enables claude config push |
 
 - `overwrite` / `autoWorkspacePush`: Session-level settings (stored in `sessions.auto_workspace_push`)
 - `claudeConfigSync`: User-level setting (stored in `settings.claude_config_sync`)
 
-Path structure:
+#### Path Structure
 - Local base: `$HOME/c` (e.g., `/Users/me/c` or `/home/app/c`)
-- Workspace path: `/Workspace/Users/{email}/sandbox` -> Local: `$HOME/c/Workspace/Users/{email}/sandbox`
-- Claude config: `/Workspace/Users/{email}/.claude` -> Local: `$HOME/c/Workspace/Users/{email}/.claude`
+- Workspace path: `/Workspace/Users/{email}/sandbox` → Local: `$HOME/c/Workspace/Users/{email}/sandbox`
+- Claude config: `/Workspace/Users/{email}/.claude` → Local: `$HOME/c/Workspace/Users/{email}/.claude`
 
-Note: `SessionStart` hook does not fire in SDK mode, so `UserPromptSubmit` is used instead.
+#### Architecture Notes
+- Workspace pull moved from SDK hooks to API layer to avoid JSON stream contamination
+- Background sync allows fast session creation without blocking
+- Agent may start before workspace files are fully synced (usually completes quickly)
 
 ## Frontend State Management
 
@@ -178,14 +190,22 @@ Apply the path to `app/frontend/public/favicon.svg`:
 
 ## Important Files
 
-- `app/backend/app.ts` - Fastify server, REST/WebSocket endpoints
-- `app/backend/agent/index.ts` - Claude Agent SDK configuration, hooks setup
-- `app/backend/agent/hooks.ts` - Workspace sync functions (`workspacePull`, `workspacePush`)
+### Backend Core
+- `app/backend/app.ts` - Fastify server, REST/WebSocket endpoints, session creation with workspace pull
+- `app/backend/agent/index.ts` - Claude Agent SDK configuration, Stop hooks for workspace push
+- `app/backend/utils/databricks.ts` - Databricks CLI wrapper functions (`workspacePull`, `workspacePush`)
+
+### Database Layer
 - `app/backend/db/schema.ts` - Drizzle ORM table definitions
 - `app/backend/db/sessions.ts` - Session queries with RLS support
 - `app/backend/db/users.ts` - User CRUD operations
 - `app/backend/db/settings.ts` - User settings operations
+- `app/backend/db/migrations/` - SQL migration files with RLS policies
+
+### Frontend Core
 - `app/frontend/src/hooks/useAgent.ts` - WebSocket handling, SDK message parsing
+- `app/frontend/src/contexts/SessionsContext.tsx` - Session list state with real-time updates
+- `app/frontend/src/contexts/UserContext.tsx` - User info and settings state
+- `app/frontend/src/pages/SessionPage.tsx` - Chat UI with message streaming
 - `app/frontend/src/components/MessageRenderer.tsx` - Tool output rendering
-- `app/frontend/src/pages/SessionPage.tsx` - Chat UI
 - `app/frontend/src/components/Sidebar.tsx` - Session creation UI
