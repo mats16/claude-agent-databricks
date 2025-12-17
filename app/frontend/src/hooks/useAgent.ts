@@ -115,13 +115,20 @@ function convertSDKMessagesToChat(sdkMessages: SDKMessage[]): ChatMessage[] {
   const messages: ChatMessage[] = [];
   let currentAgentContent = '';
   let currentAgentId = '';
+  const toolNameMap = new Map<string, string>(); // tool_use_id -> tool_name
 
   // Helper function to insert tool result after corresponding tool use
   const insertToolResult = (
     content: string,
     toolUseId: string,
-    resultText: string
+    resultText: string,
+    toolName?: string
   ): string => {
+    // Skip displaying WebSearch results (keep them hidden)
+    if (toolName === 'WebSearch') {
+      return content;
+    }
+
     const truncated =
       resultText.length > 500
         ? resultText.slice(0, 500) + '\n... (truncated)'
@@ -172,10 +179,12 @@ function convertSDKMessagesToChat(sdkMessages: SDKMessage[]): ChatMessage[] {
                 .join('');
             }
             if (resultText) {
+              const toolName = toolNameMap.get(block.tool_use_id);
               currentAgentContent = insertToolResult(
                 currentAgentContent,
                 block.tool_use_id,
-                resultText
+                resultText,
+                toolName
               );
             }
           }
@@ -221,6 +230,8 @@ function convertSDKMessagesToChat(sdkMessages: SDKMessage[]): ChatMessage[] {
         } else if (block.type === 'tool_use' && block.name) {
           const toolInput = block.input ? JSON.stringify(block.input) : '';
           const toolId = block.id || `tool-${Date.now()}`;
+          // Store tool name for later use when processing tool results
+          toolNameMap.set(toolId, block.name);
           currentAgentContent += `\n\n[Tool: ${block.name} id=${toolId}] ${toolInput}\n`;
         }
       }
@@ -518,32 +529,41 @@ export function useAgent(options: UseAgentOptions = {}) {
                 }
 
                 if (resultText) {
-                  // Truncate long results
-                  const truncated =
-                    resultText.length > 500
-                      ? resultText.slice(0, 500) + '\n... (truncated)'
-                      : resultText;
-                  const resultBlock = `[ToolResult]\n${truncated}\n[/ToolResult]`;
-
-                  // Find the tool use marker with this ID and insert result after it
-                  const toolIdPattern = new RegExp(
-                    `(\\[Tool: \\w+ id=${block.tool_use_id}\\][^\\n]*\\n)`,
-                    'g'
+                  // Find the tool name from pending tool uses
+                  const pendingTool = pendingToolUsesRef.current.find(
+                    (t) => t.id === block.tool_use_id
                   );
-                  const match = toolIdPattern.exec(currentResponseRef.current);
-                  if (match) {
-                    const insertPos = match.index + match[0].length;
-                    currentResponseRef.current =
-                      currentResponseRef.current.slice(0, insertPos) +
-                      resultBlock +
-                      '\n' +
-                      currentResponseRef.current.slice(insertPos);
-                  } else {
-                    // Fallback: append at the end if marker not found
-                    currentResponseRef.current += '\n' + resultBlock;
+                  const toolName = pendingTool?.name;
+
+                  // Skip displaying WebSearch results (keep them hidden)
+                  if (toolName !== 'WebSearch') {
+                    // Truncate long results
+                    const truncated =
+                      resultText.length > 500
+                        ? resultText.slice(0, 500) + '\n... (truncated)'
+                        : resultText;
+                    const resultBlock = `[ToolResult]\n${truncated}\n[/ToolResult]`;
+
+                    // Find the tool use marker with this ID and insert result after it
+                    const toolIdPattern = new RegExp(
+                      `(\\[Tool: \\w+ id=${block.tool_use_id}\\][^\\n]*\\n)`,
+                      'g'
+                    );
+                    const match = toolIdPattern.exec(currentResponseRef.current);
+                    if (match) {
+                      const insertPos = match.index + match[0].length;
+                      currentResponseRef.current =
+                        currentResponseRef.current.slice(0, insertPos) +
+                        resultBlock +
+                        '\n' +
+                        currentResponseRef.current.slice(insertPos);
+                    } else {
+                      // Fallback: append at the end if marker not found
+                      currentResponseRef.current += '\n' + resultBlock;
+                    }
                   }
 
-                  // Remove from pending
+                  // Remove from pending (always cleanup, even for WebSearch)
                   pendingToolUsesRef.current =
                     pendingToolUsesRef.current.filter(
                       (t) => t.id !== block.tool_use_id
