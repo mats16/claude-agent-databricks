@@ -18,11 +18,7 @@ import {
   getSessionsByUserId,
   updateSession,
 } from './db/sessions.js';
-import {
-  getSettings,
-  getSettingsDirect,
-  upsertSettings,
-} from './db/settings.js';
+import { getSettings, upsertSettings } from './db/settings.js';
 import { upsertUser } from './db/users.js';
 import { syncToWorkspace } from './utils/workspace-sync.js';
 
@@ -150,61 +146,9 @@ fastify.post<{ Body: CreateSessionBody }>(
     const userMessage = userEvent.message.content;
     const model = session_context.model;
     const workspacePath = session_context.workspacePath;
-    const overwrite = session_context.overwrite ?? false;
     const autoSync = session_context.autoSync ?? false;
 
-    // Execute workspace export-dir if workspacePath is provided (fire and forget)
-    if (workspacePath) {
-      const { exec } = await import('child_process');
-
-      // Create workspace directory if it doesn't exist (using SP token)
-      try {
-        const spToken = await getAccessToken();
-        const mkdirsResponse = await fetch(
-          `${databricksHost}/api/2.0/workspace/mkdirs`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${spToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ path: workspacePath }),
-          }
-        );
-        if (mkdirsResponse.ok) {
-          console.log(`Created workspace directory: ${workspacePath}`);
-        } else {
-          const errorData = (await mkdirsResponse.json()) as {
-            error_code?: string;
-            message?: string;
-          };
-          // RESOURCE_ALREADY_EXISTS is not an error - directory exists
-          if (errorData.error_code !== 'RESOURCE_ALREADY_EXISTS') {
-            console.error('mkdirs error:', errorData.message);
-          }
-        }
-      } catch (mkdirsError: any) {
-        console.error('mkdirs request failed:', mkdirsError.message);
-      }
-
-      // Target path mirrors the workspace path structure under base directory
-      // e.g., /Workspace/Users/user@example.com/hoge -> /home/app/Workspace/Users/user@example.com/hoge
-      // Use /home/app in Databricks Apps (when DATABRICKS_APP_NAME is set), otherwise ./tmp for local dev
-      const basePath = process.env.DATABRICKS_APP_NAME ? '/home/app' : './tmp';
-      const targetPath = path.join(basePath, workspacePath);
-      const cmd = overwrite
-        ? `databricks workspace export-dir "${workspacePath}" "${targetPath}" --overwrite`
-        : `databricks workspace export-dir "${workspacePath}" "${targetPath}"`;
-
-      console.log(`Executing (background): ${cmd}`);
-      exec(cmd, (error, stdout, stderr) => {
-        if (error) {
-          console.error('export-dir error:', error.message);
-        }
-        if (stdout) console.log('export-dir stdout:', stdout);
-        if (stderr) console.log('export-dir stderr:', stderr);
-      });
-    }
+    // Note: workspace export-dir is now handled by SessionStart hook in agent/hooks.ts
 
     // Promise to wait for init message with timeout and error handling
     let sessionId = '';
@@ -717,14 +661,11 @@ fastify.register(async (fastify) => {
             const userMessage = message.content;
             const model = message.model || 'databricks-claude-sonnet-4-5';
 
-            // Fetch session to get workspacePath and autoSync for resume
+            // Fetch session to get workspacePath for resume
             const session = await getSessionById(sessionId, userId);
             const workspacePath = session?.workspacePath ?? undefined;
-            const autoSync = session?.autoSync ?? false;
 
-            // Fetch user settings for claude config sync
-            const userSettings = await getSettingsDirect(userId);
-            const claudeConfigSync = userSettings?.claudeConfigSync ?? false;
+            // Note: autoSync and claudeConfigSync are now handled by hooks in agent/hooks.ts
 
             // Save user message to database
             const userMsg = createUserMessage(sessionId, userMessage);
@@ -748,65 +689,7 @@ fastify.register(async (fastify) => {
                 console.error('Failed to send WebSocket message:', sendError);
               }
 
-              // Auto sync: import local changes back to workspace on result success
-              // (always execute regardless of WebSocket state)
-              if (
-                autoSync &&
-                workspacePath &&
-                sdkMessage.type === 'result' &&
-                'subtype' in sdkMessage &&
-                sdkMessage.subtype === 'success'
-              ) {
-                const basePath = process.env.DATABRICKS_APP_NAME
-                  ? '/home/app'
-                  : './tmp';
-                const localPath = path.join(basePath, workspacePath);
-
-                console.log(`Auto sync: ${localPath} -> ${workspacePath}`);
-                getAccessToken()
-                  .then((spToken) =>
-                    syncToWorkspace(localPath, workspacePath, spToken)
-                  )
-                  .catch((error) => {
-                    console.error('Auto sync error:', error.message);
-                  });
-              }
-
-              // Claude config sync: sync .claude directory to workspace on result success
-              if (
-                claudeConfigSync &&
-                userEmail &&
-                sdkMessage.type === 'result' &&
-                'subtype' in sdkMessage &&
-                sdkMessage.subtype === 'success'
-              ) {
-                const basePath = process.env.DATABRICKS_APP_NAME
-                  ? '/home/app'
-                  : './tmp';
-                const claudeLocalPath = path.join(
-                  basePath,
-                  'Workspace',
-                  'Users',
-                  userEmail,
-                  '.claude'
-                );
-                const claudeWorkspacePath = `/Workspace/Users/${userEmail}/.claude`;
-
-                console.log(
-                  `Claude config sync: ${claudeLocalPath} -> ${claudeWorkspacePath}`
-                );
-                getAccessToken()
-                  .then((spToken) =>
-                    syncToWorkspace(
-                      claudeLocalPath,
-                      claudeWorkspacePath,
-                      spToken
-                    )
-                  )
-                  .catch((error) => {
-                    console.error('Claude config sync error:', error.message);
-                  });
-              }
+              // Note: workspace sync is now handled by Stop hook in agent/hooks.ts
             }
           }
         } catch (error: any) {

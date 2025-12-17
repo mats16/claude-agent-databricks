@@ -3,6 +3,7 @@ import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 //import { databricksMcpServer } from './mcp/databricks.js';
 import fs from 'fs';
 import path from 'path';
+import { workspacePull, workspacePush } from './hooks.js';
 
 export type { SDKMessage };
 
@@ -86,23 +87,25 @@ export async function* processAgentRequest(
 ): AsyncGenerator<SDKMessage> {
   // Determine base directory based on environment
   // Local development: ./tmp, Production: /home/app
-  const baseDir = path.join(process.env.HOME ?? '/tmp', 'c');
+  const localBasePath = path.join(process.env.HOME ?? '/tmp', 'c');
 
-  // User home directory (for Claude config)
-  const userHomeDir = path.join(
-    baseDir,
-    'Workspace',
-    'Users',
-    userEmail ?? 'no-email-user'
+  // Workspace home directory
+  const workspaceHomePath = path.join('/Workspace/Users', userEmail ?? 'me');
+  const workspaceClaudeConfigPath = path.join(workspaceHomePath, '.claude');
+
+  // Local workspace home directory
+  const localHomePath = path.join(localBasePath, workspaceHomePath);
+
+  // Local Claude config directory
+  const localClaudeConfigPath = path.join(
+    localBasePath,
+    workspaceClaudeConfigPath
   );
+  fs.mkdirSync(localClaudeConfigPath, { recursive: true });
 
-  // Claude Config Directory (user-specific)
-  const claudeConfigDir = path.join(userHomeDir, '.claude');
-  fs.mkdirSync(claudeConfigDir, { recursive: true });
-
-  // Working directory based on workspacePath
-  const workDir = path.join(baseDir, workspacePath);
-  fs.mkdirSync(workDir, { recursive: true });
+  // Local working directory based on workspacePath
+  const localWorkPath = path.join(localBasePath, workspacePath);
+  fs.mkdirSync(localWorkPath, { recursive: true });
 
   const spAccessToken = await getOidcAccessToken();
 
@@ -115,7 +118,7 @@ Claude Code is running on Databricks Apps.
 
 You are allowed to read and modify files ONLY under:
 
-- ${workDir}/**
+- ${localWorkPath}/**
 
 ## Forbidden actions
 
@@ -131,13 +134,13 @@ Violating these rules is considered a critical error.
     prompt: message,
     options: {
       resume: sessionId,
-      cwd: workDir,
+      cwd: localWorkPath,
       settingSources: ['user', 'project', 'local'],
       model,
       env: {
         ...process.env,
-        WORKDIR: workDir,
-        CLAUDE_CONFIG_DIR: claudeConfigDir,
+        WORKDIR: localWorkPath,
+        CLAUDE_CONFIG_DIR: localClaudeConfigPath,
         ANTHROPIC_BASE_URL: `${databricksHost}/serving-endpoints/anthropic`,
         ANTHROPIC_AUTH_TOKEN: spAccessToken ?? personalAccessToken,
         DATABRICKS_HOST: databricksHost,
@@ -170,6 +173,74 @@ Violating these rules is considered a critical error.
         type: 'preset',
         preset: 'claude_code',
         append: additionalSystemPrompt,
+      },
+      hooks: {
+        // Use UserPromptSubmit instead of SessionStart (SessionStart doesn't fire in SDK mode)
+        // Only run pull for new sessions (sessionId is undefined)
+        UserPromptSubmit: [
+          // Pull claudeConfig (workspace -> local)
+          {
+            hooks: [
+              async (_input, _toolUseID, _options) => {
+                if (!sessionId) {
+                  console.log('[Hook] UserPromptSubmit: pull claudeConfig');
+                  workspacePull(workspaceClaudeConfigPath, localClaudeConfigPath).catch(
+                    (err) =>
+                      console.error(
+                        '[Hook] workspacePull claudeConfig error',
+                        err
+                      )
+                  );
+                }
+                return { async: true };
+              },
+            ],
+          },
+          // Pull workDir (workspace -> local)
+          {
+            hooks: [
+              async (_input, _toolUseID, _options) => {
+                if (!sessionId) {
+                  console.log('[Hook] UserPromptSubmit: pull workDir');
+                  workspacePull(workspacePath, localWorkPath).catch((err) =>
+                    console.error('[Hook] workspacePull workDir error', err)
+                  );
+                }
+                return { async: true };
+              },
+            ],
+          },
+        ],
+        Stop: [
+          // Push claudeConfig (local -> workspace)
+          {
+            hooks: [
+              async (_input, _toolUseID, _options) => {
+                console.log('[Hook] Stop: push claudeConfig');
+                workspacePush(localClaudeConfigPath, workspaceClaudeConfigPath).catch(
+                  (err) =>
+                    console.error(
+                      '[Hook] workspacePush claudeConfig error',
+                      err
+                    )
+                );
+                return { async: true };
+              },
+            ],
+          },
+          // Push workDir (local -> workspace)
+          {
+            hooks: [
+              async (_input, _toolUseID, _options) => {
+                console.log('[Hook] Stop: push workDir');
+                workspacePush(localWorkPath, workspacePath).catch((err) =>
+                  console.error('[Hook] workspacePush workDir error', err)
+                );
+                return { async: true };
+              },
+            ],
+          },
+        ],
       },
     },
   });
