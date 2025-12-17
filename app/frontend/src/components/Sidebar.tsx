@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,6 +20,7 @@ import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
 import WorkspaceSelectModal from './WorkspaceSelectModal';
 import SettingsModal from './SettingsModal';
+import { useUser } from '../contexts/UserContext';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -31,6 +32,7 @@ interface SidebarProps {
 
 export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const { t } = useTranslation();
+  const { userInfo, isLoading } = useUser();
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(
     'databricks-claude-sonnet-4-5'
@@ -40,44 +42,24 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [overwrite, setOverwrite] = useState(true);
   const [autoSync, setAutoSync] = useState(true);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const navigate = useNavigate();
 
-  // Check workspace permission and get home directory via /api/v1/users/me
-  const checkPermission = useCallback(async () => {
-    try {
-      const res = await fetch('/api/v1/users/me');
-      if (res.ok) {
-        const data = await res.json();
-        const granted = data.hasWorkspacePermission === true;
-        setHasPermission(granted);
+  const hasPermission = userInfo?.hasWorkspacePermission ?? null;
 
-        // Set default workspace path from workspaceHome
-        if (granted && data.workspaceHome && !workspacePath) {
-          setWorkspacePath(data.workspaceHome);
-        }
-
-        return granted;
-      } else {
-        setHasPermission(false);
-        return false;
-      }
-    } catch (e) {
-      console.error('Failed to check permission:', e);
-      setHasPermission(false);
-      return false;
-    }
-  }, [workspacePath]);
-
-  // Check permission on mount
+  // Set default workspace path from userInfo
   useEffect(() => {
-    checkPermission().then((granted) => {
-      if (!granted) {
-        setShowPermissionModal(true);
-      }
-    });
-  }, [checkPermission]);
+    if (userInfo?.hasWorkspacePermission && userInfo.workspaceHome && !workspacePath) {
+      setWorkspacePath(userInfo.workspaceHome);
+    }
+  }, [userInfo, workspacePath]);
+
+  // Show permission modal if no permission after loading
+  useEffect(() => {
+    if (!isLoading && hasPermission === false) {
+      setShowPermissionModal(true);
+    }
+  }, [isLoading, hasPermission]);
 
   const handleSubmit = async () => {
     if (!input.trim() || isSubmitting) return;
@@ -138,7 +120,6 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   };
 
   const handlePermissionGranted = () => {
-    setHasPermission(true);
     setShowPermissionModal(false);
   };
 

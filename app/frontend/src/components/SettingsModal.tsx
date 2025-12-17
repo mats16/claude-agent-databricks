@@ -18,14 +18,11 @@ import {
   ReloadOutlined,
   FolderOpenOutlined,
 } from '@ant-design/icons';
+import { useUser, UserSettings } from '../contexts/UserContext';
 
 const { Text, Title, Link } = Typography;
 
-export interface UserSettings {
-  userId: string;
-  hasAccessToken: boolean;
-  claudeConfigSync: boolean;
-}
+export type { UserSettings };
 
 interface ServicePrincipalInfo {
   displayName: string;
@@ -47,60 +44,67 @@ export default function SettingsModal({
   onPermissionGranted,
 }: SettingsModalProps) {
   const { t } = useTranslation();
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const {
+    userInfo,
+    userSettings,
+    isLoading: isUserLoading,
+    refetchUserInfo,
+  } = useUser();
   const [spInfo, setSpInfo] = useState<ServicePrincipalInfo | null>(null);
   const [claudeConfigSync, setClaudeConfigSync] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingPermission, setIsCheckingPermission] = useState(false);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
 
-  const checkPermission = useCallback(async () => {
-    setIsLoading(true);
-    setMessage(null);
+  const hasPermission = userInfo?.hasWorkspacePermission ?? null;
+  const isLoading = isUserLoading || isCheckingPermission;
+
+  // Sync claudeConfigSync state with userSettings
+  useEffect(() => {
+    if (userSettings) {
+      setClaudeConfigSync(userSettings.claudeConfigSync);
+    }
+  }, [userSettings]);
+
+  // Fetch SP info if no permission
+  const fetchSpInfo = useCallback(async () => {
     try {
-      // Get user info (includes permission check)
-      const userRes = await fetch('/api/v1/users/me');
-      if (userRes.ok) {
-        const userData = await userRes.json();
-
-        if (userData.hasWorkspacePermission) {
-          setHasPermission(true);
-          onPermissionGranted?.();
-        } else {
-          setHasPermission(false);
-          // Fetch SP info for instructions
-          const spRes = await fetch('/api/v1/service-principal');
-          if (spRes.ok) {
-            const spData = await spRes.json();
-            setSpInfo(spData);
-          }
-        }
-      } else {
-        setHasPermission(false);
-      }
-
-      // Fetch settings
-      const settingsRes = await fetch('/api/v1/users/me/settings');
-      if (settingsRes.ok) {
-        const settingsData: UserSettings = await settingsRes.json();
-        setClaudeConfigSync(settingsData.claudeConfigSync);
+      const spRes = await fetch('/api/v1/service-principal');
+      if (spRes.ok) {
+        const spData = await spRes.json();
+        setSpInfo(spData);
       }
     } catch (error) {
-      console.error('Failed to check permission:', error);
-      setHasPermission(false);
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to fetch SP info:', error);
     }
-  }, [onPermissionGranted]);
+  }, []);
 
+  // Fetch SP info when modal opens and no permission
   useEffect(() => {
-    if (isOpen) {
-      checkPermission();
+    if (isOpen && hasPermission === false && !spInfo) {
+      fetchSpInfo();
     }
-  }, [isOpen, checkPermission]);
+  }, [isOpen, hasPermission, spInfo, fetchSpInfo]);
+
+  // Call onPermissionGranted when permission is granted
+  useEffect(() => {
+    if (hasPermission === true && isInitialSetup) {
+      onPermissionGranted?.();
+    }
+  }, [hasPermission, isInitialSetup, onPermissionGranted]);
+
+  const checkPermission = useCallback(async () => {
+    setIsCheckingPermission(true);
+    setMessage(null);
+    try {
+      await refetchUserInfo();
+    } finally {
+      setIsCheckingPermission(false);
+    }
+  }, [refetchUserInfo]);
 
   const handleSave = async () => {
     setIsSaving(true);

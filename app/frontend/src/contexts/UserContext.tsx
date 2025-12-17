@@ -1,0 +1,126 @@
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
+
+export interface UserInfo {
+  userId: string;
+  email: string;
+  workspaceHome: string;
+  hasWorkspacePermission: boolean;
+}
+
+export interface UserSettings {
+  userId: string;
+  hasAccessToken: boolean;
+  claudeConfigSync: boolean;
+}
+
+interface UserContextType {
+  userInfo: UserInfo | null;
+  userSettings: UserSettings | null;
+  isLoading: boolean;
+  error: string | null;
+  refetchUserInfo: () => Promise<void>;
+  refetchUserSettings: () => Promise<void>;
+  updateUserSettings: (settings: Partial<UserSettings>) => void;
+}
+
+const UserContext = createContext<UserContextType | undefined>(undefined);
+
+interface UserProviderProps {
+  children: ReactNode;
+}
+
+export function UserProvider({ children }: UserProviderProps) {
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchUserInfo = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/users/me');
+      if (res.ok) {
+        const data = await res.json();
+        setUserInfo(data);
+        setError(null);
+      } else {
+        setError('Failed to fetch user info');
+      }
+    } catch (e) {
+      console.error('Failed to fetch user info:', e);
+      setError('Failed to fetch user info');
+    }
+  }, []);
+
+  const fetchUserSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/users/me/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setUserSettings(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch user settings:', e);
+    }
+  }, []);
+
+  const updateUserSettings = useCallback(
+    (settings: Partial<UserSettings>) => {
+      if (userSettings) {
+        setUserSettings({ ...userSettings, ...settings });
+      }
+    },
+    [userSettings]
+  );
+
+  // Fetch both user info and settings on mount
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      await Promise.all([fetchUserInfo(), fetchUserSettings()]);
+      setIsLoading(false);
+    };
+    init();
+  }, [fetchUserInfo, fetchUserSettings]);
+
+  // Listen for settings changes from other components
+  useEffect(() => {
+    const handleSettingsChanged = () => {
+      fetchUserSettings();
+    };
+    window.addEventListener('settings-changed', handleSettingsChanged);
+    return () => {
+      window.removeEventListener('settings-changed', handleSettingsChanged);
+    };
+  }, [fetchUserSettings]);
+
+  return (
+    <UserContext.Provider
+      value={{
+        userInfo,
+        userSettings,
+        isLoading,
+        error,
+        refetchUserInfo: fetchUserInfo,
+        refetchUserSettings: fetchUserSettings,
+        updateUserSettings,
+      }}
+    >
+      {children}
+    </UserContext.Provider>
+  );
+}
+
+export function useUser() {
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
+}

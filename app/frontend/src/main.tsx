@@ -6,6 +6,7 @@ import '@fontsource/noto-sans-jp/400.css';
 import '@fontsource/noto-sans-jp/500.css';
 import '@fontsource/noto-sans-jp/700.css';
 import App from './App';
+import { UserProvider } from './contexts/UserContext';
 import './i18n';
 import './index.css';
 
@@ -37,7 +38,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <ConfigProvider theme={theme}>
-        <App />
+        <UserProvider>
+          <App />
+        </UserProvider>
       </ConfigProvider>
     </BrowserRouter>
   </React.StrictMode>
