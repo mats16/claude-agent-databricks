@@ -8,7 +8,6 @@ import {
   Flex,
   Switch,
   Divider,
-  Steps,
   Spin,
 } from 'antd';
 import {
@@ -17,6 +16,7 @@ import {
   ExclamationCircleOutlined,
   ReloadOutlined,
   FolderOpenOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import { useUser, UserSettings } from '../contexts/UserContext';
 
@@ -146,35 +146,82 @@ export default function SettingsModal({
         style={{ marginBottom: 16 }}
       />
 
-      <Steps
-        direction="vertical"
-        size="small"
-        current={-1}
-        items={[
-          {
-            title: (
-              <Link
-                href={`https://${spInfo?.databricksHost}/browse`}
-                target="_blank"
-              >
-                {t('settingsModal.step1')}
-              </Link>
-            ),
-          },
-          {
-            title: (
-              <>
-                {t('settingsModal.step2Prefix')}{' '}
-                <Text strong>{spInfo?.displayName || 'Service Principal'}</Text>{' '}
-                {t('settingsModal.step2Suffix')} <Text code>Can Edit</Text>{' '}
-                {t('settingsModal.step2Permission')}
-              </>
-            ),
-          },
-        ]}
-      />
+      {/* Service Principal name */}
+      <div style={{ marginBottom: 16 }}>
+        <Text type="secondary">{t('settingsModal.grantPermissionTo')}</Text>
+        <Flex align="center" gap={8} style={{ marginTop: 4 }}>
+          <RobotOutlined style={{ fontSize: 16, color: '#666' }} />
+          <Text>
+            <Text strong>Service Principal:</Text>{' '}
+            <Text code>{spInfo?.displayName || 'Service Principal'}</Text>
+          </Text>
+        </Flex>
+      </div>
 
-      <Flex justify="center" style={{ marginTop: 24 }}>
+      <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+        {t('settingsModal.chooseOption')}
+      </Text>
+
+      {/* Option 1 */}
+      <div
+        style={{
+          background: '#fafafa',
+          borderRadius: 8,
+          padding: 12,
+          marginBottom: 12,
+        }}
+      >
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
+          {t('settingsModal.option1Title')}
+        </Text>
+        <Text>
+          {t('settingsModal.option1Step1Prefix')}{' '}
+          <Text code style={{ color: '#cf1322' }}>
+            Can Manage
+          </Text>{' '}
+          {t('settingsModal.option1Step1Suffix')}
+        </Text>
+      </div>
+
+      {/* Option 2 */}
+      <div
+        style={{
+          background: '#fafafa',
+          borderRadius: 8,
+          padding: 12,
+          marginBottom: 12,
+        }}
+      >
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
+          {t('settingsModal.option2Title')}
+        </Text>
+        <ol style={{ margin: 0, paddingLeft: 20 }}>
+          <li>
+            <Text>
+              {t('settingsModal.option2Step1Prefix')}{' '}
+              <Text code style={{ color: '#cf1322' }}>
+                Can Edit
+              </Text>{' '}
+              {t('settingsModal.option2Step1Suffix')}
+            </Text>
+          </li>
+          <li>
+            <Text>{t('settingsModal.option2Step2')}</Text>
+          </li>
+        </ol>
+      </div>
+
+      {/* Open Databricks Console link */}
+      <Flex justify="center" style={{ marginTop: 16 }}>
+        <Link
+          href={`https://${spInfo?.databricksHost}/browse`}
+          target="_blank"
+        >
+          {t('settingsModal.openDatabricksConsole')}
+        </Link>
+      </Flex>
+
+      <Flex justify="center" style={{ marginTop: 16 }}>
         <Button
           type="primary"
           icon={<ReloadOutlined />}
