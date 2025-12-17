@@ -39,6 +39,9 @@ export async function workspacePush(
     'json',
     '--exclude-from',
     '.gitignore',
+    // Databricks Asset Bundles
+    '--exclude',
+    '".bundle/*"',
     // Claude Code - exclude entire directories
     '--exclude',
     '".claude.json.corrupted.*"',
