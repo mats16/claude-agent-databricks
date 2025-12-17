@@ -85,6 +85,7 @@ export interface ProcessAgentRequestOptions {
   overwrite?: boolean; // workspace pullで--overwrite付与
   autoWorkspacePush?: boolean; // workspace pushを実行
   claudeConfigSync?: boolean; // claude config pull/push
+  cwd?: string; // working directory path (created before agent starts)
 }
 
 // MessageStream: Manages message queue for streaming input
@@ -220,25 +221,34 @@ export async function* processAgentRequest(
     overwrite = false,
     autoWorkspacePush = false,
     claudeConfigSync = true,
+    cwd,
   } = options;
   // Determine base directory based on environment
-  // Local development: ./tmp, Production: /home/app
-  const localBasePath = path.join(process.env.HOME ?? '/tmp', 'c');
+  // Local development: $HOME/u, Production: /home/app/u
+  const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
 
   // Workspace home directory
   const workspaceHomePath = path.join('/Workspace/Users', userEmail ?? 'me');
   const workspaceClaudeConfigPath = path.join(workspaceHomePath, '.claude');
 
-  // Local Claude config directory
+  // Local Claude config directory: $HOME/u/{email}/.claude
   const localClaudeConfigPath = path.join(
     localBasePath,
-    workspaceClaudeConfigPath
+    userEmail ?? 'me',
+    '.claude'
   );
   fs.mkdirSync(localClaudeConfigPath, { recursive: true });
 
-  // Local working directory based on workspacePath
-  const localWorkPath = path.join(localBasePath, workspacePath);
-  fs.mkdirSync(localWorkPath, { recursive: true });
+  // Local working directory: use cwd if provided (created by caller), otherwise fallback
+  // workDir should be created by the caller (app.ts) before calling this function
+  const localWorkPath =
+    cwd ??
+    path.join(
+      localBasePath,
+      userEmail ?? 'me',
+      'w',
+      sessionId ?? 'temp'
+    );
 
   const spAccessToken = await getOidcAccessToken();
 

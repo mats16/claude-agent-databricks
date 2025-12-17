@@ -230,21 +230,17 @@ fastify.post<{ Body: CreateSessionBody }>(
 
     // Pull workspace files in background (non-blocking)
     // Compute paths (same logic as in agent/index.ts)
-    const localBasePath = path.join(process.env.HOME ?? '/tmp', 'c');
+    const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
     const workspaceHomePath = path.join('/Workspace/Users', userEmail);
     const workspaceClaudeConfigPath = path.join(workspaceHomePath, '.claude');
     const localClaudeConfigPath = path.join(
       localBasePath,
-      workspaceClaudeConfigPath
-    );
-    const localWorkPath = path.join(
-      localBasePath,
-      workspacePath || '/Workspace/Users/me'
+      userEmail,
+      '.claude'
     );
 
-    // Ensure local directories exist
+    // Ensure claude config directory exists
     fs.mkdirSync(localClaudeConfigPath, { recursive: true });
-    fs.mkdirSync(localWorkPath, { recursive: true });
 
     // Start workspace pull in background (fire-and-forget)
     // Pull .claude config if enabled
@@ -260,24 +256,6 @@ fastify.post<{ Body: CreateSessionBody }>(
           console.error('[New Session] Claude config pull failed:', err);
         });
     }
-
-    // Pull workspace directory in background
-    console.log(
-      `[New Session] Starting background pull of workspace directory from ${workspacePath || '/Workspace/Users/me'}...`
-    );
-    workspacePull(
-      workspacePath || '/Workspace/Users/me',
-      localWorkPath,
-      overwrite
-    )
-      .then(() => {
-        console.log('[New Session] Workspace directory pull completed');
-      })
-      .catch((err) => {
-        console.error('[New Session] Workspace directory pull failed:', err);
-      });
-
-    // Note: workspace pull runs in background while agent starts
 
     // Promise to wait for init message with timeout and error handling
     let sessionId = '';
@@ -298,6 +276,31 @@ fastify.post<{ Body: CreateSessionBody }>(
         ? [{ type: 'text', text: userMessage }]
         : userMessage;
 
+    // Generate unique uuid for workDir and create it before starting agent
+    const workDirUuid = crypto.randomUUID();
+    const localWorkPath = path.join(
+      localBasePath,
+      userEmail,
+      'w',
+      workDirUuid
+    );
+    console.log(`[New Session] Creating workDir: ${localWorkPath}`);
+    fs.mkdirSync(localWorkPath, { recursive: true });
+
+    // Pull workspace directory in background if workspacePath is provided
+    if (workspacePath) {
+      console.log(
+        `[New Session] Starting background pull of workspace directory from ${workspacePath}...`
+      );
+      workspacePull(workspacePath, localWorkPath, overwrite)
+        .then(() => {
+          console.log('[New Session] Workspace directory pull completed');
+        })
+        .catch((err) => {
+          console.error('[New Session] Workspace directory pull failed:', err);
+        });
+    }
+
     const startAgentProcessing = () => {
       // Create MessageStream for this session
       const stream = new MessageStream(messageContent);
@@ -309,7 +312,7 @@ fastify.post<{ Body: CreateSessionBody }>(
         undefined,
         userEmail,
         workspacePath,
-        { overwrite, autoWorkspacePush, claudeConfigSync },
+        { overwrite, autoWorkspacePush, claudeConfigSync, cwd: localWorkPath },
         stream
       );
 
@@ -347,6 +350,7 @@ fastify.post<{ Body: CreateSessionBody }>(
                   workspacePath,
                   userId,
                   autoWorkspacePush,
+                  cwd: localWorkPath,
                 },
                 userId
               );
