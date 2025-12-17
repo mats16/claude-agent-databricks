@@ -138,6 +138,22 @@ To minimize redundant API requests, shared data should be managed via React Cont
 - **i18n**: `react-i18next` with translations in `app/frontend/src/i18n/` (en, ja)
 - Theme configured in `app/frontend/src/main.tsx`
 - Custom styles in `app/frontend/src/App.css`
+- **Favicon**: `app/frontend/public/favicon.svg` (SVG format with brand color)
+
+### Creating Favicon from Ant Design Icons
+To use an Ant Design icon as favicon, extract the SVG path from `@ant-design/icons-svg` package:
+
+```bash
+# Check icon SVG path
+cat app/node_modules/@ant-design/icons-svg/es/asn/{IconName}.js
+```
+
+Apply the path to `app/frontend/public/favicon.svg`:
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="64 64 896 896" focusable="false" fill="#f5a623">
+  <path d="..."/>
+</svg>
+```
 
 ## API Endpoints
 
