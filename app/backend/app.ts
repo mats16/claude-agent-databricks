@@ -186,7 +186,7 @@ fastify.post<{ Body: CreateSessionBody }>(
 
     // Get user settings for claudeConfigSync
     const userSettings = await getSettingsDirect(userId);
-    const claudeConfigSync = userSettings?.claudeConfigSync ?? false;
+    const claudeConfigSync = userSettings?.claudeConfigSync ?? true;
 
     // Note: workspace export-dir is now handled by SessionStart hook in agent/hooks.ts
 
@@ -417,11 +417,19 @@ fastify.get('/api/v1/users/me', async (request, _reply) => {
     }
   }
 
+  // Build Databricks App URL from environment variables
+  const databricksAppName = process.env.DATABRICKS_APP_NAME;
+  const databricksAppUrl =
+    databricksAppName && process.env.DATABRICKS_HOST
+      ? `https://${process.env.DATABRICKS_HOST}/apps/${databricksAppName}`
+      : null;
+
   return {
     userId,
     email: userEmail ?? null,
     workspaceHome,
     hasWorkspacePermission,
+    databricksAppUrl,
   };
 });
 
@@ -437,7 +445,7 @@ fastify.get('/api/v1/users/me/settings', async (request, _reply) => {
     return {
       userId,
       hasAccessToken: false,
-      claudeConfigSync: false,
+      claudeConfigSync: true,
     };
   }
 
@@ -776,7 +784,7 @@ fastify.register(async (fastify) => {
 
             // Get user settings for claudeConfigSync
             const userSettings = await getSettingsDirect(userId);
-            const claudeConfigSync = userSettings?.claudeConfigSync ?? false;
+            const claudeConfigSync = userSettings?.claudeConfigSync ?? true;
 
             // Save user message to database
             const userMsg = createUserMessage(sessionId, userMessage);

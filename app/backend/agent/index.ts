@@ -96,7 +96,7 @@ export async function* processAgentRequest(
   const {
     overwrite = false,
     autoWorkspacePush = false,
-    claudeConfigSync = false,
+    claudeConfigSync = true,
   } = options;
   // Determine base directory based on environment
   // Local development: ./tmp, Production: /home/app

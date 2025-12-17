@@ -15,6 +15,7 @@ import {
   SyncOutlined,
   FolderOutlined,
   EditOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
@@ -277,9 +278,23 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '12px 20px', borderTop: '1px solid #f0f0f0' }}>
+      <Flex
+        justify="space-between"
+        align="center"
+        style={{ padding: '12px 20px', borderTop: '1px solid #f0f0f0' }}
+      >
         <AccountMenu />
-      </div>
+        {userInfo?.databricksAppUrl && (
+          <Tooltip title="Databricks Apps">
+            <Button
+              type="text"
+              icon={<RocketOutlined />}
+              onClick={() => window.open(userInfo.databricksAppUrl!, '_blank')}
+              style={{ color: '#666' }}
+            />
+          </Tooltip>
+        )}
+      </Flex>
 
       <WorkspaceSelectModal
         isOpen={isWorkspaceModalOpen}

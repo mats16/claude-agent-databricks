@@ -51,7 +51,7 @@ export default function SettingsModal({
     refetchUserInfo,
   } = useUser();
   const [spInfo, setSpInfo] = useState<ServicePrincipalInfo | null>(null);
-  const [claudeConfigSync, setClaudeConfigSync] = useState(false);
+  const [claudeConfigSync, setClaudeConfigSync] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCheckingPermission, setIsCheckingPermission] = useState(false);
   const [message, setMessage] = useState<{

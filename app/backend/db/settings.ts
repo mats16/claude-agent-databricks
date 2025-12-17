@@ -68,7 +68,7 @@ export async function upsertSettings(
       const newSettings: NewSettings = {
         userId,
         accessToken: updates.accessToken ?? null,
-        claudeConfigSync: updates.claudeConfigSync ?? false,
+        claudeConfigSync: updates.claudeConfigSync ?? true,
       };
       await db.insert(settings).values(newSettings);
     }

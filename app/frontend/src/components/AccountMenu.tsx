@@ -5,27 +5,20 @@ import {
   UserOutlined,
   SettingOutlined,
   GlobalOutlined,
-  LogoutOutlined,
   CheckOutlined,
 } from '@ant-design/icons';
 import SettingsModal from './SettingsModal';
-
-interface AccountMenuProps {
-  userEmail?: string;
-}
+import { useUser } from '../contexts/UserContext';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'ja', label: '日本語' },
 ];
 
-export default function AccountMenu({ userEmail }: AccountMenuProps) {
+export default function AccountMenu() {
   const { t, i18n } = useTranslation();
+  const { userInfo } = useUser();
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-
-  const handleLogout = () => {
-    window.location.href = '/';
-  };
 
   const handleLanguageChange = (langCode: string) => {
     i18n.changeLanguage(langCode);
@@ -39,7 +32,7 @@ export default function AccountMenu({ userEmail }: AccountMenuProps) {
     setIsSettingsModalOpen(false);
   };
 
-  const displayName = userEmail || 'User';
+  const displayEmail = userInfo?.email || 'User';
   const currentLang =
     LANGUAGES.find((l) => l.code === i18n.language) || LANGUAGES[0];
 
@@ -67,7 +60,7 @@ export default function AccountMenu({ userEmail }: AccountMenuProps) {
     {
       key: 'header',
       label: (
-        <div style={{ padding: '4px 0', fontWeight: 500 }}>{displayName}</div>
+        <div style={{ padding: '4px 0', fontWeight: 500 }}>{displayEmail}</div>
       ),
       disabled: true,
       style: { cursor: 'default' },
@@ -98,14 +91,6 @@ export default function AccountMenu({ userEmail }: AccountMenuProps) {
         </span>
       ),
       children: languageItems,
-    },
-    { type: 'divider' },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: t('accountMenu.logout'),
-      danger: true,
-      onClick: handleLogout,
     },
   ];
 

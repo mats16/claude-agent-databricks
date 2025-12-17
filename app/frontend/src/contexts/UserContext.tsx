@@ -12,6 +12,7 @@ export interface UserInfo {
   email: string;
   workspaceHome: string;
   hasWorkspacePermission: boolean;
+  databricksAppUrl: string | null;
 }
 
 export interface UserSettings {

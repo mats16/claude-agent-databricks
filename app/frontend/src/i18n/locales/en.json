@@ -22,7 +22,7 @@
   "accountMenu": {
     "accountSettings": "Account settings",
     "settings": "Settings",
-    "logout": "Logout",
+    "databricksApp": "Open Databricks App",
     "language": "Language"
   },
   "settingsModal": {

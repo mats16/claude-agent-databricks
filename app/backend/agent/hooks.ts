@@ -15,7 +15,9 @@ export async function workspacePull(
 ): Promise<void> {
   const overwriteFlag = overwrite ? ' --overwrite' : '';
   const cmd = `databricks workspace export-dir "${workspacePath}" "${localPath}"${overwriteFlag}`;
-  console.log(`[workspacePull] ${workspacePath} -> ${localPath} (overwrite: ${overwrite})`);
+  console.log(
+    `[workspacePull] ${workspacePath} -> ${localPath} (overwrite: ${overwrite})`
+  );
   try {
     const { stdout, stderr } = await execAsync(cmd);
     if (stdout) console.log(`[workspacePull] stdout: ${stdout}`);
