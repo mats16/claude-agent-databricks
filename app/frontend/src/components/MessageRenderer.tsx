@@ -1,5 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useTranslation } from 'react-i18next';
 import type { ImageContent } from '@app/shared';
 
 interface MessageRendererProps {
@@ -49,6 +50,30 @@ function formatToolInput(toolName: string, inputJson: string): string {
   } catch {
     return inputJson.length > 50 ? inputJson.slice(0, 50) + '...' : inputJson;
   }
+}
+
+function formatToolOutput(
+  toolName: string,
+  output: string,
+  t: (key: string, params?: Record<string, unknown>) => string
+): string | null {
+  if (!output) return null;
+
+  // Hide output for certain tools
+  if (toolName === 'Glob') {
+    return null;
+  }
+
+  // For Read tool, show only line count
+  if (toolName === 'Read') {
+    const lines = output.trim().split('\n');
+    return t('toolOutput.linesRead', { count: lines.length });
+  }
+
+  // For other tools, show the output as-is (truncated if needed)
+  return output.length > 500
+    ? output.slice(0, 500) + '\n... (truncated)'
+    : output;
 }
 
 function parseAgentMessage(content: string): ParsedBlock[] {
@@ -161,6 +186,8 @@ export default function MessageRenderer({
   role,
   images,
 }: MessageRendererProps) {
+  const { t } = useTranslation();
+
   if (role === 'user') {
     return (
       <div className="user-message">
@@ -209,6 +236,10 @@ export default function MessageRenderer({
     <div className="message-formatted">
       {blocks.map((block, idx) => {
         if (block.type === 'tool') {
+          const formattedOutput = block.toolOutput
+            ? formatToolOutput(block.toolName || '', block.toolOutput, t)
+            : null;
+
           return (
             <div key={idx} className="tool-block">
               <div className="tool-header">
@@ -217,10 +248,10 @@ export default function MessageRenderer({
                   <code className="tool-input">{block.toolDisplayInput}</code>
                 )}
               </div>
-              {block.toolOutput && (
+              {formattedOutput && (
                 <div className="tool-output">
                   <span className="tool-output-connector">└</span>
-                  <pre className="tool-output-content">{block.toolOutput}</pre>
+                  <pre className="tool-output-content">{formattedOutput}</pre>
                 </div>
               )}
             </div>

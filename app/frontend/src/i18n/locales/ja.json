@@ -94,5 +94,8 @@
     "maxImagesReached": "最大{{max}}枚まで添付できます",
     "unsupportedType": "サポートされていないファイル形式: {{name}}",
     "fileTooLarge": "ファイルサイズが大きすぎます (最大5MB): {{name}}"
+  },
+  "toolOutput": {
+    "linesRead": "{{count}} 行を読み込み"
   }
 }

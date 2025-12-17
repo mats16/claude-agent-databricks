@@ -94,5 +94,8 @@
     "maxImagesReached": "Maximum {{max}} images allowed",
     "unsupportedType": "Unsupported file type: {{name}}",
     "fileTooLarge": "File too large (max 5MB): {{name}}"
+  },
+  "toolOutput": {
+    "linesRead": "{{count}} lines read"
   }
 }
