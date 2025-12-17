@@ -56,8 +56,13 @@ const sessionQueues = new Map<string, SessionQueue>();
 // Maps sessionId to MessageStream for queueing additional messages
 const sessionMessageStreams = new Map<string, MessageStream>();
 
-// User session list WebSocket connections (for real-time session list updates)
+// Track active WebSocket connections per session
+// Maps sessionId to the active WebSocket connection
+// When a new connection is made to the same session, the old one is closed
 import type { WebSocket as WsWebSocket } from 'ws';
+const sessionWebSockets = new Map<string, WsWebSocket>();
+
+// User session list WebSocket connections (for real-time session list updates)
 const userSessionListeners = new Map<string, Set<WsWebSocket>>();
 
 // Notify user's session list listeners about session creation
@@ -260,7 +265,11 @@ fastify.post<{ Body: CreateSessionBody }>(
     console.log(
       `[New Session] Starting background pull of workspace directory from ${workspacePath || '/Workspace/Users/me'}...`
     );
-    workspacePull(workspacePath || '/Workspace/Users/me', localWorkPath, overwrite)
+    workspacePull(
+      workspacePath || '/Workspace/Users/me',
+      localWorkPath,
+      overwrite
+    )
       .then(() => {
         console.log('[New Session] Workspace directory pull completed');
       })
@@ -904,6 +913,22 @@ fastify.register(async (fastify) => {
         return;
       }
 
+      // Close existing WebSocket connection for this session to prevent cross-session messages
+      const existingSocket = sessionWebSockets.get(sessionId);
+      if (existingSocket && existingSocket !== socket) {
+        console.log(
+          `Closing existing WebSocket connection for session: ${sessionId}`
+        );
+        try {
+          existingSocket.close();
+        } catch (error) {
+          console.error('Error closing existing WebSocket:', error);
+        }
+      }
+
+      // Register this socket as the active connection for this session
+      sessionWebSockets.set(sessionId, socket);
+
       const queue = sessionQueues.get(sessionId);
 
       // Event listener for new events
@@ -994,7 +1019,10 @@ fastify.register(async (fastify) => {
                   try {
                     socket.send(JSON.stringify(sdkMessage));
                   } catch (sendError) {
-                    console.error('Failed to send WebSocket message:', sendError);
+                    console.error(
+                      'Failed to send WebSocket message:',
+                      sendError
+                    );
                   }
 
                   // Note: workspace sync is now handled by Stop hook in agent/hooks.ts
@@ -1034,6 +1062,11 @@ fastify.register(async (fastify) => {
         if (stream) {
           stream.complete();
           sessionMessageStreams.delete(sessionId);
+        }
+
+        // Remove from active connections map (only if this socket is the current one)
+        if (sessionWebSockets.get(sessionId) === socket) {
+          sessionWebSockets.delete(sessionId);
         }
       });
 

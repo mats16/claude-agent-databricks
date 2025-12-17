@@ -290,10 +290,34 @@ export function useAgent(options: UseAgentOptions = {}) {
   // Reset state when sessionId changes
   useEffect(() => {
     if (prevSessionIdRef.current !== sessionId) {
-      // Close existing WebSocket
+      console.log(
+        `Session changed: ${prevSessionIdRef.current} -> ${sessionId}`
+      );
+
+      // Close existing WebSocket forcefully
       if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
+        try {
+          // Remove all event listeners to prevent them from firing
+          wsRef.current.onopen = null;
+          wsRef.current.onmessage = null;
+          wsRef.current.onerror = null;
+          wsRef.current.onclose = null;
+
+          // Close the connection
+          if (wsRef.current.readyState !== WebSocket.CLOSED) {
+            wsRef.current.close();
+          }
+        } catch (error) {
+          console.error('Error closing WebSocket:', error);
+        } finally {
+          wsRef.current = null;
+        }
+      }
+
+      // Clear reconnection timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
 
       // Reset all refs
@@ -301,11 +325,13 @@ export function useAgent(options: UseAgentOptions = {}) {
       initialMessageAddedRef.current = false;
       currentResponseRef.current = '';
       currentMessageIdRef.current = '';
+      reconnectAttemptsRef.current = 0;
 
       // Reset state
       setMessages([]);
       setIsConnected(false);
       setIsProcessing(false);
+      setIsReconnecting(false);
 
       // Update initialMessageRef with new value
       initialMessageRef.current = initialMessage;
@@ -667,6 +693,15 @@ export function useAgent(options: UseAgentOptions = {}) {
         return;
       }
 
+      // Verify the WebSocket URL matches the current sessionId to prevent cross-session messages
+      const currentWsUrl = wsRef.current.url;
+      if (sessionId && !currentWsUrl.includes(`/sessions/${sessionId}/ws`)) {
+        console.error(
+          `WebSocket URL mismatch: expected session ${sessionId}, but connected to ${currentWsUrl}`
+        );
+        return;
+      }
+
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         role: 'user',
@@ -702,7 +737,7 @@ export function useAgent(options: UseAgentOptions = {}) {
         })
       );
     },
-    [selectedModel]
+    [selectedModel, sessionId]
   );
 
   return {

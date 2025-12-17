@@ -160,10 +160,7 @@ export default function SessionPage() {
   }, [messages]);
 
   const handleSubmit = useCallback(async () => {
-    if (
-      (!input.trim() && attachedImages.length === 0) ||
-      isConverting
-    ) {
+    if ((!input.trim() && attachedImages.length === 0) || isConverting) {
       return;
     }
 
