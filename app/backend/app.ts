@@ -10,6 +10,7 @@ import {
   SDKMessage,
   getAccessToken,
   databricksHost,
+  MessageStream,
 } from './agent/index.js';
 import { saveMessage, getMessagesBySessionId } from './db/events.js';
 import {
@@ -50,6 +51,10 @@ interface SessionQueue {
 }
 
 const sessionQueues = new Map<string, SessionQueue>();
+
+// MessageStream management for interactive sessions
+// Maps sessionId to MessageStream for queueing additional messages
+const sessionMessageStreams = new Map<string, MessageStream>();
 
 // User session list WebSocket connections (for real-time session list updates)
 import type { WebSocket as WsWebSocket } from 'ws';
@@ -285,6 +290,9 @@ fastify.post<{ Body: CreateSessionBody }>(
         : userMessage;
 
     const startAgentProcessing = () => {
+      // Create MessageStream for this session
+      const stream = new MessageStream(messageContent);
+
       // Start processing in background
       const agentIterator = processAgentRequest(
         messageContent,
@@ -292,7 +300,8 @@ fastify.post<{ Body: CreateSessionBody }>(
         undefined,
         userEmail,
         workspacePath,
-        { overwrite, autoWorkspacePush, claudeConfigSync }
+        { overwrite, autoWorkspacePush, claudeConfigSync },
+        stream
       );
 
       // Process events in background
@@ -308,6 +317,9 @@ fastify.post<{ Body: CreateSessionBody }>(
             ) {
               sessionId = sdkMessage.session_id;
               getOrCreateQueue(sessionId);
+
+              // Store MessageStream for this session (for interactive messaging)
+              sessionMessageStreams.set(sessionId, stream);
 
               // Ensure user exists before creating session
               await upsertUser(userId, userEmail);
@@ -380,6 +392,8 @@ fastify.post<{ Body: CreateSessionBody }>(
         } finally {
           if (sessionId) {
             markQueueCompleted(sessionId);
+            // Cleanup MessageStream
+            sessionMessageStreams.delete(sessionId);
           }
         }
       })();
@@ -921,39 +935,74 @@ fastify.register(async (fastify) => {
             const userMessageContent = message.content as MessageContent[];
             const model = message.model || 'databricks-claude-sonnet-4-5';
 
-            // Fetch session to get workspacePath and autoWorkspacePush for resume
-            const session = await getSessionById(sessionId, userId);
-            const workspacePath = session?.workspacePath ?? undefined;
-            const autoWorkspacePush = session?.autoWorkspacePush ?? false;
+            // Check if session already has a MessageStream (agent is running)
+            const existingStream = sessionMessageStreams.get(sessionId);
 
-            // Get user settings for claudeConfigSync
-            const userSettings = await getSettingsDirect(userId);
-            const claudeConfigSync = userSettings?.claudeConfigSync ?? true;
+            if (existingStream) {
+              // Session is already running - queue the message
+              console.log(
+                `[WebSocket] Queueing message for existing session: ${sessionId}`
+              );
 
-            // Save user message to database
-            const userMsg = createUserMessage(sessionId, userMessageContent);
-            await saveMessage(userMsg);
+              // Add message to stream queue
+              existingStream.addMessage(userMessageContent);
 
-            // Process agent request and stream responses (use URL sessionId for resume)
-            for await (const sdkMessage of processAgentRequest(
-              userMessageContent,
-              model,
-              sessionId,
-              userEmail,
-              workspacePath,
-              { autoWorkspacePush, claudeConfigSync }
-            )) {
-              // Save message to database (always execute regardless of WebSocket state)
-              await saveMessage(sdkMessage);
+              // Save user message to database
+              const userMsg = createUserMessage(sessionId, userMessageContent);
+              await saveMessage(userMsg);
 
-              // Send to client (continue even if WebSocket is disconnected)
+              // Send user message to client immediately
+              socket.send(JSON.stringify(userMsg));
+            } else {
+              // Start new agent session or resume existing one
+              console.log(
+                `[WebSocket] Starting agent for session: ${sessionId}`
+              );
+
+              // Fetch session to get workspacePath and autoWorkspacePush for resume
+              const session = await getSessionById(sessionId, userId);
+              const workspacePath = session?.workspacePath ?? undefined;
+              const autoWorkspacePush = session?.autoWorkspacePush ?? false;
+
+              // Get user settings for claudeConfigSync
+              const userSettings = await getSettingsDirect(userId);
+              const claudeConfigSync = userSettings?.claudeConfigSync ?? true;
+
+              // Create MessageStream for this session
+              const stream = new MessageStream(userMessageContent);
+              sessionMessageStreams.set(sessionId, stream);
+
+              // Save user message to database
+              const userMsg = createUserMessage(sessionId, userMessageContent);
+              await saveMessage(userMsg);
+
+              // Process agent request and stream responses (use URL sessionId for resume)
               try {
-                socket.send(JSON.stringify(sdkMessage));
-              } catch (sendError) {
-                console.error('Failed to send WebSocket message:', sendError);
-              }
+                for await (const sdkMessage of processAgentRequest(
+                  userMessageContent,
+                  model,
+                  sessionId,
+                  userEmail,
+                  workspacePath,
+                  { autoWorkspacePush, claudeConfigSync },
+                  stream
+                )) {
+                  // Save message to database (always execute regardless of WebSocket state)
+                  await saveMessage(sdkMessage);
 
-              // Note: workspace sync is now handled by Stop hook in agent/hooks.ts
+                  // Send to client (continue even if WebSocket is disconnected)
+                  try {
+                    socket.send(JSON.stringify(sdkMessage));
+                  } catch (sendError) {
+                    console.error('Failed to send WebSocket message:', sendError);
+                  }
+
+                  // Note: workspace sync is now handled by Stop hook in agent/hooks.ts
+                }
+              } finally {
+                // Cleanup MessageStream when agent completes
+                sessionMessageStreams.delete(sessionId);
+              }
             }
           }
         } catch (error: any) {
@@ -978,6 +1027,13 @@ fastify.register(async (fastify) => {
         // Remove listener
         if (queue) {
           queue.listeners.delete(onEvent);
+        }
+
+        // Cleanup MessageStream on disconnect
+        const stream = sessionMessageStreams.get(sessionId);
+        if (stream) {
+          stream.complete();
+          sessionMessageStreams.delete(sessionId);
         }
       });
 

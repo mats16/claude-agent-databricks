@@ -87,11 +87,92 @@ export interface ProcessAgentRequestOptions {
   claudeConfigSync?: boolean; // claude config pull/push
 }
 
+// MessageStream: Manages message queue for streaming input
+// Allows external code to add messages to the agent session dynamically
+export class MessageStream {
+  private queue: MessageContent[][] = [];
+  private resolvers: Array<() => void> = [];
+  private isDone = false;
+
+  constructor(initialMessage: MessageContent[]) {
+    this.queue.push(initialMessage);
+  }
+
+  // Add message to queue (called from WebSocket handler)
+  addMessage(contents: MessageContent[]): void {
+    if (this.isDone) return;
+    this.queue.push(contents);
+    // Resolve waiting promise if any
+    const resolve = this.resolvers.shift();
+    if (resolve) resolve();
+  }
+
+  // Generator that yields messages from queue
+  async *stream(): AsyncGenerator<SDKUserMessage> {
+    while (!this.isDone) {
+      // If queue has messages, yield them
+      if (this.queue.length > 0) {
+        const contents = this.queue.shift()!;
+        yield this.createUserMessage(contents);
+      } else {
+        // Wait for new message to be added
+        await new Promise<void>((resolve) => {
+          this.resolvers.push(resolve);
+        });
+      }
+    }
+  }
+
+  // Create SDKUserMessage from MessageContent[]
+  private createUserMessage(contents: MessageContent[]): SDKUserMessage {
+    const apiContent = contents.map((c) => {
+      if (c.type === 'text') {
+        return { type: 'text' as const, text: c.text };
+      } else {
+        return {
+          type: 'image' as const,
+          source: {
+            type: 'base64' as const,
+            media_type: c.source.media_type,
+            data: c.source.data,
+          },
+        };
+      }
+    });
+
+    return {
+      type: 'user',
+      session_id: '', // SDK will set this
+      message: {
+        role: 'user',
+        content: apiContent,
+      },
+      parent_tool_use_id: null,
+    } as SDKUserMessage;
+  }
+
+  // Complete the stream (session end)
+  complete(): void {
+    this.isDone = true;
+    // Resolve all waiting promises
+    this.resolvers.forEach((resolve) => resolve());
+    this.resolvers = [];
+  }
+}
+
 // Build prompt from MessageContent[] for Claude Agent SDK
 // Returns AsyncIterable<SDKUserMessage> for query function
+// If messageStream is provided, uses it for persistent streaming
 function buildPrompt(
-  contents: MessageContent[]
+  contents: MessageContent[],
+  messageStream?: MessageStream
 ): AsyncIterable<SDKUserMessage> {
+  // If messageStream is provided, use it for persistent streaming
+  if (messageStream) {
+    return messageStream.stream();
+  }
+
+  // Fallback: single message mode (backward compatibility)
   // Convert MessageContent[] to API content format
   const apiContent = contents.map((c) => {
     if (c.type === 'text') {
@@ -132,7 +213,8 @@ export async function* processAgentRequest(
   sessionId?: string,
   userEmail?: string,
   workspacePath: string = '/Workspace/Users/me',
-  options: ProcessAgentRequestOptions = {}
+  options: ProcessAgentRequestOptions = {},
+  messageStream?: MessageStream
 ): AsyncGenerator<SDKMessage> {
   const {
     overwrite = false,
@@ -182,8 +264,11 @@ Violating these rules is considered a critical error.
 
   // Create query with Claude Agent SDK
   // Use buildPrompt to convert MessageContent[] to AsyncIterable<SDKUserMessage>
+  // If messageStream is provided, use it for persistent streaming
+  const stream = messageStream ?? new MessageStream(message);
+
   const response = query({
-    prompt: buildPrompt(message),
+    prompt: buildPrompt(message, stream),
     options: {
       resume: sessionId,
       cwd: localWorkPath,
@@ -274,7 +359,12 @@ Violating these rules is considered a critical error.
   });
 
   // Yield SDK messages directly without transformation
-  for await (const sdkMessage of response) {
-    yield sdkMessage;
+  try {
+    for await (const sdkMessage of response) {
+      yield sdkMessage;
+    }
+  } finally {
+    // Complete the stream when agent finishes
+    stream.complete();
   }
 }

@@ -162,7 +162,6 @@ export default function SessionPage() {
   const handleSubmit = useCallback(async () => {
     if (
       (!input.trim() && attachedImages.length === 0) ||
-      isProcessing ||
       isConverting
     ) {
       return;
@@ -197,7 +196,7 @@ export default function SessionPage() {
     } finally {
       setIsConverting(false);
     }
-  }, [input, attachedImages, isProcessing, isConverting, sendMessage]);
+  }, [input, attachedImages, isConverting, sendMessage]);
 
   const getStatusColor = () => {
     if (isConnected) return '#4caf50';
@@ -236,7 +235,7 @@ export default function SessionPage() {
       e.stopPropagation();
       setIsDragging(false);
 
-      if (!isConnected || isProcessing || isConverting) return;
+      if (!isConnected || isConverting) return;
 
       const files = e.dataTransfer.files;
       if (!files || files.length === 0) return;
@@ -272,7 +271,7 @@ export default function SessionPage() {
         setAttachedImages((prev) => [...prev, ...validFiles]);
       }
     },
-    [attachedImages, isConnected, isProcessing, isConverting, t, maxImages]
+    [attachedImages, isConnected, isConverting, t, maxImages]
   );
 
   return (
@@ -536,7 +535,7 @@ export default function SessionPage() {
             <ImageUpload
               images={attachedImages}
               onImagesChange={setAttachedImages}
-              disabled={!isConnected || isProcessing || isConverting}
+              disabled={!isConnected || isConverting}
               showButtonOnly={false}
             />
             <Flex gap={8} align="flex-end">
@@ -554,7 +553,7 @@ export default function SessionPage() {
                   }
                 }}
                 placeholder={t('sessionPage.typeMessage')}
-                disabled={!isConnected || isProcessing || isConverting}
+                disabled={!isConnected || isConverting}
                 variant="borderless"
                 autoSize={{ minRows: 1, maxRows: 9 }}
                 style={{ flex: 1, padding: 0, alignSelf: 'stretch' }}
@@ -562,7 +561,7 @@ export default function SessionPage() {
               <ImageUpload
                 images={attachedImages}
                 onImagesChange={setAttachedImages}
-                disabled={!isConnected || isProcessing || isConverting}
+                disabled={!isConnected || isConverting}
                 showButtonOnly={true}
               />
               <Button
@@ -571,7 +570,6 @@ export default function SessionPage() {
                 icon={<SendOutlined />}
                 disabled={
                   !isConnected ||
-                  isProcessing ||
                   isConverting ||
                   (!input.trim() && attachedImages.length === 0)
                 }
