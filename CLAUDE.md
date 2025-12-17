@@ -73,6 +73,9 @@ Migration: `app/backend/db/migrations/0001_init.sql` (run with `npm run db:migra
 - **Production**: Service Principal OIDC token + user token from `x-forwarded-access-token` header (Databricks Apps provides this)
 - **Development**: Uses `DATABRICKS_TOKEN` as fallback
 
+### Workspace Permission Check
+`GET /api/v1/users/me` checks SP permission by attempting to create `.claude` directory via `workspace/mkdirs` API. Returns `hasWorkspacePermission: boolean`.
+
 ### WebSocket Communication
 The frontend connects via WebSocket for real-time streaming. SDK messages flow:
 1. Client sends `{ type: "user_message", content, model }`
@@ -89,9 +92,10 @@ Sync between local storage and Databricks Workspace is handled via Claude Agent 
 - **UserPromptSubmit hook** (new session only): `workspacePull()` - workspace -> local (`databricks workspace export-dir`)
 - **Stop hook**: `workspacePush()` - local -> workspace (`databricks sync`)
 
-Sync targets:
-- `workDir`: User's working directory (e.g., `/Workspace/Users/{email}/sandbox`)
-- `claudeConfig`: User's `.claude` directory (`/Workspace/Users/{email}/.claude`)
+Path structure:
+- Local base: `$HOME/c` (e.g., `/Users/me/c` or `/home/app/c`)
+- Workspace path: `/Workspace/Users/{email}/sandbox` -> Local: `$HOME/c/Workspace/Users/{email}/sandbox`
+- Claude config: `/Workspace/Users/{email}/.claude` -> Local: `$HOME/c/Workspace/Users/{email}/.claude`
 
 Note: `SessionStart` hook does not fire in SDK mode, so `UserPromptSubmit` is used instead.
 

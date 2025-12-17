@@ -334,26 +334,30 @@ fastify.get('/api/v1/users/me', async (request, _reply) => {
   // Workspace home is derived from user email
   const workspaceHome = userEmail ? `/Workspace/Users/${userEmail}` : null;
 
-  // Check workspace permission using SP token
-  // When SP has no permission, the API returns empty {} instead of error
-  // When SP has permission, the API returns { objects: [...] }
+  // Check workspace permission by trying to create .claude directory
+  // mkdirs returns 200 even if directory already exists
   let hasWorkspacePermission = false;
   if (workspaceHome) {
     try {
       const token = await getAccessToken();
+      const claudeConfigPath = `${workspaceHome}/.claude`;
       const response = await fetch(
-        `${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(workspaceHome)}`,
+        `${databricksHost}/api/2.0/workspace/mkdirs`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ path: claudeConfigPath }),
         }
       );
       const data = (await response.json()) as {
-        objects?: Array<{ path: string; object_type: string }>;
         error_code?: string;
+        message?: string;
       };
-      // Permission exists if 'objects' field is present (even if empty array)
-      hasWorkspacePermission =
-        'objects' in data && data.error_code !== 'PERMISSION_DENIED';
+      // Permission exists if no error_code (mkdirs returns {} on success)
+      hasWorkspacePermission = !data.error_code;
     } catch (error: any) {
       console.error('Failed to check workspace permission:', error);
       hasWorkspacePermission = false;
