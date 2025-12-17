@@ -11,6 +11,7 @@ import {
   FolderOutlined,
 } from '@ant-design/icons';
 import { useAgent } from '../hooks/useAgent';
+import { useSessions } from '../contexts/SessionsContext';
 import TitleEditModal from '../components/TitleEditModal';
 import MessageRenderer from '../components/MessageRenderer';
 
@@ -25,6 +26,7 @@ export default function SessionPage() {
   const { t } = useTranslation();
   const { sessionId } = useParams<{ sessionId: string }>();
   const location = useLocation();
+  const { getSession, updateSessionLocally } = useSessions();
   const [input, setInput] = useState('');
   const [sessionTitle, setSessionTitle] = useState<string | null>(null);
   const [sessionAutoSync, setSessionAutoSync] = useState(false);
@@ -41,32 +43,18 @@ export default function SessionPage() {
     prevSessionIdRef.current = sessionId;
   }
 
+  // Sync session data from context
   useEffect(() => {
     if (!sessionId) return;
-
-    const fetchSession = async () => {
-      try {
-        const response = await fetch(`/api/v1/sessions`);
-        if (response.ok) {
-          const data = await response.json();
-          const session = data.sessions?.find(
-            (s: { id: string }) => s.id === sessionId
-          );
-          if (session) {
-            if (session.title) {
-              setSessionTitle(session.title);
-            }
-            setSessionAutoSync(session.autoSync ?? false);
-            setSessionWorkspacePath(session.workspacePath ?? null);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch session:', error);
+    const session = getSession(sessionId);
+    if (session) {
+      if (session.title) {
+        setSessionTitle(session.title);
       }
-    };
-
-    fetchSession();
-  }, [sessionId]);
+      setSessionAutoSync(session.autoSync ?? false);
+      setSessionWorkspacePath(session.workspacePath ?? null);
+    }
+  }, [sessionId, getSession]);
 
   const handleSaveSettings = useCallback(
     async (newTitle: string, autoSync: boolean) => {
@@ -81,11 +69,12 @@ export default function SessionPage() {
       if (response.ok) {
         setSessionTitle(newTitle);
         setSessionAutoSync(autoSync);
+        updateSessionLocally(sessionId, { title: newTitle, autoSync });
       } else {
         throw new Error('Failed to update session settings');
       }
     },
-    [sessionId]
+    [sessionId, updateSessionLocally]
   );
 
   const handleWorkspacePathClick = useCallback(async () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dropdown, Avatar, MenuProps } from 'antd';
 import {
@@ -8,7 +8,8 @@ import {
   LogoutOutlined,
   CheckOutlined,
 } from '@ant-design/icons';
-import SettingsModal, { UserSettings } from './SettingsModal';
+import SettingsModal from './SettingsModal';
+import { useUser } from '../contexts/UserContext';
 
 interface AccountMenuProps {
   userEmail?: string;
@@ -21,34 +22,22 @@ const LANGUAGES = [
 
 export default function AccountMenu({ userEmail }: AccountMenuProps) {
   const { t, i18n } = useTranslation();
+  const { userSettings, isLoading } = useUser();
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isInitialSetup, setIsInitialSetup] = useState(false);
-  const [hasCheckedSettings, setHasCheckedSettings] = useState(false);
+  const hasCheckedSettings = useRef(false);
 
-  // Check settings on mount
+  // Check settings when userSettings is loaded
   useEffect(() => {
-    const checkSettings = async () => {
-      try {
-        const response = await fetch('/api/v1/users/me/settings');
-        if (response.ok) {
-          const data: UserSettings = await response.json();
-          // Show initial setup modal if no token configured
-          if (!data.hasAccessToken) {
-            setIsInitialSetup(true);
-            setIsSettingsModalOpen(true);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to check settings:', error);
-      } finally {
-        setHasCheckedSettings(true);
+    if (!isLoading && userSettings && !hasCheckedSettings.current) {
+      hasCheckedSettings.current = true;
+      // Show initial setup modal if no token configured
+      if (!userSettings.hasAccessToken) {
+        setIsInitialSetup(true);
+        setIsSettingsModalOpen(true);
       }
-    };
-
-    if (!hasCheckedSettings) {
-      checkSettings();
     }
-  }, [hasCheckedSettings]);
+  }, [isLoading, userSettings]);
 
   const handleLogout = () => {
     window.location.href = '/';

@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Typography, Spin, Empty, Flex } from 'antd';
-import { useSessions, Session } from '../hooks/useSessions';
+import { useSessions, Session } from '../contexts/SessionsContext';
 
 const { Text } = Typography;
 
