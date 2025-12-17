@@ -34,6 +34,11 @@ npm run format:check
 # Database migration
 npm run db:migrate
 # Or manually: psql $DB_URL -f app/backend/db/migrations/0001_init.sql
+
+# Databricks Apps deployment
+databricks bundle validate
+databricks bundle deploy -t dev   # Development
+databricks bundle deploy -t prod  # Production
 ```
 
 Development servers:
@@ -130,6 +135,7 @@ To minimize redundant API requests, shared data should be managed via React Cont
 - **Brand Color**: `#f5a623` (Orange/Gold)
 - **Font**: Noto Sans JP
 - **Icons**: `@ant-design/icons`
+- **i18n**: `react-i18next` with translations in `app/frontend/src/i18n/` (en, ja)
 - Theme configured in `app/frontend/src/main.tsx`
 - Custom styles in `app/frontend/src/App.css`
 

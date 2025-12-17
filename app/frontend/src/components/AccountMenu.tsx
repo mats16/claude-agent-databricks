@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dropdown, Avatar, MenuProps } from 'antd';
 import {
@@ -9,7 +9,6 @@ import {
   CheckOutlined,
 } from '@ant-design/icons';
 import SettingsModal from './SettingsModal';
-import { useUser } from '../contexts/UserContext';
 
 interface AccountMenuProps {
   userEmail?: string;
@@ -22,22 +21,7 @@ const LANGUAGES = [
 
 export default function AccountMenu({ userEmail }: AccountMenuProps) {
   const { t, i18n } = useTranslation();
-  const { userSettings, isLoading } = useUser();
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isInitialSetup, setIsInitialSetup] = useState(false);
-  const hasCheckedSettings = useRef(false);
-
-  // Check settings when userSettings is loaded
-  useEffect(() => {
-    if (!isLoading && userSettings && !hasCheckedSettings.current) {
-      hasCheckedSettings.current = true;
-      // Show initial setup modal if no token configured
-      if (!userSettings.hasAccessToken) {
-        setIsInitialSetup(true);
-        setIsSettingsModalOpen(true);
-      }
-    }
-  }, [isLoading, userSettings]);
 
   const handleLogout = () => {
     window.location.href = '/';
@@ -48,13 +32,11 @@ export default function AccountMenu({ userEmail }: AccountMenuProps) {
   };
 
   const handleOpenSettings = () => {
-    setIsInitialSetup(false);
     setIsSettingsModalOpen(true);
   };
 
   const handleCloseSettings = () => {
     setIsSettingsModalOpen(false);
-    setIsInitialSetup(false);
   };
 
   const displayName = userEmail || 'User';
@@ -142,7 +124,6 @@ export default function AccountMenu({ userEmail }: AccountMenuProps) {
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={handleCloseSettings}
-        isInitialSetup={isInitialSetup}
       />
     </>
   );

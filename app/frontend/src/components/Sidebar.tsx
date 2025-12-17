@@ -58,10 +58,14 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
     }
   }, [userInfo, workspacePath]);
 
-  // Show permission modal if no permission after loading
+  // Show permission modal if no permission after loading, hide if permission granted
   useEffect(() => {
-    if (!isLoading && hasPermission === false) {
-      setShowPermissionModal(true);
+    if (!isLoading) {
+      if (hasPermission === false) {
+        setShowPermissionModal(true);
+      } else if (hasPermission === true) {
+        setShowPermissionModal(false);
+      }
     }
   }, [isLoading, hasPermission]);
 
