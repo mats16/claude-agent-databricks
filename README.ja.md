@@ -160,4 +160,4 @@ claude_agent_app/
 
 ## ライセンス
 
-MIT
+Apache License 2.0
