@@ -6,13 +6,16 @@ const execAsync = promisify(exec);
 /**
  * Pull from workspace to local (workspace -> local)
  * Uses: databricks workspace export-dir
+ * @param overwrite - If true, adds --overwrite flag to overwrite existing local files
  */
 export async function workspacePull(
   workspacePath: string,
-  localPath: string
+  localPath: string,
+  overwrite: boolean = false
 ): Promise<void> {
-  const cmd = `databricks workspace export-dir "${workspacePath}" "${localPath}" --overwrite`;
-  console.log(`[workspacePull] ${workspacePath} -> ${localPath}`);
+  const overwriteFlag = overwrite ? ' --overwrite' : '';
+  const cmd = `databricks workspace export-dir "${workspacePath}" "${localPath}"${overwriteFlag}`;
+  console.log(`[workspacePull] ${workspacePath} -> ${localPath} (overwrite: ${overwrite})`);
   try {
     const { stdout, stderr } = await execAsync(cmd);
     if (stdout) console.log(`[workspacePull] stdout: ${stdout}`);
@@ -40,10 +43,21 @@ export async function workspacePush(
     'json',
     '--exclude-from',
     '.gitignore',
+    // Claude Code - exclude entire directories
+    '--exclude',
+    '".claude.json.corrupted.*"',
+    '--exclude',
+    '"debug/*"',
+    '--exclude',
+    '"telemetry/*"',
+    '--exclude',
+    '"shell-snapshots/*"',
+    // Python
     '--exclude',
     '"*.pyc"',
     '--exclude',
     '"__pycache__"',
+    // Node.js
     '--exclude',
     '"node_modules/*"',
     '--exclude',

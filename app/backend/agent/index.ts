@@ -76,6 +76,13 @@ export async function getAccessToken(): Promise<string> {
   return token;
 }
 
+// Options for processAgentRequest
+export interface ProcessAgentRequestOptions {
+  overwrite?: boolean; // workspace pullで--overwrite付与
+  autoWorkspacePush?: boolean; // workspace pushを実行
+  claudeConfigSync?: boolean; // claude config pull/push
+}
+
 // Process agent request using Claude Agent SDK
 // Returns SDKMessage directly without transformation
 export async function* processAgentRequest(
@@ -83,8 +90,14 @@ export async function* processAgentRequest(
   model: string = 'databricks-claude-sonnet-4-5',
   sessionId?: string,
   userEmail?: string,
-  workspacePath: string = '/Workspace/Users/me'
+  workspacePath: string = '/Workspace/Users/me',
+  options: ProcessAgentRequestOptions = {}
 ): AsyncGenerator<SDKMessage> {
+  const {
+    overwrite = false,
+    autoWorkspacePush = false,
+    claudeConfigSync = false,
+  } = options;
   // Determine base directory based on environment
   // Local development: ./tmp, Production: /home/app
   const localBasePath = path.join(process.env.HOME ?? '/tmp', 'c');
@@ -178,34 +191,47 @@ Violating these rules is considered a critical error.
         // Use UserPromptSubmit instead of SessionStart (SessionStart doesn't fire in SDK mode)
         // Only run pull for new sessions (sessionId is undefined)
         UserPromptSubmit: [
-          // Pull claudeConfig (workspace -> local)
+          // Pull claudeConfig (workspace -> local) - only if claudeConfigSync is enabled
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
-                if (!sessionId) {
-                  console.log('[Hook:UserPromptSubmit] pull claudeConfig');
+                if (!sessionId && claudeConfigSync) {
+                  console.log(
+                    '[Hook:UserPromptSubmit] pull claudeConfig (claudeConfigSync enabled)'
+                  );
                   workspacePull(
                     workspaceClaudeConfigPath,
-                    localClaudeConfigPath
+                    localClaudeConfigPath,
+                    overwrite
                   ).catch((err) =>
                     console.error(
                       '[Hook:UserPromptSubmit] workspacePull claudeConfig error',
                       err
                     )
                   );
+                } else if (!sessionId) {
+                  console.log(
+                    '[Hook:UserPromptSubmit] skip claudeConfig pull (claudeConfigSync disabled)'
+                  );
                 }
                 return { async: true };
               },
             ],
           },
-          // Pull workDir (workspace -> local)
+          // Pull workDir (workspace -> local) - always run for new sessions with overwrite flag
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
                 if (!sessionId) {
-                  console.log('[Hook:UserPromptSubmit] pull workDir');
-                  workspacePull(workspacePath, localWorkPath).catch((err) =>
-                    console.error('[Hook:UserPromptSubmit] workspacePull workDir error', err)
+                  console.log(
+                    `[Hook:UserPromptSubmit] pull workDir (overwrite: ${overwrite})`
+                  );
+                  workspacePull(workspacePath, localWorkPath, overwrite).catch(
+                    (err) =>
+                      console.error(
+                        '[Hook:UserPromptSubmit] workspacePull workDir error',
+                        err
+                      )
                   );
                 }
                 return { async: true };
@@ -214,29 +240,51 @@ Violating these rules is considered a critical error.
           },
         ],
         Stop: [
-          // Push claudeConfig (local -> workspace)
+          // Push claudeConfig (local -> workspace) - only if claudeConfigSync is enabled
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
-                console.log('[Hook:Stop] push claudeConfig');
-                workspacePush(
-                  localClaudeConfigPath,
-                  workspaceClaudeConfigPath
-                ).catch((err) =>
-                  console.error('[Hook:Stop] workspacePush claudeConfig error', err)
-                );
+                if (claudeConfigSync) {
+                  console.log(
+                    '[Hook:Stop] push claudeConfig (claudeConfigSync enabled)'
+                  );
+                  workspacePush(
+                    localClaudeConfigPath,
+                    workspaceClaudeConfigPath
+                  ).catch((err) =>
+                    console.error(
+                      '[Hook:Stop] workspacePush claudeConfig error',
+                      err
+                    )
+                  );
+                } else {
+                  console.log(
+                    '[Hook:Stop] skip claudeConfig push (claudeConfigSync disabled)'
+                  );
+                }
                 return { async: true };
               },
             ],
           },
-          // Push workDir (local -> workspace)
+          // Push workDir (local -> workspace) - only if autoWorkspacePush is enabled
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
-                console.log('[Hook:Stop] push workDir');
-                workspacePush(localWorkPath, workspacePath).catch((err) =>
-                  console.error('[Hook:Stop] workspacePush workDir error', err)
-                );
+                if (autoWorkspacePush) {
+                  console.log(
+                    '[Hook:Stop] push workDir (autoWorkspacePush enabled)'
+                  );
+                  workspacePush(localWorkPath, workspacePath).catch((err) =>
+                    console.error(
+                      '[Hook:Stop] workspacePush workDir error',
+                      err
+                    )
+                  );
+                } else {
+                  console.log(
+                    '[Hook:Stop] skip workDir push (autoWorkspacePush disabled)'
+                  );
+                }
                 return { async: true };
               },
             ],

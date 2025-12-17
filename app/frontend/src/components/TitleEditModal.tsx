@@ -8,36 +8,38 @@ const { Text } = Typography;
 interface TitleEditModalProps {
   isOpen: boolean;
   currentTitle: string;
-  currentAutoSync: boolean;
-  onSave: (newTitle: string, autoSync: boolean) => void;
+  currentAutoWorkspacePush: boolean;
+  onSave: (newTitle: string, autoWorkspacePush: boolean) => void;
   onClose: () => void;
 }
 
 export default function TitleEditModal({
   isOpen,
   currentTitle,
-  currentAutoSync,
+  currentAutoWorkspacePush,
   onSave,
   onClose,
 }: TitleEditModalProps) {
   const { t } = useTranslation();
   const [title, setTitle] = useState(currentTitle);
-  const [autoSync, setAutoSync] = useState(currentAutoSync);
+  const [autoWorkspacePush, setAutoWorkspacePush] = useState(
+    currentAutoWorkspacePush
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setTitle(currentTitle);
-      setAutoSync(currentAutoSync);
+      setAutoWorkspacePush(currentAutoWorkspacePush);
     }
-  }, [isOpen, currentTitle, currentAutoSync]);
+  }, [isOpen, currentTitle, currentAutoWorkspacePush]);
 
   const handleOk = async () => {
     if (!title.trim() || isSaving) return;
 
     setIsSaving(true);
     try {
-      await onSave(title.trim(), autoSync);
+      await onSave(title.trim(), autoWorkspacePush);
       onClose();
     } finally {
       setIsSaving(false);
@@ -75,8 +77,8 @@ export default function TitleEditModal({
       </div>
       <div>
         <Checkbox
-          checked={autoSync}
-          onChange={(e) => setAutoSync(e.target.checked)}
+          checked={autoWorkspacePush}
+          onChange={(e) => setAutoWorkspacePush(e.target.checked)}
           disabled={isSaving}
         >
           <SyncOutlined style={{ marginRight: 4 }} />

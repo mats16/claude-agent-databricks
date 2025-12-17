@@ -77,10 +77,10 @@ export async function updateSessionTitle(
   });
 }
 
-// Update session settings (title and autoSync) with RLS
+// Update session settings (title and autoWorkspacePush) with RLS
 export async function updateSession(
   id: string,
-  updates: { title?: string; autoSync?: boolean },
+  updates: { title?: string; autoWorkspacePush?: boolean },
   userId: string
 ): Promise<void> {
   return withUserContext(userId, async () => {

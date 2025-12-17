@@ -26,7 +26,7 @@ export const sessions = pgTable('sessions', {
   model: text('model').notNull(),
   workspacePath: text('workspace_path'),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  autoSync: boolean('auto_sync').default(false).notNull(),
+  autoWorkspacePush: boolean('auto_workspace_push').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

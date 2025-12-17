@@ -13,7 +13,7 @@ export interface Session {
   model: string;
   workspacePath: string | null;
   userEmail: string | null;
-  autoSync: boolean;
+  autoWorkspacePush: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -85,7 +85,7 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
             createdAt: data.session.updatedAt, // New sessions have same createdAt/updatedAt
             model: '',
             userEmail: null,
-            autoSync: false,
+            autoWorkspacePush: false,
           };
           setSessions((prev) => [newSession, ...prev]);
         }

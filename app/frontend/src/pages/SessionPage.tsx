@@ -29,7 +29,8 @@ export default function SessionPage() {
   const { getSession, updateSessionLocally } = useSessions();
   const [input, setInput] = useState('');
   const [sessionTitle, setSessionTitle] = useState<string | null>(null);
-  const [sessionAutoSync, setSessionAutoSync] = useState(false);
+  const [sessionAutoWorkspacePush, setSessionAutoWorkspacePush] =
+    useState(false);
   const [sessionWorkspacePath, setSessionWorkspacePath] = useState<
     string | null
   >(null);
@@ -51,25 +52,25 @@ export default function SessionPage() {
       if (session.title) {
         setSessionTitle(session.title);
       }
-      setSessionAutoSync(session.autoSync ?? false);
+      setSessionAutoWorkspacePush(session.autoWorkspacePush ?? false);
       setSessionWorkspacePath(session.workspacePath ?? null);
     }
   }, [sessionId, getSession]);
 
   const handleSaveSettings = useCallback(
-    async (newTitle: string, autoSync: boolean) => {
+    async (newTitle: string, autoWorkspacePush: boolean) => {
       if (!sessionId) return;
 
       const response = await fetch(`/api/v1/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle, autoSync }),
+        body: JSON.stringify({ title: newTitle, autoWorkspacePush }),
       });
 
       if (response.ok) {
         setSessionTitle(newTitle);
-        setSessionAutoSync(autoSync);
-        updateSessionLocally(sessionId, { title: newTitle, autoSync });
+        setSessionAutoWorkspacePush(autoWorkspacePush);
+        updateSessionLocally(sessionId, { title: newTitle, autoWorkspacePush });
       } else {
         throw new Error('Failed to update session settings');
       }
@@ -173,12 +174,12 @@ export default function SessionPage() {
         <Flex align="center" gap={8} style={{ minWidth: 0, flex: 1 }}>
           <Tooltip
             title={
-              sessionAutoSync
+              sessionAutoWorkspacePush
                 ? t('sidebar.autoSync')
                 : t('sessionPage.autoSyncDisabled')
             }
           >
-            {sessionAutoSync ? (
+            {sessionAutoWorkspacePush ? (
               <CloudSyncOutlined style={{ fontSize: 22, color: '#4caf50' }} />
             ) : (
               <CloudServerOutlined
@@ -247,7 +248,7 @@ export default function SessionPage() {
       <TitleEditModal
         isOpen={isModalOpen}
         currentTitle={sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
-        currentAutoSync={sessionAutoSync}
+        currentAutoWorkspacePush={sessionAutoWorkspacePush}
         onSave={handleSaveSettings}
         onClose={() => setIsModalOpen(false)}
       />

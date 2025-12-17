@@ -18,7 +18,11 @@ import {
   getSessionsByUserId,
   updateSession,
 } from './db/sessions.js';
-import { getSettings, upsertSettings } from './db/settings.js';
+import {
+  getSettings,
+  getSettingsDirect,
+  upsertSettings,
+} from './db/settings.js';
 import { upsertUser } from './db/users.js';
 import { syncToWorkspace } from './utils/workspace-sync.js';
 
@@ -151,7 +155,7 @@ interface CreateSessionBody {
     model: string;
     workspacePath?: string;
     overwrite?: boolean;
-    autoSync?: boolean;
+    autoWorkspacePush?: boolean;
   };
 }
 
@@ -177,7 +181,12 @@ fastify.post<{ Body: CreateSessionBody }>(
     const userMessage = userEvent.message.content;
     const model = session_context.model;
     const workspacePath = session_context.workspacePath;
-    const autoSync = session_context.autoSync ?? false;
+    const overwrite = session_context.overwrite ?? false;
+    const autoWorkspacePush = session_context.autoWorkspacePush ?? false;
+
+    // Get user settings for claudeConfigSync
+    const userSettings = await getSettingsDirect(userId);
+    const claudeConfigSync = userSettings?.claudeConfigSync ?? false;
 
     // Note: workspace export-dir is now handled by SessionStart hook in agent/hooks.ts
 
@@ -201,7 +210,8 @@ fastify.post<{ Body: CreateSessionBody }>(
         model,
         undefined,
         userEmail,
-        workspacePath
+        workspacePath,
+        { overwrite, autoWorkspacePush, claudeConfigSync }
       );
 
       // Process events in background
@@ -230,7 +240,7 @@ fastify.post<{ Body: CreateSessionBody }>(
                   model,
                   workspacePath,
                   userId,
-                  autoSync,
+                  autoWorkspacePush,
                 },
                 userId
               );
@@ -324,25 +334,28 @@ fastify.get('/api/v1/sessions', async (request, _reply) => {
   return { sessions: sessionList };
 });
 
-// Update session settings (title, autoSync)
+// Update session settings (title, autoWorkspacePush)
 fastify.patch<{
   Params: { sessionId: string };
-  Body: { title?: string; autoSync?: boolean };
+  Body: { title?: string; autoWorkspacePush?: boolean };
 }>('/api/v1/sessions/:sessionId', async (request, reply) => {
   const { sessionId } = request.params;
-  const { title, autoSync } = request.body;
+  const { title, autoWorkspacePush } = request.body;
   const userId =
     (request.headers['x-forwarded-user'] as string | undefined) ||
     DEFAULT_USER_ID;
 
   // At least one field must be provided
-  if (title === undefined && autoSync === undefined) {
-    return reply.status(400).send({ error: 'title or autoSync is required' });
+  if (title === undefined && autoWorkspacePush === undefined) {
+    return reply
+      .status(400)
+      .send({ error: 'title or autoWorkspacePush is required' });
   }
 
-  const updates: { title?: string; autoSync?: boolean } = {};
+  const updates: { title?: string; autoWorkspacePush?: boolean } = {};
   if (title !== undefined) updates.title = title;
-  if (autoSync !== undefined) updates.autoSync = autoSync;
+  if (autoWorkspacePush !== undefined)
+    updates.autoWorkspacePush = autoWorkspacePush;
 
   await updateSession(sessionId, updates, userId);
   return { success: true };
@@ -756,11 +769,14 @@ fastify.register(async (fastify) => {
             const userMessage = message.content;
             const model = message.model || 'databricks-claude-sonnet-4-5';
 
-            // Fetch session to get workspacePath for resume
+            // Fetch session to get workspacePath and autoWorkspacePush for resume
             const session = await getSessionById(sessionId, userId);
             const workspacePath = session?.workspacePath ?? undefined;
+            const autoWorkspacePush = session?.autoWorkspacePush ?? false;
 
-            // Note: autoSync and claudeConfigSync are now handled by hooks in agent/hooks.ts
+            // Get user settings for claudeConfigSync
+            const userSettings = await getSettingsDirect(userId);
+            const claudeConfigSync = userSettings?.claudeConfigSync ?? false;
 
             // Save user message to database
             const userMsg = createUserMessage(sessionId, userMessage);
@@ -772,7 +788,8 @@ fastify.register(async (fastify) => {
               model,
               sessionId,
               userEmail,
-              workspacePath
+              workspacePath,
+              { autoWorkspacePush, claudeConfigSync }
             )) {
               // Save message to database (always execute regardless of WebSocket state)
               await saveMessage(sdkMessage);

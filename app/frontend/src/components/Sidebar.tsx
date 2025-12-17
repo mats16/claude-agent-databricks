@@ -41,7 +41,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [overwrite, setOverwrite] = useState(true);
-  const [autoSync, setAutoSync] = useState(true);
+  const [autoWorkspacePush, setAutoWorkspacePush] = useState(true);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const navigate = useNavigate();
 
@@ -89,7 +89,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
             model: selectedModel,
             workspacePath: workspacePath.trim() || undefined,
             overwrite,
-            autoSync,
+            autoWorkspacePush,
           },
         }),
       });
@@ -233,8 +233,8 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
           </Tooltip>
           <Tooltip title={t('sidebar.autoSyncTooltip')}>
             <Checkbox
-              checked={autoSync}
-              onChange={(e) => setAutoSync(e.target.checked)}
+              checked={autoWorkspacePush}
+              onChange={(e) => setAutoWorkspacePush(e.target.checked)}
               disabled={isSubmitting}
             >
               <Text style={{ fontSize: 12 }}>
