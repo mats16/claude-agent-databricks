@@ -83,10 +83,17 @@ The frontend connects via WebSocket for real-time streaming. SDK messages flow:
 Configured in `app/backend/agent/index.ts`:
 - Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 
-### Workspace Sync
-- Sessions can sync files between local storage and Databricks Workspace
-- Auto-sync imports changes back on successful agent result
-- Default workspace path: `/Workspace/Users/{email}/sandbox`
+### Workspace Sync (SDK Hooks)
+Sync between local storage and Databricks Workspace is handled via Claude Agent SDK hooks in `app/backend/agent/hooks.ts`:
+
+- **UserPromptSubmit hook** (new session only): `workspacePull()` - workspace -> local (`databricks workspace export-dir`)
+- **Stop hook**: `workspacePush()` - local -> workspace (`databricks sync`)
+
+Sync targets:
+- `workDir`: User's working directory (e.g., `/Workspace/Users/{email}/sandbox`)
+- `claudeConfig`: User's `.claude` directory (`/Workspace/Users/{email}/.claude`)
+
+Note: `SessionStart` hook does not fire in SDK mode, so `UserPromptSubmit` is used instead.
 
 ## UI/Design
 
@@ -119,7 +126,8 @@ Configured in `app/backend/agent/index.ts`:
 ## Important Files
 
 - `app/backend/app.ts` - Fastify server, REST/WebSocket endpoints
-- `app/backend/agent/index.ts` - Claude Agent SDK configuration
+- `app/backend/agent/index.ts` - Claude Agent SDK configuration, hooks setup
+- `app/backend/agent/hooks.ts` - Workspace sync functions (`workspacePull`, `workspacePush`)
 - `app/backend/db/schema.ts` - Drizzle ORM table definitions
 - `app/backend/db/sessions.ts` - Session queries with RLS support
 - `app/backend/db/users.ts` - User CRUD operations
