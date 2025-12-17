@@ -334,7 +334,7 @@ fastify.post<{ Body: CreateSessionBody }>(
     startAgentProcessing();
 
     // Wait for init message with timeout
-    const timeoutMs = 60000; // 60 seconds timeout
+    const timeoutMs = 30000; // 30 seconds timeout
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
         reject(new Error('Timeout waiting for agent init message'));

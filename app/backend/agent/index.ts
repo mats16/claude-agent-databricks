@@ -235,18 +235,17 @@ Violating these rules is considered a critical error.
             hooks: [
               async (_input, _toolUseID, _options) => {
                 if (!sessionId && claudeConfigSync) {
-                  try {
-                    await workspacePull(
-                      workspaceClaudeConfigPath,
-                      localClaudeConfigPath,
-                      overwrite
-                    );
-                  } catch (err) {
+                  // Fire and forget - no await to prevent blocking SDK initialization
+                  workspacePull(
+                    workspaceClaudeConfigPath,
+                    localClaudeConfigPath,
+                    overwrite
+                  ).catch((err) =>
                     console.error(
                       '[Hook:UserPromptSubmit] workspacePull claudeConfig error (continuing anyway):',
                       err
-                    );
-                  }
+                    )
+                  );
                 }
                 return { async: true };
               },
@@ -257,18 +256,14 @@ Violating these rules is considered a critical error.
             hooks: [
               async (_input, _toolUseID, _options) => {
                 if (!sessionId) {
-                  try {
-                    await workspacePull(
-                      workspacePath,
-                      localWorkPath,
-                      overwrite
-                    );
-                  } catch (err) {
-                    console.error(
-                      '[Hook:UserPromptSubmit] workspacePull workDir error (continuing anyway):',
-                      err
-                    );
-                  }
+                  // Fire and forget - no await to prevent blocking SDK initialization
+                  workspacePull(workspacePath, localWorkPath, overwrite).catch(
+                    (err) =>
+                      console.error(
+                        '[Hook:UserPromptSubmit] workspacePull workDir error (continuing anyway):',
+                        err
+                      )
+                  );
                 }
                 return { async: true };
               },
