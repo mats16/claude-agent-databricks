@@ -15,7 +15,6 @@ import {
   SendOutlined,
   SyncOutlined,
   FolderOutlined,
-  EditOutlined,
   RocketOutlined,
 } from '@ant-design/icons';
 import SessionList from './SessionList';
@@ -51,7 +50,6 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const [workspacePath, setWorkspacePath] = useState('');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [overwrite, setOverwrite] = useState(true);
   const [autoWorkspacePush, setAutoWorkspacePush] = useState(true);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
@@ -124,7 +122,6 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
           session_context: {
             model: selectedModel,
             workspacePath: workspacePath.trim() || undefined,
-            overwrite,
             autoWorkspacePush,
           },
         }),
@@ -370,18 +367,6 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
               {workspacePath || t('sidebar.selectWorkspace')}
             </span>
           </Button>
-          <Tooltip title={t('sidebar.overwriteTooltip')}>
-            <Checkbox
-              checked={overwrite}
-              onChange={(e) => setOverwrite(e.target.checked)}
-              disabled={isSubmitting}
-            >
-              <Text style={{ fontSize: 12 }}>
-                <EditOutlined style={{ marginRight: 4 }} />
-                {t('sidebar.overwrite')}
-              </Text>
-            </Checkbox>
-          </Tooltip>
           <Tooltip title={t('sidebar.autoSyncTooltip')}>
             <Checkbox
               checked={autoWorkspacePush}

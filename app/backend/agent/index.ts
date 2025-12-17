@@ -82,7 +82,6 @@ export async function getAccessToken(): Promise<string> {
 
 // Options for processAgentRequest
 export interface ProcessAgentRequestOptions {
-  overwrite?: boolean; // workspace pullで--overwrite付与
   autoWorkspacePush?: boolean; // workspace pushを実行
   claudeConfigSync?: boolean; // claude config pull/push
   cwd?: string; // working directory path (created before agent starts)
@@ -218,7 +217,6 @@ export async function* processAgentRequest(
   messageStream?: MessageStream
 ): AsyncGenerator<SDKMessage> {
   const {
-    overwrite = false,
     autoWorkspacePush = false,
     claudeConfigSync = true,
     cwd,

@@ -186,7 +186,6 @@ interface CreateSessionBody {
   session_context: {
     model: string;
     workspacePath?: string;
-    overwrite?: boolean;
     autoWorkspacePush?: boolean;
   };
 }
@@ -221,7 +220,6 @@ fastify.post<{ Body: CreateSessionBody }>(
     const userMessage = userEvent.message.content;
     const model = session_context.model;
     const workspacePath = session_context.workspacePath;
-    const overwrite = session_context.overwrite ?? false;
     const autoWorkspacePush = session_context.autoWorkspacePush ?? false;
 
     // Get user settings for claudeConfigSync
@@ -243,12 +241,12 @@ fastify.post<{ Body: CreateSessionBody }>(
     fs.mkdirSync(localClaudeConfigPath, { recursive: true });
 
     // Start workspace pull in background (fire-and-forget)
-    // Pull .claude config if enabled
+    // Pull .claude config if enabled (always overwrite)
     if (claudeConfigSync) {
       console.log(
         `[New Session] Starting background pull of claude config from ${workspaceClaudeConfigPath}...`
       );
-      workspacePull(workspaceClaudeConfigPath, localClaudeConfigPath, overwrite)
+      workspacePull(workspaceClaudeConfigPath, localClaudeConfigPath, true)
         .then(() => {
           console.log('[New Session] Claude config pull completed');
         })
@@ -287,12 +285,12 @@ fastify.post<{ Body: CreateSessionBody }>(
     console.log(`[New Session] Creating workDir: ${localWorkPath}`);
     fs.mkdirSync(localWorkPath, { recursive: true });
 
-    // Pull workspace directory in background if workspacePath is provided
+    // Pull workspace directory in background if workspacePath is provided (always overwrite)
     if (workspacePath) {
       console.log(
         `[New Session] Starting background pull of workspace directory from ${workspacePath}...`
       );
-      workspacePull(workspacePath, localWorkPath, overwrite)
+      workspacePull(workspacePath, localWorkPath, true)
         .then(() => {
           console.log('[New Session] Workspace directory pull completed');
         })
@@ -312,7 +310,7 @@ fastify.post<{ Body: CreateSessionBody }>(
         undefined,
         userEmail,
         workspacePath,
-        { overwrite, autoWorkspacePush, claudeConfigSync, cwd: localWorkPath },
+        { autoWorkspacePush, claudeConfigSync, cwd: localWorkPath },
         stream
       );
 
