@@ -183,13 +183,13 @@ Violating these rules is considered a critical error.
             hooks: [
               async (_input, _toolUseID, _options) => {
                 if (!sessionId) {
-                  console.log('[Hook] UserPromptSubmit: pull claudeConfig');
+                  console.log('[Hook:UserPromptSubmit] pull claudeConfig');
                   workspacePull(
                     workspaceClaudeConfigPath,
                     localClaudeConfigPath
                   ).catch((err) =>
                     console.error(
-                      '[Hook] workspacePull claudeConfig error',
+                      '[Hook:UserPromptSubmit] workspacePull claudeConfig error',
                       err
                     )
                   );
@@ -203,9 +203,9 @@ Violating these rules is considered a critical error.
             hooks: [
               async (_input, _toolUseID, _options) => {
                 if (!sessionId) {
-                  console.log('[Hook] UserPromptSubmit: pull workDir');
+                  console.log('[Hook:UserPromptSubmit] pull workDir');
                   workspacePull(workspacePath, localWorkPath).catch((err) =>
-                    console.error('[Hook] workspacePull workDir error', err)
+                    console.error('[Hook:UserPromptSubmit] workspacePull workDir error', err)
                   );
                 }
                 return { async: true };
@@ -218,12 +218,12 @@ Violating these rules is considered a critical error.
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
-                console.log('[Hook] Stop: push claudeConfig');
+                console.log('[Hook:Stop] push claudeConfig');
                 workspacePush(
                   localClaudeConfigPath,
                   workspaceClaudeConfigPath
                 ).catch((err) =>
-                  console.error('[Hook] workspacePush claudeConfig error', err)
+                  console.error('[Hook:Stop] workspacePush claudeConfig error', err)
                 );
                 return { async: true };
               },
@@ -233,9 +233,9 @@ Violating these rules is considered a critical error.
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
-                console.log('[Hook] Stop: push workDir');
+                console.log('[Hook:Stop] push workDir');
                 workspacePush(localWorkPath, workspacePath).catch((err) =>
-                  console.error('[Hook] workspacePush workDir error', err)
+                  console.error('[Hook:Stop] workspacePush workDir error', err)
                 );
                 return { async: true };
               },
