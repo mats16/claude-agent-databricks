@@ -6,8 +6,10 @@ import {
   SettingOutlined,
   GlobalOutlined,
   CheckOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import SettingsModal from './SettingsModal';
+import SkillsModal from './SkillsModal';
 import { useUser } from '../contexts/UserContext';
 
 const LANGUAGES = [
@@ -19,6 +21,7 @@ export default function AccountMenu() {
   const { t, i18n } = useTranslation();
   const { userInfo } = useUser();
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
 
   const handleLanguageChange = (langCode: string) => {
     i18n.changeLanguage(langCode);
@@ -30,6 +33,14 @@ export default function AccountMenu() {
 
   const handleCloseSettings = () => {
     setIsSettingsModalOpen(false);
+  };
+
+  const handleOpenSkills = () => {
+    setIsSkillsModalOpen(true);
+  };
+
+  const handleCloseSkills = () => {
+    setIsSkillsModalOpen(false);
   };
 
   const displayEmail = userInfo?.email || 'User';
@@ -73,6 +84,12 @@ export default function AccountMenu() {
       onClick: handleOpenSettings,
     },
     {
+      key: 'skills',
+      icon: <ThunderboltOutlined />,
+      label: t('accountMenu.skills'),
+      onClick: handleOpenSkills,
+    },
+    {
       key: 'language',
       icon: <GlobalOutlined />,
       label: (
@@ -110,6 +127,8 @@ export default function AccountMenu() {
         isOpen={isSettingsModalOpen}
         onClose={handleCloseSettings}
       />
+
+      <SkillsModal isOpen={isSkillsModalOpen} onClose={handleCloseSkills} />
     </>
   );
 }

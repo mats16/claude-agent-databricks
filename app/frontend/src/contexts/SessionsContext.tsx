@@ -82,44 +82,68 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
 
   // WebSocket connection for real-time session list updates
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(
-      `${protocol}//${window.location.host}/api/v1/sessions/ws`
-    );
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let isIntentionallyClosed = false;
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'subscribe' }));
-    };
+    const connect = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(
+        `${protocol}//${window.location.host}/api/v1/sessions/ws`
+      );
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'session_created' && data.session) {
-          // Add new session to the top of the list
-          const newSession: Session = {
-            id: data.session.id,
-            title: data.session.title,
-            workspacePath: data.session.workspacePath,
-            updatedAt: data.session.updatedAt,
-            createdAt: data.session.updatedAt, // New sessions have same createdAt/updatedAt
-            model: '',
-            userEmail: null,
-            autoWorkspacePush: data.session.autoWorkspacePush ?? false,
-            isArchived: false, // New sessions are always active
-          };
-          setSessions((prev) => [newSession, ...prev]);
+      ws.onopen = () => {
+        console.log('Session list WebSocket connected');
+        ws?.send(JSON.stringify({ type: 'subscribe' }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'session_created' && data.session) {
+            // Add new session to the top of the list
+            const newSession: Session = {
+              id: data.session.id,
+              title: data.session.title,
+              workspacePath: data.session.workspacePath,
+              updatedAt: data.session.updatedAt,
+              createdAt: data.session.updatedAt, // New sessions have same createdAt/updatedAt
+              model: '',
+              userEmail: null,
+              autoWorkspacePush: data.session.autoWorkspacePush ?? false,
+              isArchived: false, // New sessions are always active
+            };
+            setSessions((prev) => [newSession, ...prev]);
+          }
+        } catch (err) {
+          console.error('Failed to parse session list WebSocket message:', err);
         }
-      } catch (err) {
-        console.error('Failed to parse session list WebSocket message:', err);
-      }
+      };
+
+      ws.onerror = (error) => {
+        console.error('Session list WebSocket error:', error);
+      };
+
+      ws.onclose = () => {
+        console.log('Session list WebSocket closed');
+        // Reconnect after 3 seconds if not intentionally closed
+        if (!isIntentionallyClosed) {
+          console.log('Reconnecting in 3 seconds...');
+          reconnectTimeout = setTimeout(() => {
+            connect();
+          }, 3000);
+        }
+      };
     };
 
-    ws.onerror = (error) => {
-      console.error('Session list WebSocket error:', error);
-    };
+    connect();
 
     return () => {
-      ws.close();
+      isIntentionallyClosed = true;
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      ws?.close();
     };
   }, []);
 

@@ -16,8 +16,8 @@ export default defineConfig(({ mode }) => {
           ws: true,
           rewriteWsOrigin: true,
           configure: (proxy, _options) => {
-            proxy.on('proxyReq', (proxyReq, _req, _res) => {
-              // Inject Databricks headers for local development
+            // Helper function to inject headers
+            const injectHeaders = (proxyReq: any) => {
               const token = env.DATABRICKS_TOKEN;
               const userName = env.DATABRICKS_USER_NAME;
               const userId = env.DATABRICKS_USER_ID;
@@ -35,6 +35,16 @@ export default defineConfig(({ mode }) => {
               if (userEmail) {
                 proxyReq.setHeader('X-Forwarded-Email', userEmail);
               }
+            };
+
+            // HTTP requests
+            proxy.on('proxyReq', (proxyReq, _req, _res) => {
+              injectHeaders(proxyReq);
+            });
+
+            // WebSocket upgrade requests
+            proxy.on('proxyReqWs', (proxyReq, _req, _socket, _options, _head) => {
+              injectHeaders(proxyReq);
             });
           },
         },

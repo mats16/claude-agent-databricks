@@ -51,7 +51,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const [workspacePath, setWorkspacePath] = useState('');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [autoWorkspacePush, setAutoWorkspacePush] = useState(true);
+  const [autoWorkspacePush, setAutoWorkspacePush] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isConverting, setIsConverting] = useState(false);
@@ -163,6 +163,12 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
 
   const handlePermissionGranted = () => {
     setShowPermissionModal(false);
+  };
+
+  // Handle workspace path change: enable auto sync when path is set, disable when cleared
+  const handleWorkspacePathChange = (path: string) => {
+    setWorkspacePath(path);
+    setAutoWorkspacePush(path.trim().length > 0);
   };
 
   // Drag & drop handlers for the input section
@@ -385,7 +391,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
                   e.preventDefault();
                   e.stopPropagation();
                   if (!isSubmitting) {
-                    setWorkspacePath('');
+                    handleWorkspacePathChange('');
                   }
                 }}
               />
@@ -440,7 +446,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       <WorkspaceSelectModal
         isOpen={isWorkspaceModalOpen}
         onClose={() => setIsWorkspaceModalOpen(false)}
-        onSelect={setWorkspacePath}
+        onSelect={handleWorkspacePathChange}
         initialPath={workspacePath || userInfo?.workspaceHome}
       />
 

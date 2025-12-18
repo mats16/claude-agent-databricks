@@ -7,7 +7,8 @@
     "select": "Select",
     "loading": "Loading...",
     "error": "Error",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "ok": "OK"
   },
   "sidebar": {
     "title": "Claude Code on Databricks",
@@ -22,6 +23,7 @@
   "accountMenu": {
     "accountSettings": "Account settings",
     "settings": "Settings",
+    "skills": "Skills",
     "databricksApp": "Open Databricks App",
     "language": "Language"
   },
@@ -46,6 +48,28 @@
     "claudeConfigSyncDescription": "Automatically sync Claude configuration (.claude directory) to Databricks Workspace on task completion.",
     "saved": "Settings saved successfully",
     "saveFailed": "Failed to save settings"
+  },
+  "skillsModal": {
+    "title": "Manage Skills",
+    "newSkill": "New Skill",
+    "skillName": "Skill Name",
+    "skillNamePlaceholder": "my-skill",
+    "skillContent": "Skill Content",
+    "skillContentPlaceholder": "Enter skill content in Markdown format...",
+    "save": "Save",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleteConfirm": "Are you sure you want to delete this skill?",
+    "deleteFailed": "Failed to delete skill",
+    "saved": "Skill saved successfully",
+    "deleted": "Skill deleted successfully",
+    "saveFailed": "Failed to save skill",
+    "nameRequired": "Skill name is required",
+    "contentRequired": "Skill content is required",
+    "invalidName": "Skill name can only contain alphanumeric characters, hyphens, and underscores",
+    "nameExists": "A skill with this name already exists",
+    "noSkills": "No skills yet",
+    "selectOrCreate": "Select a skill or create a new one"
   },
   "workspaceModal": {
     "title": "Select Workspace Directory",

@@ -14,12 +14,13 @@ async function withUserContext<T>(
 }
 
 // Create a new session (with RLS)
+// Uses ON CONFLICT DO NOTHING to handle retries with the same session ID
 export async function createSession(
   session: NewSession,
   userId: string
 ): Promise<void> {
   return withUserContext(userId, async () => {
-    await db.insert(sessions).values(session);
+    await db.insert(sessions).values(session).onConflictDoNothing();
   });
 }
 

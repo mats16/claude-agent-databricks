@@ -7,7 +7,8 @@
     "select": "選択",
     "loading": "読み込み中...",
     "error": "エラー",
-    "confirm": "確認"
+    "confirm": "確認",
+    "ok": "OK"
   },
   "sidebar": {
     "title": "Claude Code on Databricks",
@@ -22,6 +23,7 @@
   "accountMenu": {
     "accountSettings": "アカウント設定",
     "settings": "設定",
+    "skills": "スキル",
     "databricksApp": "Databricks App を開く",
     "language": "言語"
   },
@@ -46,6 +48,28 @@
     "claudeConfigSyncDescription": "タスク完了時に Claude の設定（.claude フォルダ）を Databricks Workspace へ自動的に同期します。",
     "saved": "設定を保存しました",
     "saveFailed": "設定の保存に失敗しました"
+  },
+  "skillsModal": {
+    "title": "スキル管理",
+    "newSkill": "新しいスキル",
+    "skillName": "スキル名",
+    "skillNamePlaceholder": "my-skill",
+    "skillContent": "スキルの内容",
+    "skillContentPlaceholder": "Markdown形式でスキルの内容を入力...",
+    "save": "保存",
+    "delete": "削除",
+    "cancel": "キャンセル",
+    "deleteConfirm": "このスキルを削除してもよろしいですか？",
+    "deleteFailed": "スキルの削除に失敗しました",
+    "saved": "スキルを保存しました",
+    "deleted": "スキルを削除しました",
+    "saveFailed": "スキルの保存に失敗しました",
+    "nameRequired": "スキル名は必須です",
+    "contentRequired": "スキルの内容は必須です",
+    "invalidName": "スキル名は英数字、ハイフン、アンダースコアのみ使用できます",
+    "nameExists": "この名前のスキルは既に存在します",
+    "noSkills": "スキルがありません",
+    "selectOrCreate": "スキルを選択するか新しく作成してください"
   },
   "workspaceModal": {
     "title": "ワークスペースディレクトリを選択",

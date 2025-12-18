@@ -60,6 +60,13 @@ export default function TitleEditModal({
     }
   };
 
+  // Handle workspace path change: enable auto sync when path is set, disable when cleared
+  const handleWorkspacePathChange = (path: string) => {
+    setWorkspacePath(path);
+    setAutoWorkspacePush(path.trim().length > 0);
+    setIsWorkspaceModalOpen(false);
+  };
+
   return (
     <Modal
       title={t('titleEditModal.title')}
@@ -145,10 +152,7 @@ export default function TitleEditModal({
       <WorkspaceSelectModal
         isOpen={isWorkspaceModalOpen}
         onClose={() => setIsWorkspaceModalOpen(false)}
-        onSelect={(path) => {
-          setWorkspacePath(path);
-          setIsWorkspaceModalOpen(false);
-        }}
+        onSelect={handleWorkspacePathChange}
         initialPath={workspacePath || userInfo?.workspaceHome}
       />
     </Modal>

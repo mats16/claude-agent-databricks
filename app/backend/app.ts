@@ -9,6 +9,7 @@ import {
   processAgentRequest,
   SDKMessage,
   getAccessToken,
+  getOidcAccessToken,
   databricksHost,
   MessageStream,
 } from './agent/index.js';
@@ -26,7 +27,12 @@ import {
   upsertSettings,
 } from './db/settings.js';
 import { upsertUser } from './db/users.js';
-import { workspacePull, deleteWorkDir } from './utils/databricks.js';
+import {
+  workspacePull,
+  workspacePush,
+  deleteWorkDir,
+  ensureWorkspaceDirectory,
+} from './utils/databricks.js';
 import {
   extractRequestContext,
   extractRequestContextFromHeaders,
@@ -58,10 +64,10 @@ const sessionQueues = new Map<string, SessionQueue>();
 const sessionMessageStreams = new Map<string, MessageStream>();
 
 // Track active WebSocket connections per session
-// Maps sessionId to the active WebSocket connection
-// When a new connection is made to the same session, the old one is closed
+// Maps sessionId to a Set of active WebSocket connections
+// Multiple connections per session are allowed (for multi-tab support and React Strict Mode)
 import type { WebSocket as WsWebSocket } from 'ws';
-const sessionWebSockets = new Map<string, WsWebSocket>();
+const sessionWebSockets = new Map<string, Set<WsWebSocket>>();
 
 // User session list WebSocket connections (for real-time session list updates)
 const userSessionListeners = new Map<string, Set<WsWebSocket>>();
@@ -204,7 +210,7 @@ fastify.post<{ Body: CreateSessionBody }>(
       return reply.status(400).send({ error: error.message });
     }
 
-    const { userId, userEmail } = context;
+    const { userId, userEmail, accessToken } = context;
 
     // Extract first user message
     const userEvent = events.find((e) => e.type === 'user');
@@ -215,7 +221,11 @@ fastify.post<{ Body: CreateSessionBody }>(
     const userMessage = userEvent.message.content;
     const model = session_context.model;
     const workspacePath = session_context.workspacePath;
-    const autoWorkspacePush = session_context.autoWorkspacePush ?? false;
+    // Force autoWorkspacePush to false if workspacePath is not specified
+    const autoWorkspacePush =
+      workspacePath && workspacePath.trim()
+        ? (session_context.autoWorkspacePush ?? false)
+        : false;
 
     // Get user settings for claudeConfigSync
     const userSettings = await getSettingsDirect(userId);
@@ -241,7 +251,13 @@ fastify.post<{ Body: CreateSessionBody }>(
       console.log(
         `[New Session] Starting background pull of claude config from ${workspaceClaudeConfigPath}...`
       );
-      workspacePull(workspaceClaudeConfigPath, localClaudeConfigPath, true)
+      const spToken = await getOidcAccessToken();
+      workspacePull(
+        workspaceClaudeConfigPath,
+        localClaudeConfigPath,
+        true,
+        spToken
+      )
         .then(() => {
           console.log('[New Session] Claude config pull completed');
         })
@@ -280,7 +296,8 @@ fastify.post<{ Body: CreateSessionBody }>(
       console.log(
         `[New Session] Starting background pull of workspace directory from ${workspacePath}...`
       );
-      workspacePull(workspacePath, localWorkPath, true)
+      const spToken = await getOidcAccessToken();
+      workspacePull(workspacePath, localWorkPath, true, spToken)
         .then(() => {
           console.log('[New Session] Workspace directory pull completed');
         })
@@ -301,7 +318,8 @@ fastify.post<{ Body: CreateSessionBody }>(
         userEmail,
         workspacePath,
         { autoWorkspacePush, claudeConfigSync, cwd: localWorkPath },
-        stream
+        stream,
+        accessToken
       );
 
       // Process events in background
@@ -477,10 +495,24 @@ fastify.patch<{
     workspacePath?: string | null;
   } = {};
   if (title !== undefined) updates.title = title;
-  if (autoWorkspacePush !== undefined)
-    updates.autoWorkspacePush = autoWorkspacePush;
-  if (workspacePath !== undefined)
+  if (workspacePath !== undefined) {
     updates.workspacePath = workspacePath || null;
+    // Force autoWorkspacePush to false when workspacePath is cleared
+    if (!workspacePath || !workspacePath.trim()) {
+      updates.autoWorkspacePush = false;
+    }
+  }
+  if (autoWorkspacePush !== undefined) {
+    // Only apply autoWorkspacePush if workspacePath is set
+    // (either from current update or existing session)
+    const session = await getSessionById(sessionId, userId);
+    const finalWorkspacePath = updates.workspacePath ?? session?.workspacePath;
+    if (finalWorkspacePath && finalWorkspacePath.trim()) {
+      updates.autoWorkspacePush = autoWorkspacePush;
+    } else {
+      updates.autoWorkspacePush = false;
+    }
+  }
 
   await updateSession(sessionId, updates, userId);
   return { success: true };
@@ -699,6 +731,244 @@ fastify.get('/api/v1/service-principal', async (_request, reply) => {
     return reply.status(500).send({ error: error.message });
   }
 });
+
+// Skills API - List all skills
+fastify.get('/api/v1/claude/skills', async (request, reply) => {
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
+  }
+
+  const { userEmail } = context;
+  const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
+  const skillsPath = path.join(localBasePath, userEmail, '.claude/skills');
+
+  try {
+    // Ensure skills directory exists
+    if (!fs.existsSync(skillsPath)) {
+      fs.mkdirSync(skillsPath, { recursive: true });
+      return { skills: [] };
+    }
+
+    // Read all .md files from skills directory
+    const files = fs.readdirSync(skillsPath);
+    const skills = files
+      .filter((file) => file.endsWith('.md'))
+      .map((file) => {
+        const name = file.replace(/\.md$/, '');
+        const filePath = path.join(skillsPath, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        return { name, content };
+      });
+
+    return { skills };
+  } catch (error: any) {
+    console.error('Failed to list skills:', error);
+    return reply.status(500).send({ error: error.message });
+  }
+});
+
+// Skills API - Get single skill
+fastify.get<{ Params: { skillName: string } }>(
+  '/api/v1/claude/skills/:skillName',
+  async (request, reply) => {
+    let context;
+    try {
+      context = extractRequestContext(request);
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
+    }
+
+    const { userEmail } = context;
+    const { skillName } = request.params;
+
+    // Validate skill name
+    if (!/^[a-zA-Z0-9_-]+$/.test(skillName)) {
+      return reply.status(400).send({ error: 'Invalid skill name' });
+    }
+
+    const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
+    const skillPath = path.join(
+      localBasePath,
+      userEmail,
+      '.claude/skills',
+      `${skillName}.md`
+    );
+
+    try {
+      if (!fs.existsSync(skillPath)) {
+        return reply.status(404).send({ error: 'Skill not found' });
+      }
+
+      const content = fs.readFileSync(skillPath, 'utf-8');
+      return { name: skillName, content };
+    } catch (error: any) {
+      console.error('Failed to read skill:', error);
+      return reply.status(500).send({ error: error.message });
+    }
+  }
+);
+
+// Skills API - Create new skill
+fastify.post<{ Body: { name: string; content: string } }>(
+  '/api/v1/claude/skills',
+  async (request, reply) => {
+    let context;
+    try {
+      context = extractRequestContext(request);
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
+    }
+
+    const { userEmail } = context;
+    const { name, content } = request.body;
+
+    // Validate inputs
+    if (!name || !content) {
+      return reply.status(400).send({ error: 'name and content are required' });
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      return reply.status(400).send({ error: 'Invalid skill name' });
+    }
+
+    const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
+    const skillsPath = path.join(localBasePath, userEmail, '.claude/skills');
+    const skillPath = path.join(skillsPath, `${name}.md`);
+
+    try {
+      // Ensure skills directory exists
+      fs.mkdirSync(skillsPath, { recursive: true });
+
+      // Check if skill already exists
+      if (fs.existsSync(skillPath)) {
+        return reply.status(409).send({ error: 'Skill already exists' });
+      }
+
+      // Write skill file
+      fs.writeFileSync(skillPath, content, 'utf-8');
+
+      // Sync to workspace (fire-and-forget)
+      const workspaceSkillsPath = `/Workspace/Users/${userEmail}/.claude/skills`;
+      const spToken = await getOidcAccessToken();
+      ensureWorkspaceDirectory(workspaceSkillsPath, spToken)
+        .then(() => workspacePush(skillsPath, workspaceSkillsPath, spToken))
+        .catch((err) => {
+          console.error(`[Skills] Failed to sync after create: ${err.message}`);
+        });
+
+      return { name, content };
+    } catch (error: any) {
+      console.error('Failed to create skill:', error);
+      return reply.status(500).send({ error: error.message });
+    }
+  }
+);
+
+// Skills API - Update existing skill
+fastify.patch<{ Params: { skillName: string }; Body: { content: string } }>(
+  '/api/v1/claude/skills/:skillName',
+  async (request, reply) => {
+    let context;
+    try {
+      context = extractRequestContext(request);
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
+    }
+
+    const { userEmail } = context;
+    const { skillName } = request.params;
+    const { content } = request.body;
+
+    // Validate inputs
+    if (!content) {
+      return reply.status(400).send({ error: 'content is required' });
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(skillName)) {
+      return reply.status(400).send({ error: 'Invalid skill name' });
+    }
+
+    const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
+    const skillsPath = path.join(localBasePath, userEmail, '.claude/skills');
+    const skillPath = path.join(skillsPath, `${skillName}.md`);
+
+    try {
+      // Check if skill exists
+      if (!fs.existsSync(skillPath)) {
+        return reply.status(404).send({ error: 'Skill not found' });
+      }
+
+      // Update skill file
+      fs.writeFileSync(skillPath, content, 'utf-8');
+
+      // Sync to workspace (fire-and-forget)
+      const workspaceSkillsPath = `/Workspace/Users/${userEmail}/.claude/skills`;
+      const spToken = await getOidcAccessToken();
+      ensureWorkspaceDirectory(workspaceSkillsPath, spToken)
+        .then(() => workspacePush(skillsPath, workspaceSkillsPath, spToken))
+        .catch((err) => {
+          console.error(`[Skills] Failed to sync after update: ${err.message}`);
+        });
+
+      return { name: skillName, content };
+    } catch (error: any) {
+      console.error('Failed to update skill:', error);
+      return reply.status(500).send({ error: error.message });
+    }
+  }
+);
+
+// Skills API - Delete skill
+fastify.delete<{ Params: { skillName: string } }>(
+  '/api/v1/claude/skills/:skillName',
+  async (request, reply) => {
+    let context;
+    try {
+      context = extractRequestContext(request);
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
+    }
+
+    const { userEmail } = context;
+    const { skillName } = request.params;
+
+    // Validate skill name
+    if (!/^[a-zA-Z0-9_-]+$/.test(skillName)) {
+      return reply.status(400).send({ error: 'Invalid skill name' });
+    }
+
+    const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
+    const skillsPath = path.join(localBasePath, userEmail, '.claude/skills');
+    const skillPath = path.join(skillsPath, `${skillName}.md`);
+
+    try {
+      // Check if skill exists
+      if (!fs.existsSync(skillPath)) {
+        return reply.status(404).send({ error: 'Skill not found' });
+      }
+
+      // Delete skill file
+      fs.unlinkSync(skillPath);
+
+      // Sync to workspace (fire-and-forget)
+      const workspaceSkillsPath = `/Workspace/Users/${userEmail}/.claude/skills`;
+      const spToken = await getOidcAccessToken();
+      ensureWorkspaceDirectory(workspaceSkillsPath, spToken)
+        .then(() => workspacePush(skillsPath, workspaceSkillsPath, spToken))
+        .catch((err) => {
+          console.error(`[Skills] Failed to sync after delete: ${err.message}`);
+        });
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Failed to delete skill:', error);
+      return reply.status(500).send({ error: error.message });
+    }
+  }
+);
 
 // Workspace API - List root workspace (returns Users and Shared)
 fastify.get('/api/v1/Workspace', async (_request, _reply) => {
@@ -936,23 +1206,15 @@ fastify.register(async (fastify) => {
         return;
       }
 
-      const { userId, userEmail } = context;
+      const { userId, userEmail, accessToken } = context;
 
-      // Close existing WebSocket connection for this session to prevent cross-session messages
-      const existingSocket = sessionWebSockets.get(sessionId);
-      if (existingSocket && existingSocket !== socket) {
-        console.log(
-          `Closing existing WebSocket connection for session: ${sessionId}`
-        );
-        try {
-          existingSocket.close();
-        } catch (error) {
-          console.error('Error closing existing WebSocket:', error);
-        }
+      // Add this socket to the set of active connections for this session
+      let sockets = sessionWebSockets.get(sessionId);
+      if (!sockets) {
+        sockets = new Set();
+        sessionWebSockets.set(sessionId, sockets);
       }
-
-      // Register this socket as the active connection for this session
-      sessionWebSockets.set(sessionId, socket);
+      sockets.add(socket);
 
       const queue = sessionQueues.get(sessionId);
 
@@ -1033,7 +1295,8 @@ fastify.register(async (fastify) => {
                   userEmail,
                   workspacePath,
                   { autoWorkspacePush, claudeConfigSync },
-                  stream
+                  stream,
+                  accessToken
                 )) {
                   // Save message to database (always execute regardless of WebSocket state)
                   await saveMessage(sdkMessage);
@@ -1087,9 +1350,14 @@ fastify.register(async (fastify) => {
           sessionMessageStreams.delete(sessionId);
         }
 
-        // Remove from active connections map (only if this socket is the current one)
-        if (sessionWebSockets.get(sessionId) === socket) {
-          sessionWebSockets.delete(sessionId);
+        // Remove this socket from the active connections set
+        const sockets = sessionWebSockets.get(sessionId);
+        if (sockets) {
+          sockets.delete(socket);
+          // Clean up empty sets
+          if (sockets.size === 0) {
+            sessionWebSockets.delete(sessionId);
+          }
         }
       });
 

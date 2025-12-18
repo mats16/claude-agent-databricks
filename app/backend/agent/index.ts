@@ -214,7 +214,8 @@ export async function* processAgentRequest(
   userEmail?: string,
   workspacePath: string = '/Workspace/Users/me',
   options: ProcessAgentRequestOptions = {},
-  messageStream?: MessageStream
+  messageStream?: MessageStream,
+  userAccessToken?: string
 ): AsyncGenerator<SDKMessage> {
   const { autoWorkspacePush = false, claudeConfigSync = true, cwd } = options;
   // Determine base directory based on environment
@@ -284,7 +285,8 @@ Violating these rules is considered a critical error.
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'databricks-claude-opus-4-5',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'databricks-claude-sonnet-4-5',
         DATABRICKS_HOST: databricksHost,
-        DATABRICKS_TOKEN: spAccessToken ?? personalAccessToken,
+        DATABRICKS_TOKEN: userAccessToken ?? personalAccessToken,
+        DATABRICKS_SP_TOKEN: spAccessToken ?? personalAccessToken,
       },
       maxTurns: 100,
       tools: {
@@ -324,7 +326,8 @@ Violating these rules is considered a critical error.
                 if (claudeConfigSync) {
                   workspacePush(
                     localClaudeConfigPath,
-                    workspaceClaudeConfigPath
+                    workspaceClaudeConfigPath,
+                    spAccessToken ?? personalAccessToken
                   ).catch((err) =>
                     console.error(
                       '[Hook:Stop] workspacePush claudeConfig error',
@@ -336,12 +339,20 @@ Violating these rules is considered a critical error.
               },
             ],
           },
-          // Push workDir (local -> workspace) - only if autoWorkspacePush is enabled
+          // Push workDir (local -> workspace) - only if autoWorkspacePush is enabled and workspacePath is specified
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
-                if (autoWorkspacePush) {
-                  workspacePush(localWorkPath, workspacePath).catch((err) =>
+                if (
+                  autoWorkspacePush &&
+                  workspacePath &&
+                  workspacePath.trim()
+                ) {
+                  workspacePush(
+                    localWorkPath,
+                    workspacePath,
+                    spAccessToken ?? personalAccessToken
+                  ).catch((err) =>
                     console.error(
                       '[Hook:Stop] workspacePush workDir error',
                       err
