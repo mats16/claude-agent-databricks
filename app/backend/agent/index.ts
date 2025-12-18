@@ -245,6 +245,8 @@ export async function* processAgentRequest(
   const additionalSystemPrompt = `
 Claude Code is running on Databricks Apps.
 
+If the words Catalog, Schema, or Table appear, treat them as elements of the Unity Catalog.
+
 # Editing Rules
 
 ## Allowed directories
