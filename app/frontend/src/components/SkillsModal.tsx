@@ -328,9 +328,18 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
               </div>
 
               <div
-                style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 0,
+                }}
               >
-                <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+                <Flex
+                  justify="space-between"
+                  align="center"
+                  style={{ marginBottom: 8 }}
+                >
                   <Text strong>{t('skillsModal.skillContent')}</Text>
                   {!isEditing && !isCreating && (
                     <Button
@@ -368,6 +377,7 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
                       borderRadius: 8,
                       background: '#fafafa',
                       whiteSpace: 'pre-wrap',
+                      minHeight: 0,
                     }}
                   >
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -379,10 +389,7 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
 
               {(isEditing || isCreating) && (
                 <Flex gap={8} justify="flex-end" style={{ marginTop: 16 }}>
-                  <Button
-                    onClick={handleCancel}
-                    disabled={isSaving}
-                  >
+                  <Button onClick={handleCancel} disabled={isSaving}>
                     {t('skillsModal.cancel')}
                   </Button>
                   <Button
