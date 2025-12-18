@@ -59,6 +59,7 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Fetch skills when modal opens
   useEffect(() => {
@@ -273,25 +274,34 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
         >
           <div style={{ padding: 16, borderBottom: '1px solid #f0f0f0' }}>
             <Dropdown
+              trigger={['click']}
+              open={dropdownOpen}
+              onOpenChange={(open) => setDropdownOpen(open)}
               menu={{
                 items: [
                   {
                     key: 'new',
                     label: t('skillsModal.newSkill'),
                     icon: <PlusOutlined />,
-                    onClick: handleNewSkill,
                   },
                   {
                     key: 'import',
                     label: t('skillsModal.importPreset'),
                     icon: <ThunderboltOutlined />,
-                    onClick: () => setIsImportModalOpen(true),
                   },
-                ] as MenuProps['items'],
+                ],
+                onClick: ({ key }) => {
+                  if (key === 'new') {
+                    handleNewSkill();
+                    setDropdownOpen(false);
+                  } else if (key === 'import') {
+                    setIsImportModalOpen(true);
+                    setDropdownOpen(false);
+                  }
+                },
               }}
-              disabled={loading || isSaving}
             >
-              <Button type="primary" block>
+              <Button type="primary" block disabled={loading || isSaving}>
                 {t('skillsModal.createMenu')} <DownOutlined />
               </Button>
             </Dropdown>
