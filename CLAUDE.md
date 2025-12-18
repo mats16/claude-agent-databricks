@@ -51,12 +51,18 @@ Development servers:
 - `DATABRICKS_HOST` - Workspace URL (e.g., `your-workspace.cloud.databricks.com`)
 - `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET` - Service Principal OAuth2 (production)
 
+### Local Development
+For local development, the Vite proxy injects Databricks headers from environment variables:
+- `DATABRICKS_TOKEN` - Personal Access Token (injected as `x-forwarded-access-token`)
+- `DATABRICKS_USER_NAME` - User display name (injected as `X-Forwarded-Preferred-Username`)
+- `DATABRICKS_USER_ID` - User ID from IdP (injected as `X-Forwarded-User`)
+- `DATABRICKS_USER_EMAIL` - User email (injected as `X-Forwarded-Email`)
+
+Backend always expects these headers and does not use fallback values, ensuring consistency between local and production environments.
+
 ### Optional
-- `DATABRICKS_TOKEN` - PAT for development (fallback)
 - `PORT` - Backend port (default: 8000)
 - `DB_URL` - PostgreSQL connection string
-- `DEFAULT_USER_ID` - User ID for local development (when x-forwarded-user header not present)
-- `DEFAULT_USER_EMAIL` - User email for local development (when x-forwarded-email header not present)
 
 ## Database Schema
 
@@ -77,8 +83,15 @@ Migration: `app/backend/db/migrations/0001_init.sql` (run with `npm run db:migra
 ## Key Concepts
 
 ### Authentication Flow
-- **Production**: Service Principal OIDC token + user token from `x-forwarded-access-token` header (Databricks Apps provides this)
-- **Development**: Uses `DATABRICKS_TOKEN` as fallback
+- **Production**: Databricks Apps automatically injects headers (`x-forwarded-user`, `x-forwarded-email`, `x-forwarded-access-token`, etc.)
+- **Development**: Vite proxy injects headers from environment variables (see Local Development section)
+- Backend extracts user context using `extractRequestContext()` utility from `app/backend/utils/headers.ts`
+- Headers parsed:
+  - `X-Forwarded-User`: User identifier from IdP (required)
+  - `X-Forwarded-Email`: User email from IdP (required)
+  - `X-Forwarded-Preferred-Username`: User display name (optional)
+  - `x-forwarded-access-token`: User access token (optional)
+  - `X-Request-Id`: Request UUID (optional)
 
 ### Workspace Permission Check
 `GET /api/v1/users/me` checks SP permission by attempting to create `.claude` directory via `workspace/mkdirs` API. Returns `hasWorkspacePermission: boolean`.
@@ -224,6 +237,7 @@ Apply the path to `app/frontend/public/favicon.svg`:
 - `app/backend/app.ts` - Fastify server, REST/WebSocket endpoints, session creation with workspace pull, archive endpoint
 - `app/backend/agent/index.ts` - Claude Agent SDK configuration, Stop hooks for workspace push
 - `app/backend/utils/databricks.ts` - Databricks CLI wrapper functions (`workspacePull`, `workspacePush`, `deleteWorkDir`)
+- `app/backend/utils/headers.ts` - Request header extraction utilities (`extractRequestContext`, `extractRequestContextFromHeaders`)
 
 ### Database Layer
 - `app/backend/db/schema.ts` - Drizzle ORM table definitions

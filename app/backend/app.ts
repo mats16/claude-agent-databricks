@@ -27,6 +27,10 @@ import {
 } from './db/settings.js';
 import { upsertUser } from './db/users.js';
 import { workspacePull, deleteWorkDir } from './utils/databricks.js';
+import {
+  extractRequestContext,
+  extractRequestContextFromHeaders,
+} from './utils/headers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,10 +43,6 @@ const fastify = Fastify({
 });
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8000;
-
-// Default user ID and email for local development (when headers are not present)
-const DEFAULT_USER_ID = process.env.DEFAULT_USER_ID;
-const DEFAULT_USER_EMAIL = process.env.DEFAULT_USER_EMAIL;
 
 // Session event queue for streaming events to WebSocket
 interface SessionQueue {
@@ -197,20 +197,14 @@ fastify.post<{ Body: CreateSessionBody }>(
     const { events, session_context } = request.body;
 
     // Get user info from request headers
-    const userEmail =
-      (request.headers['x-forwarded-email'] as string | undefined) ||
-      DEFAULT_USER_EMAIL;
-    const userId =
-      (request.headers['x-forwarded-user'] as string | undefined) ||
-      DEFAULT_USER_ID;
-
-    // Validate user info
-    if (!userEmail || !userId) {
-      return reply.status(400).send({
-        error:
-          'User authentication required. Please set DEFAULT_USER_EMAIL and DEFAULT_USER_ID environment variables for local development.',
-      });
+    let context;
+    try {
+      context = extractRequestContext(request);
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
     }
+
+    const { userId, userEmail } = context;
 
     // Extract first user message
     const userEvent = events.find((e) => e.type === 'user');
@@ -431,17 +425,14 @@ fastify.post<{ Body: CreateSessionBody }>(
 fastify.get<{
   Querystring: { filter?: 'active' | 'archived' | 'all' };
 }>('/api/v1/sessions', async (request, reply) => {
-  const userId =
-    (request.headers['x-forwarded-user'] as string | undefined) ||
-    DEFAULT_USER_ID;
-
-  if (!userId) {
-    return reply.status(400).send({
-      error:
-        'User authentication required. Please set DEFAULT_USER_ID environment variable for local development.',
-    });
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
   }
 
+  const { userId } = context;
   const filter = request.query.filter || 'active';
   const sessionList = await getSessionsByUserId(userId, filter);
 
@@ -459,16 +450,15 @@ fastify.patch<{
 }>('/api/v1/sessions/:sessionId', async (request, reply) => {
   const { sessionId } = request.params;
   const { title, autoWorkspacePush, workspacePath } = request.body;
-  const userId =
-    (request.headers['x-forwarded-user'] as string | undefined) ||
-    DEFAULT_USER_ID;
 
-  if (!userId) {
-    return reply.status(400).send({
-      error:
-        'User authentication required. Please set DEFAULT_USER_ID environment variable for local development.',
-    });
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
   }
+
+  const { userId } = context;
 
   // At least one field must be provided
   if (
@@ -501,16 +491,15 @@ fastify.patch<{ Params: { sessionId: string } }>(
   '/api/v1/sessions/:sessionId/archive',
   async (request, reply) => {
     const { sessionId } = request.params;
-    const userId =
-      (request.headers['x-forwarded-user'] as string | undefined) ||
-      DEFAULT_USER_ID;
 
-    if (!userId) {
-      return reply.status(400).send({
-        error:
-          'User authentication required. Please set DEFAULT_USER_ID environment variable for local development.',
-      });
+    let context;
+    try {
+      context = extractRequestContext(request);
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
     }
+
+    const { userId } = context;
 
     // Get session to retrieve cwd before archiving
     const session = await getSessionById(sessionId, userId);
@@ -551,19 +540,14 @@ fastify.get<{ Params: { sessionId: string } }>(
 // Get current user info (includes workspace permission check)
 // Creates user if not exists
 fastify.get('/api/v1/users/me', async (request, reply) => {
-  const userId =
-    (request.headers['x-forwarded-user'] as string | undefined) ||
-    DEFAULT_USER_ID;
-  const userEmail =
-    (request.headers['x-forwarded-email'] as string | undefined) ||
-    DEFAULT_USER_EMAIL;
-
-  if (!userId || !userEmail) {
-    return reply.status(400).send({
-      error:
-        'User authentication required. Please set DEFAULT_USER_EMAIL and DEFAULT_USER_ID environment variables for local development.',
-    });
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
   }
+
+  const { userId, userEmail } = context;
 
   // Ensure user exists (create if not)
   await upsertUser(userId, userEmail);
@@ -619,16 +603,14 @@ fastify.get('/api/v1/users/me', async (request, reply) => {
 
 // Get current user settings
 fastify.get('/api/v1/users/me/settings', async (request, reply) => {
-  const userId =
-    (request.headers['x-forwarded-user'] as string | undefined) ||
-    DEFAULT_USER_ID;
-
-  if (!userId) {
-    return reply.status(400).send({
-      error:
-        'User authentication required. Please set DEFAULT_USER_ID environment variable for local development.',
-    });
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
   }
+
+  const { userId } = context;
 
   const userSettings = await getSettings(userId);
 
@@ -651,19 +633,14 @@ fastify.get('/api/v1/users/me/settings', async (request, reply) => {
 fastify.patch<{
   Body: { accessToken?: string; claudeConfigSync?: boolean };
 }>('/api/v1/users/me/settings', async (request, reply) => {
-  const userId =
-    (request.headers['x-forwarded-user'] as string | undefined) ||
-    DEFAULT_USER_ID;
-  const userEmail =
-    (request.headers['x-forwarded-email'] as string | undefined) ||
-    DEFAULT_USER_EMAIL;
-
-  if (!userId || !userEmail) {
-    return reply.status(400).send({
-      error:
-        'User authentication required. Please set DEFAULT_USER_EMAIL and DEFAULT_USER_ID environment variables for local development.',
-    });
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
   }
+
+  const { userId, userEmail } = context;
 
   const { accessToken, claudeConfigSync } = request.body;
 
@@ -741,7 +718,12 @@ fastify.get<{ Params: { email: string } }>(
 
     // Resolve 'me' to actual email from header
     if (email === 'me') {
-      email = request.headers['x-forwarded-email'] as string | undefined;
+      try {
+        const context = extractRequestContext(request);
+        email = context.userEmail;
+      } catch (error: any) {
+        return reply.status(400).send({ error: error.message });
+      }
     }
 
     if (!email) {
@@ -880,20 +862,16 @@ fastify.get<{ Params: { '*': string } }>(
 // WebSocket endpoint for session list updates
 fastify.register(async (fastify) => {
   fastify.get('/api/v1/sessions/ws', { websocket: true }, (socket, req) => {
-    const userId =
-      (req.headers['x-forwarded-user'] as string | undefined) ||
-      DEFAULT_USER_ID;
-
-    if (!userId) {
-      socket.send(
-        JSON.stringify({
-          error:
-            'User authentication required. Please set DEFAULT_USER_ID environment variable for local development.',
-        })
-      );
+    let context;
+    try {
+      context = extractRequestContextFromHeaders(req.headers);
+    } catch (error: any) {
+      socket.send(JSON.stringify({ error: error.message }));
       socket.close();
       return;
     }
+
+    const { userId } = context;
 
     console.log(
       `Client connected to session list WebSocket for user: ${userId}`
@@ -949,23 +927,16 @@ fastify.register(async (fastify) => {
       console.log(`Client connected to WebSocket for session: ${sessionId}`);
 
       // Get user info from request headers
-      const userEmail =
-        (req.headers['x-forwarded-email'] as string | undefined) ||
-        DEFAULT_USER_EMAIL;
-      const userId =
-        (req.headers['x-forwarded-user'] as string | undefined) ||
-        DEFAULT_USER_ID;
-
-      if (!userId || !userEmail) {
-        socket.send(
-          JSON.stringify({
-            error:
-              'User authentication required. Please set DEFAULT_USER_EMAIL and DEFAULT_USER_ID environment variables for local development.',
-          })
-        );
+      let context;
+      try {
+        context = extractRequestContextFromHeaders(req.headers);
+      } catch (error: any) {
+        socket.send(JSON.stringify({ error: error.message }));
         socket.close();
         return;
       }
+
+      const { userId, userEmail } = context;
 
       // Close existing WebSocket connection for this session to prevent cross-session messages
       const existingSocket = sessionWebSockets.get(sessionId);
