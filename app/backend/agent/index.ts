@@ -294,7 +294,7 @@ Violating these rules is considered a critical error.
         preset: 'claude_code',
       },
       allowedTools: [
-        //'Skill',
+        'Skill',
         'Bash',
         'Read',
         'Write',
