@@ -53,6 +53,7 @@
     "skillContent": "スキルの内容",
     "skillContentPlaceholder": "Markdown形式でスキルの内容を入力...",
     "save": "保存",
+    "edit": "編集",
     "delete": "削除",
     "cancel": "キャンセル",
     "deleteConfirm": "このスキルを削除してもよろしいですか？",

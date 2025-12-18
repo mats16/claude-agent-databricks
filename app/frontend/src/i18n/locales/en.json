@@ -53,6 +53,7 @@
     "skillContent": "Skill Content",
     "skillContentPlaceholder": "Enter skill content in Markdown format...",
     "save": "Save",
+    "edit": "Edit",
     "delete": "Delete",
     "cancel": "Cancel",
     "deleteConfirm": "Are you sure you want to delete this skill?",

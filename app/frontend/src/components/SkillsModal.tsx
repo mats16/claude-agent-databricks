@@ -17,8 +17,11 @@ import {
   PlusOutlined,
   DeleteOutlined,
   SaveOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { useSkills, type Skill } from '../hooks/useSkills';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -42,6 +45,7 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
 
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [editedContent, setEditedContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -59,11 +63,13 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
       setEditedName(selectedSkill.name);
       setEditedContent(selectedSkill.content);
       setIsCreating(false);
+      setIsEditing(false);
     }
   }, [selectedSkill]);
 
   const handleNewSkill = () => {
     setIsCreating(true);
+    setIsEditing(true);
     setSelectedSkill(null);
     setEditedName('');
     setEditedContent('');
@@ -113,6 +119,7 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
     if (success) {
       message.success(t('skillsModal.saved'));
       setIsCreating(false);
+      setIsEditing(false);
       // Select the newly created/updated skill
       if (isCreating) {
         const newSkill = { name: editedName, content: editedContent };
@@ -140,13 +147,19 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
     }
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
   const handleCancel = () => {
     if (isCreating) {
       setIsCreating(false);
+      setIsEditing(false);
       setEditedName('');
       setEditedContent('');
     } else if (selectedSkill) {
-      // Reset to original values
+      // Exit edit mode and reset to original values
+      setIsEditing(false);
       setEditedName(selectedSkill.name);
       setEditedContent(selectedSkill.content);
     }
@@ -300,7 +313,14 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
                 </Text>
                 <Input
                   value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    // Remove .md extension if entered
+                    value = value.replace(/\.md$/i, '');
+                    // Only allow alphanumeric, hyphens, and underscores
+                    value = value.replace(/[^a-zA-Z0-9_-]/g, '');
+                    setEditedName(value);
+                  }}
                   placeholder={t('skillsModal.skillNamePlaceholder')}
                   disabled={!isCreating || isSaving}
                   style={{ fontFamily: 'monospace' }}
@@ -310,40 +330,72 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
               <div
                 style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
               >
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>
-                  {t('skillsModal.skillContent')}
-                </Text>
-                <TextArea
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  placeholder={t('skillsModal.skillContentPlaceholder')}
-                  disabled={isSaving}
-                  style={{
-                    flex: 1,
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                    resize: 'none',
-                  }}
-                />
+                <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+                  <Text strong>{t('skillsModal.skillContent')}</Text>
+                  {!isEditing && !isCreating && (
+                    <Button
+                      type="default"
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={handleEdit}
+                      disabled={isSaving}
+                    >
+                      {t('skillsModal.edit')}
+                    </Button>
+                  )}
+                </Flex>
+
+                {isEditing || isCreating ? (
+                  <TextArea
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    placeholder={t('skillsModal.skillContentPlaceholder')}
+                    disabled={isSaving}
+                    style={{
+                      flex: 1,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                      resize: 'none',
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      flex: 1,
+                      overflow: 'auto',
+                      padding: 16,
+                      border: '1px solid #d9d9d9',
+                      borderRadius: 8,
+                      background: '#fafafa',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {editedContent}
+                    </ReactMarkdown>
+                  </div>
+                )}
               </div>
 
-              <Flex gap={8} justify="flex-end" style={{ marginTop: 16 }}>
-                <Button
-                  onClick={handleCancel}
-                  disabled={isSaving || !hasChanges}
-                >
-                  {t('skillsModal.cancel')}
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  onClick={handleSave}
-                  loading={isSaving}
-                  disabled={!hasChanges}
-                >
-                  {t('skillsModal.save')}
-                </Button>
-              </Flex>
+              {(isEditing || isCreating) && (
+                <Flex gap={8} justify="flex-end" style={{ marginTop: 16 }}>
+                  <Button
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                  >
+                    {t('skillsModal.cancel')}
+                  </Button>
+                  <Button
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    onClick={handleSave}
+                    loading={isSaving}
+                    disabled={!hasChanges}
+                  >
+                    {t('skillsModal.save')}
+                  </Button>
+                </Flex>
+              )}
             </>
           )}
         </div>
