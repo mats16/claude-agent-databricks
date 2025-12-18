@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Typography, Spin, Empty, Flex, Dropdown, message } from 'antd';
 import type { MenuProps } from 'antd';
 import { InboxOutlined, FilterOutlined } from '@ant-design/icons';
 import { useSessions, Session } from '../contexts/SessionsContext';
+import { formatRelativeDate } from '../utils/dateFormat';
+import { colors, spacing, borderRadius, typography } from '../styles/theme';
+import { ellipsisStyle } from '../styles/common';
 
 const { Text } = Typography;
 
@@ -29,24 +32,17 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
   // Extract sessionId from current URL path
   const currentSessionId = location.pathname.match(/\/sessions\/([^/]+)/)?.[1];
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return t('sessionList.justNow');
-    if (diffMins < 60) return t('sessionList.minutesAgo', { count: diffMins });
-    if (diffHours < 24) return t('sessionList.hoursAgo', { count: diffHours });
-    if (diffDays < 7) return t('sessionList.daysAgo', { count: diffDays });
-
-    return date.toLocaleDateString(i18n.language === 'ja' ? 'ja-JP' : 'en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatDate = useCallback(
+    (dateString: string): string => {
+      return formatRelativeDate(dateString, i18n.language, {
+        justNow: t('sessionList.justNow'),
+        minutesAgo: (count) => t('sessionList.minutesAgo', { count }),
+        hoursAgo: (count) => t('sessionList.hoursAgo', { count }),
+        daysAgo: (count) => t('sessionList.daysAgo', { count }),
+      });
+    },
+    [t, i18n.language]
+  );
 
   const handleSessionClick = (session: Session) => {
     navigate(`/sessions/${session.id}`);
@@ -95,14 +91,14 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
         justify="space-between"
         align="center"
         style={{
-          padding: '12px 20px 8px',
+          padding: `${spacing.md}px ${spacing.xl}px ${spacing.sm}px`,
         }}
       >
         <div
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: '#999',
+            color: colors.textMuted,
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
           }}
@@ -120,10 +116,10 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
         >
           <FilterOutlined
             style={{
-              fontSize: 16,
-              color: '#666',
+              fontSize: typography.fontSizeLarge,
+              color: colors.textSecondary,
               cursor: 'pointer',
-              padding: '4px 8px',
+              padding: `${spacing.xs}px ${spacing.sm}px`,
             }}
           />
         </Dropdown>
@@ -132,16 +128,16 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
       {/* Session Items */}
       <div style={{ flex: 1, overflow: 'auto' }}>
         {isLoading && (
-          <Flex justify="center" align="center" style={{ padding: 16 }}>
+          <Flex justify="center" align="center" style={{ padding: spacing.lg }}>
             <Spin size="small" />
-            <Text type="secondary" style={{ marginLeft: 8 }}>
+            <Text type="secondary" style={{ marginLeft: spacing.sm }}>
               {t('sessionList.loadingSessions')}
             </Text>
           </Flex>
         )}
 
         {error && (
-          <div style={{ padding: 16, textAlign: 'center' }}>
+          <div style={{ padding: spacing.lg, textAlign: 'center' }}>
             <Text type="danger">
               {t('common.error')}: {error}
             </Text>
@@ -152,7 +148,7 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={t('sessionList.noSessions')}
-            style={{ padding: 24 }}
+            style={{ padding: spacing.xxl }}
           />
         )}
 
@@ -170,14 +166,14 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
                 onMouseEnter={() => setHoveredSessionId(session.id)}
                 onMouseLeave={() => setHoveredSessionId(null)}
                 style={{
-                  padding: '8px 16px',
-                  margin: '4px 12px',
+                  padding: `${spacing.sm}px ${spacing.lg}px`,
+                  margin: `${spacing.xs}px ${spacing.md}px`,
                   cursor: 'pointer',
                   background: isActive ? '#E8EEF2' : 'transparent',
                   borderLeft: isActive
-                    ? '3px solid #f5a623'
+                    ? `3px solid ${colors.brand}`
                     : '3px solid transparent',
-                  borderRadius: 8,
+                  borderRadius: borderRadius.md,
                   transition: 'background 0.15s',
                   position: 'relative',
                 }}
@@ -195,10 +191,8 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
                       type={session.isArchived ? 'secondary' : undefined}
                       style={{
                         display: 'block',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        marginBottom: 4,
+                        ...ellipsisStyle,
+                        marginBottom: spacing.xs,
                       }}
                     >
                       {session.title || t('sessionList.untitledSession')}
@@ -210,9 +204,7 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
                           style={{
                             fontSize: 11,
                             display: 'block',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            ...ellipsisStyle,
                           }}
                         >
                           {session.workspacePath}
@@ -228,10 +220,10 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
                   {!session.isArchived && isHovering && (
                     <InboxOutlined
                       style={{
-                        fontSize: 16,
-                        color: '#999',
+                        fontSize: typography.fontSizeLarge,
+                        color: colors.textMuted,
                         cursor: 'pointer',
-                        marginLeft: 8,
+                        marginLeft: spacing.sm,
                         flexShrink: 0,
                         alignSelf: 'center',
                       }}

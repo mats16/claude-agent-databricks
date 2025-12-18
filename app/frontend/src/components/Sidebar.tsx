@@ -1,37 +1,24 @@
-import { useState, useEffect, useCallback, DragEvent } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  Button,
-  Input,
-  Select,
-  Checkbox,
-  Tooltip,
-  Typography,
-  Flex,
-  message,
-} from 'antd';
-import {
-  SendOutlined,
-  SyncOutlined,
-  FolderOutlined,
-  RocketOutlined,
-  CloseOutlined,
-} from '@ant-design/icons';
+import { Button, Input, Select, Tooltip, Typography, Flex } from 'antd';
+import { SendOutlined, RocketOutlined } from '@ant-design/icons';
 import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
 import WorkspaceSelectModal from './WorkspaceSelectModal';
+import WorkspacePathSelector from './WorkspacePathSelector';
 import SettingsModal from './SettingsModal';
-import ImageUpload, { AttachedImage } from './ImageUpload';
-import {
-  convertToWebP,
-  revokePreviewUrl,
-  isSupportedImageType,
-  isWithinSizeLimit,
-  createPreviewUrl,
-} from '../utils/imageUtils';
+import ImageUpload from './ImageUpload';
+import { useImageUpload } from '../hooks/useImageUpload';
 import { useUser } from '../contexts/UserContext';
-import type { ImageContent, MessageContent } from '@app/shared';
+import type { MessageContent } from '@app/shared';
+import { colors, spacing, borderRadius, typography } from '../styles/theme';
+import {
+  inputContainerStyle,
+  getDropZoneStyle,
+  dropZoneOverlayStyle,
+  footerStyle,
+} from '../styles/common';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -53,12 +40,25 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [autoWorkspacePush, setAutoWorkspacePush] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
-  const [isConverting, setIsConverting] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const navigate = useNavigate();
 
   const maxImages = 5;
+
+  // Image upload handling via custom hook
+  const {
+    attachedImages,
+    setAttachedImages,
+    isConverting,
+    isDragging,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    convertImages,
+    clearImages,
+  } = useImageUpload({
+    maxImages,
+    isDisabled: () => isSubmitting || isConverting,
+  });
 
   const hasPermission = userInfo?.hasWorkspacePermission ?? null;
 
@@ -82,22 +82,10 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       return;
 
     setIsSubmitting(true);
-    setIsConverting(true);
 
     try {
-      // Convert attached images to WebP format
-      const imageContents: ImageContent[] = [];
-      for (const img of attachedImages) {
-        const converted = await convertToWebP(img.file);
-        imageContents.push({
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: converted.media_type,
-            data: converted.data,
-          },
-        });
-      }
+      // Convert attached images to WebP format using hook
+      const imageContents = await convertImages();
 
       // Build message content array
       const messageContent: MessageContent[] = [];
@@ -136,9 +124,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       const sessionId = data.session_id;
 
       setInput('');
-      // Revoke preview URLs to free memory
-      attachedImages.forEach((img) => revokePreviewUrl(img.previewUrl));
-      setAttachedImages([]);
+      clearImages();
       onSessionCreated?.(sessionId);
 
       navigate(`/sessions/${sessionId}`, {
@@ -150,7 +136,6 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       console.error('Failed to create session:', error);
     } finally {
       setIsSubmitting(false);
-      setIsConverting(false);
     }
   };
 
@@ -171,84 +156,24 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
     setAutoWorkspacePush(path.trim().length > 0);
   };
 
-  // Drag & drop handlers for the input section
-  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only set dragging to false if leaving the drop zone entirely
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setIsDragging(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
-
-      if (isSubmitting || isConverting) return;
-
-      const files = e.dataTransfer.files;
-      if (!files || files.length === 0) return;
-
-      const validFiles: AttachedImage[] = [];
-
-      for (const file of Array.from(files)) {
-        if (attachedImages.length + validFiles.length >= maxImages) {
-          message.warning(
-            t('imageUpload.maxImagesReached', { max: maxImages })
-          );
-          break;
-        }
-
-        if (!isSupportedImageType(file)) {
-          message.error(t('imageUpload.unsupportedType', { name: file.name }));
-          continue;
-        }
-
-        if (!isWithinSizeLimit(file)) {
-          message.error(t('imageUpload.fileTooLarge', { name: file.name }));
-          continue;
-        }
-
-        validFiles.push({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          file,
-          previewUrl: createPreviewUrl(file),
-        });
-      }
-
-      if (validFiles.length > 0) {
-        setAttachedImages((prev) => [...prev, ...validFiles]);
-      }
-    },
-    [attachedImages, isSubmitting, isConverting, t, maxImages]
-  );
-
   return (
     <Flex
       vertical
       style={{
         height: '100%',
-        background: '#F7F7F7',
+        background: colors.sidebarBg,
       }}
     >
       {/* Header */}
-      <div style={{ padding: '16px 20px' }}>
+      <div style={{ padding: `${spacing.lg}px ${spacing.xl}px` }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
           <Typography.Title
             level={5}
-            style={{ margin: 0, color: '#1a1a1a', fontWeight: 700 }}
+            style={{
+              margin: 0,
+              color: colors.textPrimary,
+              fontWeight: typography.fontWeightBold,
+            }}
           >
             {t('sidebar.title')}
           </Typography.Title>
@@ -261,41 +186,26 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         style={{
-          padding: '16px 20px',
-          borderBottom: '1px solid #f0f0f0',
+          padding: `${spacing.lg}px ${spacing.xl}px`,
+          borderBottom: `1px solid ${colors.border}`,
           position: 'relative',
-          border: isDragging ? '2px dashed #f5a623' : '1px solid transparent',
-          borderBottomColor: '#f0f0f0',
-          background: isDragging ? 'rgba(245, 166, 35, 0.05)' : 'transparent',
-          transition: 'all 0.2s ease',
+          background: isDragging ? colors.brandLight : 'transparent',
+          ...getDropZoneStyle(isDragging),
         }}
       >
         {isDragging && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(245, 166, 35, 0.1)',
-              zIndex: 10,
-              pointerEvents: 'none',
-            }}
-          >
-            <span style={{ color: '#f5a623', fontWeight: 500 }}>
+          <div style={dropZoneOverlayStyle}>
+            <span
+              style={{
+                color: colors.brand,
+                fontWeight: typography.fontWeightMedium,
+              }}
+            >
               {t('imageUpload.dropHere')}
             </span>
           </div>
         )}
-        <div
-          style={{
-            border: '1px solid #e5e5e5',
-            borderRadius: 12,
-            padding: '12px',
-            background: '#fff',
-          }}
-        >
+        <div style={inputContainerStyle}>
           {/* Image previews */}
           <ImageUpload
             images={attachedImages}
@@ -311,9 +221,9 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
             disabled={isSubmitting || isConverting}
             autoSize={{ minRows: 3, maxRows: 19 }}
             variant="borderless"
-            style={{ padding: 0, marginBottom: 8 }}
+            style={{ padding: 0, marginBottom: spacing.sm }}
           />
-          <Flex justify="flex-end" align="center" gap={8}>
+          <Flex justify="flex-end" align="center" gap={spacing.sm}>
             <ImageUpload
               images={attachedImages}
               onImagesChange={setAttachedImages}
@@ -349,67 +259,16 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
           </Flex>
         </div>
 
-        <Flex align="center" gap={8} wrap="wrap" style={{ marginTop: 8 }}>
-          <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
-            <Button
-              size="small"
-              icon={<FolderOutlined />}
-              onClick={() => setIsWorkspaceModalOpen(true)}
-              disabled={isSubmitting}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                overflow: 'hidden',
-                paddingRight: workspacePath ? 32 : undefined,
-              }}
-              title={workspacePath || t('sidebar.selectWorkspace')}
-            >
-              <span
-                style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  display: 'block',
-                }}
-              >
-                {workspacePath || t('sidebar.selectWorkspace')}
-              </span>
-            </Button>
-            {workspacePath && (
-              <CloseOutlined
-                style={{
-                  position: 'absolute',
-                  right: 8,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#ff4d4f',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  zIndex: 1,
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!isSubmitting) {
-                    handleWorkspacePathChange('');
-                  }
-                }}
-              />
-            )}
-          </div>
-          <Tooltip title={t('sidebar.autoSyncTooltip')}>
-            <Checkbox
-              checked={autoWorkspacePush}
-              onChange={(e) => setAutoWorkspacePush(e.target.checked)}
-              disabled={isSubmitting}
-            >
-              <Text style={{ fontSize: 12 }}>
-                <SyncOutlined style={{ marginRight: 4 }} />
-                {t('sidebar.autoSync')}
-              </Text>
-            </Checkbox>
-          </Tooltip>
-        </Flex>
+        <div style={{ marginTop: spacing.sm }}>
+          <WorkspacePathSelector
+            workspacePath={workspacePath}
+            onPathChange={handleWorkspacePathChange}
+            autoWorkspacePush={autoWorkspacePush}
+            onAutoWorkspacePushChange={setAutoWorkspacePush}
+            onOpenModal={() => setIsWorkspaceModalOpen(true)}
+            disabled={isSubmitting}
+          />
+        </div>
       </div>
 
       {/* Sessions Section */}
@@ -425,11 +284,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       </div>
 
       {/* Footer */}
-      <Flex
-        justify="space-between"
-        align="center"
-        style={{ padding: '12px 20px', borderTop: '1px solid #f0f0f0' }}
-      >
+      <Flex justify="space-between" align="center" style={footerStyle}>
         <AccountMenu />
         {userInfo?.databricksAppUrl && (
           <Tooltip title="Databricks Apps">
@@ -437,7 +292,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
               type="text"
               icon={<RocketOutlined />}
               onClick={() => window.open(userInfo.databricksAppUrl!, '_blank')}
-              style={{ color: '#666' }}
+              style={{ color: colors.textSecondary }}
             />
           </Tooltip>
         )}

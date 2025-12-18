@@ -7,6 +7,7 @@ import {
   useMemo,
   ReactNode,
 } from 'react';
+import { createSessionsWebSocketUrl } from '../utils/websocket';
 
 export interface Session {
   id: string;
@@ -87,10 +88,7 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
     let isIntentionallyClosed = false;
 
     const connect = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(
-        `${protocol}//${window.location.host}/api/v1/sessions/ws`
-      );
+      ws = new WebSocket(createSessionsWebSocketUrl());
 
       ws.onopen = () => {
         console.log('Session list WebSocket connected');

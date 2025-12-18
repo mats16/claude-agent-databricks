@@ -1,18 +1,8 @@
-import { useState, useRef, useEffect, useCallback, DragEvent } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Button, Tag, Typography, Flex, Tooltip, Spin } from 'antd';
 import {
-  Button,
-  Input,
-  Tag,
-  Typography,
-  Flex,
-  Tooltip,
-  Spin,
-  message,
-} from 'antd';
-import {
-  SendOutlined,
   EditOutlined,
   LinkOutlined,
   CloudSyncOutlined,
@@ -21,21 +11,28 @@ import {
   RobotOutlined,
 } from '@ant-design/icons';
 import { useAgent } from '../hooks/useAgent';
+import { useImageUpload } from '../hooks/useImageUpload';
 import { useSessions } from '../contexts/SessionsContext';
 import TitleEditModal from '../components/TitleEditModal';
 import MessageRenderer from '../components/MessageRenderer';
-import ImageUpload, { AttachedImage } from '../components/ImageUpload';
+import ChatInput from '../components/ChatInput';
 import {
-  convertToWebP,
-  revokePreviewUrl,
-  isSupportedImageType,
-  isWithinSizeLimit,
-  createPreviewUrl,
-} from '../utils/imageUtils';
-import type { ImageContent } from '@app/shared';
+  colors,
+  spacing,
+  borderRadius,
+  layout,
+  typography,
+} from '../styles/theme';
+import {
+  sectionHeaderStyle,
+  getDropZoneStyle,
+  dropZoneOverlayStyle,
+  ellipsisStyle,
+  userMessageBubbleStyle,
+  getStatusColor,
+} from '../styles/common';
 
 const { Text } = Typography;
-const { TextArea } = Input;
 
 interface LocationState {
   initialMessage?: string;
@@ -55,9 +52,6 @@ export default function SessionPage() {
     string | null
   >(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
-  const [isConverting, setIsConverting] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const maxImages = 5;
@@ -167,6 +161,22 @@ export default function SessionPage() {
     initialMessage,
   });
 
+  // Image upload handling via custom hook
+  const {
+    attachedImages,
+    setAttachedImages,
+    isConverting,
+    isDragging,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    convertImages,
+    clearImages,
+  } = useImageUpload({
+    maxImages,
+    isDisabled: () => !isConnected || isConverting,
+  });
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -180,42 +190,27 @@ export default function SessionPage() {
       return;
     }
 
-    setIsConverting(true);
     try {
-      // Convert attached images to WebP format
-      const imageContents: ImageContent[] = [];
-      for (const img of attachedImages) {
-        const converted = await convertToWebP(img.file);
-        imageContents.push({
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: converted.media_type,
-            data: converted.data,
-          },
-        });
-      }
+      // Convert attached images to WebP format using hook
+      const imageContents = await convertImages();
 
       // Send message with images
       sendMessage(input.trim(), imageContents);
 
       // Clear input and images
       setInput('');
-      // Revoke preview URLs to free memory
-      attachedImages.forEach((img) => revokePreviewUrl(img.previewUrl));
-      setAttachedImages([]);
+      clearImages();
     } catch (error) {
       console.error('Failed to convert images:', error);
-    } finally {
-      setIsConverting(false);
     }
-  }, [input, attachedImages, isConverting, sendMessage]);
-
-  const getStatusColor = () => {
-    if (isConnected) return '#4caf50';
-    if (isReconnecting) return '#ff9800';
-    return '#f44336';
-  };
+  }, [
+    input,
+    attachedImages,
+    isConverting,
+    sendMessage,
+    convertImages,
+    clearImages,
+  ]);
 
   const getStatusText = () => {
     if (isConnected) return t('sessionPage.connected');
@@ -223,89 +218,17 @@ export default function SessionPage() {
     return t('sessionPage.disconnected');
   };
 
-  // Drag & drop handlers for the entire content area
-  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only set dragging to false if leaving the drop zone entirely
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setIsDragging(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
-
-      if (!isConnected || isConverting) return;
-
-      const files = e.dataTransfer.files;
-      if (!files || files.length === 0) return;
-
-      const validFiles: AttachedImage[] = [];
-
-      for (const file of Array.from(files)) {
-        if (attachedImages.length + validFiles.length >= maxImages) {
-          message.warning(
-            t('imageUpload.maxImagesReached', { max: maxImages })
-          );
-          break;
-        }
-
-        if (!isSupportedImageType(file)) {
-          message.error(t('imageUpload.unsupportedType', { name: file.name }));
-          continue;
-        }
-
-        if (!isWithinSizeLimit(file)) {
-          message.error(t('imageUpload.fileTooLarge', { name: file.name }));
-          continue;
-        }
-
-        validFiles.push({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          file,
-          previewUrl: createPreviewUrl(file),
-        });
-      }
-
-      if (validFiles.length > 0) {
-        setAttachedImages((prev) => [...prev, ...validFiles]);
-      }
-    },
-    [attachedImages, isConnected, isConverting, t, maxImages]
-  );
-
   return (
     <Flex
       vertical
       style={{
         height: '100%',
-        background: '#FFFFFF',
+        background: colors.background,
       }}
     >
       {/* Header */}
-      <Flex
-        justify="space-between"
-        align="center"
-        style={{
-          padding: '12px 20px',
-          borderBottom: '1px solid #f0f0f0',
-          background: '#FFFFFF',
-        }}
-      >
-        <Flex align="center" gap={8} style={{ minWidth: 0, flex: 1 }}>
+      <Flex justify="space-between" align="center" style={sectionHeaderStyle}>
+        <Flex align="center" gap={spacing.sm} style={{ minWidth: 0, flex: 1 }}>
           <Tooltip
             title={
               sessionAutoWorkspacePush
@@ -314,10 +237,12 @@ export default function SessionPage() {
             }
           >
             {sessionAutoWorkspacePush ? (
-              <CloudSyncOutlined style={{ fontSize: 22, color: '#4caf50' }} />
+              <CloudSyncOutlined
+                style={{ fontSize: 22, color: colors.success }}
+              />
             ) : (
               <CloudServerOutlined
-                style={{ fontSize: 22, color: '#999', opacity: 0.6 }}
+                style={{ fontSize: 22, color: colors.textMuted, opacity: 0.6 }}
               />
             )}
           </Tooltip>
@@ -325,7 +250,7 @@ export default function SessionPage() {
             type="text"
             onClick={() => setIsModalOpen(true)}
             style={{
-              padding: '4px 8px',
+              padding: `${spacing.xs}px ${spacing.sm}px`,
               height: 'auto',
               display: 'flex',
               alignItems: 'center',
@@ -336,19 +261,36 @@ export default function SessionPage() {
               strong
               style={{
                 maxWidth: 300,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                ...ellipsisStyle,
               }}
             >
               {sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
             </Text>
-            <EditOutlined style={{ color: '#999', fontSize: 12 }} />
+            <EditOutlined
+              style={{
+                color: colors.textMuted,
+                fontSize: typography.fontSizeSmall,
+              }}
+            />
           </Button>
           {sessionWorkspacePath && (
-            <Flex align="center" gap={4} style={{ marginLeft: 8 }}>
-              <FolderOutlined style={{ fontSize: 12, color: '#666' }} />
-              <Text style={{ fontSize: 12, color: '#666' }}>
+            <Flex
+              align="center"
+              gap={spacing.xs}
+              style={{ marginLeft: spacing.sm }}
+            >
+              <FolderOutlined
+                style={{
+                  fontSize: typography.fontSizeSmall,
+                  color: colors.textSecondary,
+                }}
+              />
+              <Text
+                style={{
+                  fontSize: typography.fontSizeSmall,
+                  color: colors.textSecondary,
+                }}
+              >
                 {sessionWorkspacePath}
               </Text>
               <Button
@@ -361,15 +303,15 @@ export default function SessionPage() {
             </Flex>
           )}
         </Flex>
-        <Flex align="center" gap={12}>
+        <Flex align="center" gap={spacing.md}>
           <Tag style={{ margin: 0 }}>{selectedModel}</Tag>
           <Tooltip title={getStatusText()}>
             <div
               style={{
-                width: 8,
-                height: 8,
+                width: spacing.sm,
+                height: spacing.sm,
                 borderRadius: '50%',
-                background: getStatusColor(),
+                background: getStatusColor(isConnected, isReconnecting),
                 animation: isReconnecting
                   ? 'pulse 1s ease-in-out infinite'
                   : undefined,
@@ -396,28 +338,22 @@ export default function SessionPage() {
         style={{
           flex: 1,
           overflow: 'auto',
-          background: isDragging ? 'rgba(245, 166, 35, 0.05)' : '#FFFFFF',
+          background: isDragging ? colors.brandLight : colors.background,
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
-          border: isDragging ? '2px dashed #f5a623' : '2px solid transparent',
-          transition: 'all 0.2s ease',
+          ...getDropZoneStyle(isDragging),
         }}
       >
         {isDragging && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(245, 166, 35, 0.1)',
-              zIndex: 10,
-              pointerEvents: 'none',
-            }}
-          >
-            <span style={{ color: '#f5a623', fontWeight: 500, fontSize: 16 }}>
+          <div style={dropZoneOverlayStyle}>
+            <span
+              style={{
+                color: colors.brand,
+                fontWeight: typography.fontWeightMedium,
+                fontSize: typography.fontSizeLarge,
+              }}
+            >
               {t('imageUpload.dropHere')}
             </span>
           </div>
@@ -425,17 +361,17 @@ export default function SessionPage() {
         <div
           style={{
             flex: 1,
-            maxWidth: 768,
+            maxWidth: layout.maxContentWidth,
             width: '100%',
             margin: '0 auto',
-            paddingBottom: 16,
+            paddingBottom: spacing.lg,
           }}
         >
           {messages.length === 0 && !isProcessing && !isLoadingHistory && (
             <Flex
               justify="center"
               align="center"
-              style={{ padding: 32, color: '#999' }}
+              style={{ padding: spacing.xxxl, color: colors.textMuted }}
             >
               <Text type="secondary">
                 {t('sessionPage.waitingForResponse')}
@@ -455,19 +391,19 @@ export default function SessionPage() {
                 style={{
                   display: 'flex',
                   justifyContent: isUser ? 'flex-end' : 'flex-start',
-                  padding: '16px 24px',
-                  borderBottom: isUser ? 'none' : '1px solid #f5f5f5',
+                  padding: `${spacing.lg}px ${spacing.xxl}px`,
+                  borderBottom: isUser ? 'none' : `1px solid ${colors.border}`,
                 }}
               >
                 {!isUser && (
                   <div
                     style={{
                       flexShrink: 0,
-                      width: 24,
-                      fontSize: 16,
+                      width: spacing.xxl,
+                      fontSize: typography.fontSizeLarge,
                       paddingTop: 2,
-                      color: '#000000',
-                      marginRight: 12,
+                      color: colors.textPrimary,
+                      marginRight: spacing.md,
                     }}
                   >
                     <RobotOutlined />
@@ -477,13 +413,7 @@ export default function SessionPage() {
                   style={{
                     maxWidth: isUser ? '80%' : '100%',
                     minWidth: 0,
-                    ...(isUser
-                      ? {
-                          background: '#F7F7F7',
-                          borderRadius: 12,
-                          padding: '12px 16px',
-                        }
-                      : { flex: 1 }),
+                    ...(isUser ? userMessageBubbleStyle : { flex: 1 }),
                   }}
                 >
                   <MessageRenderer
@@ -492,7 +422,7 @@ export default function SessionPage() {
                     images={message.images}
                   />
                   {showSpinnerInMessage && (
-                    <Spin size="small" style={{ marginTop: 8 }} />
+                    <Spin size="small" style={{ marginTop: spacing.sm }} />
                   )}
                 </div>
               </div>
@@ -506,18 +436,18 @@ export default function SessionPage() {
                 style={{
                   display: 'flex',
                   justifyContent: 'flex-start',
-                  padding: '16px 24px',
-                  borderBottom: '1px solid #f5f5f5',
+                  padding: `${spacing.lg}px ${spacing.xxl}px`,
+                  borderBottom: `1px solid ${colors.border}`,
                 }}
               >
                 <div
                   style={{
                     flexShrink: 0,
-                    width: 24,
-                    fontSize: 16,
+                    width: spacing.xxl,
+                    fontSize: typography.fontSizeLarge,
                     paddingTop: 2,
-                    color: '#000000',
-                    marginRight: 12,
+                    color: colors.textPrimary,
+                    marginRight: spacing.md,
                   }}
                 >
                   <RobotOutlined />
@@ -531,69 +461,15 @@ export default function SessionPage() {
 
         {/* Input Form - Hidden for archived sessions */}
         {!isArchived && (
-          <div
-            style={{
-              position: 'sticky',
-              bottom: 24,
-              margin: '0 auto 24px',
-              maxWidth: 768,
-              width: 'calc(100% - 48px)',
-              background: '#fff',
-              border: '1px solid #e5e5e5',
-              borderRadius: 12,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-              padding: '12px 16px',
-            }}
-          >
-            <Flex vertical gap={8}>
-              {/* Image previews above input */}
-              <ImageUpload
-                images={attachedImages}
-                onImagesChange={setAttachedImages}
-                disabled={!isConnected || isConverting}
-                showButtonOnly={false}
-              />
-              <Flex gap={8} align="flex-end">
-                <TextArea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === 'Enter' &&
-                      !e.shiftKey &&
-                      !e.nativeEvent.isComposing
-                    ) {
-                      e.preventDefault();
-                      handleSubmit();
-                    }
-                  }}
-                  placeholder={t('sessionPage.typeMessage')}
-                  disabled={!isConnected || isConverting}
-                  variant="borderless"
-                  autoSize={{ minRows: 1, maxRows: 9 }}
-                  style={{ flex: 1, padding: 0, alignSelf: 'stretch' }}
-                />
-                <ImageUpload
-                  images={attachedImages}
-                  onImagesChange={setAttachedImages}
-                  disabled={!isConnected || isConverting}
-                  showButtonOnly={true}
-                />
-                <Button
-                  type="primary"
-                  shape="circle"
-                  icon={<SendOutlined />}
-                  disabled={
-                    !isConnected ||
-                    isConverting ||
-                    (!input.trim() && attachedImages.length === 0)
-                  }
-                  loading={isConverting}
-                  onClick={handleSubmit}
-                />
-              </Flex>
-            </Flex>
-          </div>
+          <ChatInput
+            input={input}
+            onInputChange={setInput}
+            attachedImages={attachedImages}
+            onImagesChange={setAttachedImages}
+            disabled={!isConnected}
+            isConverting={isConverting}
+            onSubmit={handleSubmit}
+          />
         )}
       </div>
     </Flex>

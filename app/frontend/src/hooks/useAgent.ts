@@ -1,305 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ImageContent, MessageContent } from '@app/shared';
+import type {
+  SDKMessage,
+  SDKAssistantMessage,
+  ChatMessage,
+  UseAgentOptions,
+} from '../types/sdk';
+import {
+  formatToolInput,
+  extractUserContent,
+  convertSDKMessagesToChat,
+} from '../utils/messageParser';
+import {
+  RECONNECT_MAX_ATTEMPTS,
+  calculateReconnectDelay,
+  createAgentWebSocketUrl,
+} from '../utils/websocket';
 
-// Format tool input to show only relevant information
-function formatToolInput(input: unknown): string {
-  if (!input || typeof input !== 'object') return '';
-
-  const inputObj = input as Record<string, unknown>;
-
-  // For tools with large content fields, exclude them
-  const sanitized = { ...inputObj };
-  if ('content' in sanitized) {
-    delete sanitized.content;
-  }
-  if ('new_source' in sanitized) {
-    delete sanitized.new_source;
-  }
-
-  return JSON.stringify(sanitized);
-}
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'agent';
-  content: string;
-  images?: ImageContent[]; // For user messages with images
-  timestamp: Date;
-}
-
-interface UseAgentOptions {
-  sessionId?: string;
-  initialMessage?: string;
-  model?: string;
-}
-
-// SDKMessage type definitions (subset of @anthropic-ai/claude-agent-sdk)
-interface SDKMessageBase {
-  type: string;
-  session_id: string;
-  uuid?: string;
-}
-
-interface SDKContentBlock {
-  type: string;
-  text?: string;
-  tool_use_id?: string;
-  content?: string | Array<{ type: string; text?: string }>;
-  // Image content
-  source?: {
-    type: 'base64';
-    media_type: string;
-    data: string;
-  };
-}
-
-interface SDKUserMessage extends SDKMessageBase {
-  type: 'user';
-  message: {
-    role: 'user';
-    content: string | SDKContentBlock[];
-  };
-}
-
-interface SDKAssistantMessage extends SDKMessageBase {
-  type: 'assistant';
-  message: {
-    role: 'assistant';
-    content: Array<{
-      type: string;
-      text?: string;
-      name?: string;
-      id?: string;
-      input?: unknown;
-    }>;
-  };
-}
-
-interface SDKResultMessage extends SDKMessageBase {
-  type: 'result';
-  subtype: string;
-  is_error: boolean;
-  result: string;
-}
-
-interface SDKSystemMessage extends SDKMessageBase {
-  type: 'system';
-  subtype: string;
-}
-
-type SDKMessage =
-  | SDKUserMessage
-  | SDKAssistantMessage
-  | SDKResultMessage
-  | SDKSystemMessage
-  | SDKMessageBase;
-
-// Extract text and images from user message
-function extractUserContent(content: string | SDKContentBlock[]): {
-  text: string;
-  images: ImageContent[];
-} {
-  if (typeof content === 'string') {
-    return { text: content, images: [] };
-  }
-
-  const images: ImageContent[] = [];
-  const textParts: string[] = [];
-
-  for (const block of content) {
-    if (block.type === 'text' && block.text) {
-      textParts.push(block.text);
-    } else if (block.type === 'image' && block.source) {
-      images.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: block.source.media_type as
-            | 'image/webp'
-            | 'image/jpeg'
-            | 'image/png'
-            | 'image/gif',
-          data: block.source.data,
-        },
-      });
-    }
-  }
-
-  return { text: textParts.join(''), images };
-}
-
-// Convert SDKMessage[] to ChatMessage[]
-function convertSDKMessagesToChat(sdkMessages: SDKMessage[]): ChatMessage[] {
-  const messages: ChatMessage[] = [];
-  let currentAgentContent = '';
-  let currentAgentId = '';
-  const toolNameMap = new Map<string, string>(); // tool_use_id -> tool_name
-
-  // Helper function to insert tool result after corresponding tool use
-  const insertToolResult = (
-    content: string,
-    toolUseId: string,
-    resultText: string,
-    toolName?: string
-  ): string => {
-    // Skip displaying WebSearch results (keep them hidden)
-    if (toolName === 'WebSearch') {
-      return content;
-    }
-
-    const truncated =
-      resultText.length > 500
-        ? resultText.slice(0, 500) + '\n... (truncated)'
-        : resultText;
-    const resultBlock = `[ToolResult]\n${truncated}\n[/ToolResult]`;
-
-    // Find the tool use marker with this ID and insert result after it
-    const toolIdPattern = new RegExp(
-      `(\\[Tool: \\w+ id=${toolUseId}\\][^\\n]*\\n)`,
-      'g'
-    );
-    const match = toolIdPattern.exec(content);
-    if (match) {
-      const insertPos = match.index + match[0].length;
-      return (
-        content.slice(0, insertPos) +
-        resultBlock +
-        '\n' +
-        content.slice(insertPos)
-      );
-    }
-    // Fallback: append at the end
-    return content + '\n' + resultBlock;
-  };
-
-  for (const msg of sdkMessages) {
-    if (msg.type === 'user') {
-      const userMsg = msg as SDKUserMessage;
-      const content = userMsg.message.content;
-
-      // Check if this is a skill description message (auto-generated by Skill tool)
-      if (typeof content !== 'string' && Array.isArray(content)) {
-        const isSkillDescription = content.some(
-          (block) =>
-            block.type === 'text' &&
-            block.text &&
-            block.text.includes('Base directory for this skill:')
-        );
-        // Skip skill description messages
-        if (isSkillDescription) {
-          continue;
-        }
-      }
-
-      // Check if this is a tool result message
-      if (typeof content !== 'string' && Array.isArray(content)) {
-        let hasToolResult = false;
-        for (const block of content) {
-          if (
-            block.type === 'tool_result' &&
-            block.tool_use_id &&
-            block.content
-          ) {
-            hasToolResult = true;
-            let resultText = '';
-            if (typeof block.content === 'string') {
-              resultText = block.content;
-            } else if (Array.isArray(block.content)) {
-              resultText = block.content
-                .filter((b) => b.type === 'text' && b.text)
-                .map((b) => b.text)
-                .join('');
-            }
-            if (resultText) {
-              const toolName = toolNameMap.get(block.tool_use_id);
-              currentAgentContent = insertToolResult(
-                currentAgentContent,
-                block.tool_use_id,
-                resultText,
-                toolName
-              );
-            }
-          }
-        }
-        if (hasToolResult) continue;
-      }
-
-      // Flush any pending agent message
-      if (currentAgentContent && currentAgentId) {
-        messages.push({
-          id: currentAgentId,
-          role: 'agent',
-          content: currentAgentContent.trim(),
-          timestamp: new Date(),
-        });
-        currentAgentContent = '';
-        currentAgentId = '';
-      }
-
-      // Regular user message
-      const { text: textContent, images } = extractUserContent(
-        userMsg.message.content
-      );
-      if (textContent || images.length > 0) {
-        messages.push({
-          id: msg.uuid || `user-${Date.now()}`,
-          role: 'user',
-          content: textContent,
-          images: images.length > 0 ? images : undefined,
-          timestamp: new Date(),
-        });
-      }
-    } else if (msg.type === 'assistant') {
-      const assistantMsg = msg as SDKAssistantMessage;
-      if (!currentAgentId) {
-        currentAgentId = msg.uuid || `agent-${Date.now()}`;
-      }
-
-      // Process content blocks
-      for (const block of assistantMsg.message.content) {
-        if (block.type === 'text' && block.text) {
-          currentAgentContent += block.text;
-        } else if (block.type === 'tool_use' && block.name) {
-          const toolInput = block.input ? formatToolInput(block.input) : '';
-          const toolId = block.id || `tool-${Date.now()}`;
-          // Store tool name for later use when processing tool results
-          toolNameMap.set(toolId, block.name);
-          currentAgentContent += `\n\n[Tool: ${block.name} id=${toolId}] ${toolInput}\n`;
-        }
-      }
-    } else if (msg.type === 'result') {
-      // Flush agent message on result
-      if (currentAgentContent && currentAgentId) {
-        messages.push({
-          id: currentAgentId,
-          role: 'agent',
-          content: currentAgentContent.trim(),
-          timestamp: new Date(),
-        });
-        currentAgentContent = '';
-        currentAgentId = '';
-      }
-    }
-    // Skip system messages (init, etc.)
-  }
-
-  // Flush any remaining agent message
-  if (currentAgentContent && currentAgentId) {
-    messages.push({
-      id: currentAgentId,
-      role: 'agent',
-      content: currentAgentContent.trim(),
-      timestamp: new Date(),
-    });
-  }
-
-  return messages;
-}
-
-// Reconnection configuration
-const RECONNECT_MAX_ATTEMPTS = 5;
-const RECONNECT_BASE_DELAY = 1000; // 1 second
-const RECONNECT_MAX_DELAY = 30000; // 30 seconds
+// Re-export types for backwards compatibility
+export type { ChatMessage, UseAgentOptions } from '../types/sdk';
 
 export function useAgent(options: UseAgentOptions = {}) {
   const { sessionId, initialMessage, model } = options;
@@ -426,9 +145,7 @@ export function useAgent(options: UseAgentOptions = {}) {
     isUnmountingRef.current = false;
 
     const connect = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/api/v1/sessions/${sessionId}/ws`;
-
+      const wsUrl = createAgentWebSocketUrl(sessionId);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -715,10 +432,7 @@ export function useAgent(options: UseAgentOptions = {}) {
         if (!isUnmountingRef.current) {
           const attempts = reconnectAttemptsRef.current;
           if (attempts < RECONNECT_MAX_ATTEMPTS) {
-            const delay = Math.min(
-              RECONNECT_BASE_DELAY * Math.pow(2, attempts),
-              RECONNECT_MAX_DELAY
-            );
+            const delay = calculateReconnectDelay(attempts);
             console.log(
               `Reconnecting in ${delay}ms (attempt ${attempts + 1}/${RECONNECT_MAX_ATTEMPTS})`
             );
