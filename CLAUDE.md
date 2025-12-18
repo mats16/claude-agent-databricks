@@ -132,6 +132,27 @@ Sync behavior is controlled by these flags passed to `processAgentRequest()`:
 - Background sync allows fast session creation without blocking
 - Agent may start before workspace files are fully synced (usually completes quickly)
 
+### Session Archive
+Sessions can be archived to hide them from the active session list without permanent deletion.
+
+**Archive Process**:
+1. User triggers archive via UI (InboxOutlined icon on hover in session list)
+2. `PATCH /api/v1/sessions/:id/archive` sets `is_archived=true` in database
+3. Working directory (`sessions.cwd`) is deleted in background using fire-and-forget pattern via `deleteWorkDir()` in `app/backend/utils/databricks.ts`
+4. If the archived session is currently displayed, UI automatically navigates to home page
+
+**UI Behavior**:
+- Default filter: "Active" (shows only non-archived sessions)
+- Filter options: Active, Archived, All (FilterOutlined icon in session list header)
+- Client-side filtering for instant switching without API calls
+- Archived sessions displayed with grey text to distinguish from active sessions
+- Archive button only shown on hover for non-archived sessions
+
+**Technical Notes**:
+- Archive is a one-way operation (no unarchive functionality)
+- Directory deletion failures are logged but don't fail the archive operation
+- SessionsContext fetches all sessions once and filters client-side for performance
+
 ## Frontend State Management
 
 To minimize redundant API requests, shared data should be managed via React Context rather than fetching in each component.
@@ -179,9 +200,10 @@ Apply the path to `app/frontend/public/favicon.svg`:
 
 ### REST
 - `POST /api/v1/sessions` - Create session with initial message (workspacePath is optional)
-- `GET /api/v1/sessions` - List sessions (filtered by userId via RLS)
+- `GET /api/v1/sessions` - List sessions (filtered by userId via RLS, supports `?filter=active|archived|all`)
 - `GET /api/v1/sessions/:id/events` - Get session history
 - `PATCH /api/v1/sessions/:id` - Update session (title, autoWorkspacePush, workspacePath)
+- `PATCH /api/v1/sessions/:id/archive` - Archive session (sets `is_archived=true`, deletes working directory in background)
 - `POST /api/v1/users` - Create/upsert user
 - `GET /api/v1/users/me` - Get user info (userId, email, workspaceHome, hasWorkspacePermission)
 - `GET /api/v1/users/me/settings` - Get user settings (hasAccessToken, claudeConfigSync)
@@ -199,21 +221,22 @@ Apply the path to `app/frontend/public/favicon.svg`:
 ## Important Files
 
 ### Backend Core
-- `app/backend/app.ts` - Fastify server, REST/WebSocket endpoints, session creation with workspace pull
+- `app/backend/app.ts` - Fastify server, REST/WebSocket endpoints, session creation with workspace pull, archive endpoint
 - `app/backend/agent/index.ts` - Claude Agent SDK configuration, Stop hooks for workspace push
-- `app/backend/utils/databricks.ts` - Databricks CLI wrapper functions (`workspacePull`, `workspacePush`)
+- `app/backend/utils/databricks.ts` - Databricks CLI wrapper functions (`workspacePull`, `workspacePush`, `deleteWorkDir`)
 
 ### Database Layer
 - `app/backend/db/schema.ts` - Drizzle ORM table definitions
-- `app/backend/db/sessions.ts` - Session queries with RLS support
+- `app/backend/db/sessions.ts` - Session queries with RLS support, archive operations
 - `app/backend/db/users.ts` - User CRUD operations
 - `app/backend/db/settings.ts` - User settings operations
 - `app/backend/db/migrations/` - SQL migration files with RLS policies
 
 ### Frontend Core
 - `app/frontend/src/hooks/useAgent.ts` - WebSocket handling, SDK message parsing
-- `app/frontend/src/contexts/SessionsContext.tsx` - Session list state with real-time updates
+- `app/frontend/src/contexts/SessionsContext.tsx` - Session list state with client-side filtering and real-time updates
 - `app/frontend/src/contexts/UserContext.tsx` - User info and settings state
 - `app/frontend/src/pages/SessionPage.tsx` - Chat UI with message streaming
+- `app/frontend/src/components/SessionList.tsx` - Session list with filtering and archive UI
 - `app/frontend/src/components/MessageRenderer.tsx` - Tool output rendering
 - `app/frontend/src/components/Sidebar.tsx` - Session creation UI
