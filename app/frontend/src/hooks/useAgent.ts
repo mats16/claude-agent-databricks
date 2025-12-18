@@ -1,6 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ImageContent, MessageContent } from '@app/shared';
 
+// Format tool input to show only relevant information
+function formatToolInput(input: unknown): string {
+  if (!input || typeof input !== 'object') return '';
+
+  const inputObj = input as Record<string, unknown>;
+
+  // For tools with large content fields, exclude them
+  const sanitized = { ...inputObj };
+  if ('content' in sanitized) {
+    delete sanitized.content;
+  }
+  if ('new_source' in sanitized) {
+    delete sanitized.new_source;
+  }
+
+  return JSON.stringify(sanitized);
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'agent';
@@ -228,7 +246,7 @@ function convertSDKMessagesToChat(sdkMessages: SDKMessage[]): ChatMessage[] {
         if (block.type === 'text' && block.text) {
           currentAgentContent += block.text;
         } else if (block.type === 'tool_use' && block.name) {
-          const toolInput = block.input ? JSON.stringify(block.input) : '';
+          const toolInput = block.input ? formatToolInput(block.input) : '';
           const toolId = block.id || `tool-${Date.now()}`;
           // Store tool name for later use when processing tool results
           toolNameMap.set(toolId, block.name);
@@ -453,7 +471,7 @@ export function useAgent(options: UseAgentOptions = {}) {
             if (block.type === 'text' && block.text) {
               currentResponseRef.current += block.text;
             } else if (block.type === 'tool_use' && block.name) {
-              const toolInput = block.input ? JSON.stringify(block.input) : '';
+              const toolInput = block.input ? formatToolInput(block.input) : '';
               const toolId = block.id || `tool-${Date.now()}`;
               // Add tool use with ID marker for later result insertion
               const marker = `[Tool: ${block.name} id=${toolId}] ${toolInput}`;
