@@ -70,6 +70,9 @@ export default function SessionPage() {
   }
 
   // Sync session data from context
+  const session = sessionId ? getSession(sessionId) : undefined;
+  const isArchived = session?.isArchived ?? false;
+
   useEffect(() => {
     if (!sessionId) return;
     const session = getSession(sessionId);
@@ -526,70 +529,72 @@ export default function SessionPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Form */}
-        <div
-          style={{
-            position: 'sticky',
-            bottom: 24,
-            margin: '0 auto 24px',
-            maxWidth: 768,
-            width: 'calc(100% - 48px)',
-            background: '#fff',
-            border: '1px solid #e5e5e5',
-            borderRadius: 12,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-            padding: '12px 16px',
-          }}
-        >
-          <Flex vertical gap={8}>
-            {/* Image previews above input */}
-            <ImageUpload
-              images={attachedImages}
-              onImagesChange={setAttachedImages}
-              disabled={!isConnected || isConverting}
-              showButtonOnly={false}
-            />
-            <Flex gap={8} align="flex-end">
-              <TextArea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (
-                    e.key === 'Enter' &&
-                    !e.shiftKey &&
-                    !e.nativeEvent.isComposing
-                  ) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                placeholder={t('sessionPage.typeMessage')}
-                disabled={!isConnected || isConverting}
-                variant="borderless"
-                autoSize={{ minRows: 1, maxRows: 9 }}
-                style={{ flex: 1, padding: 0, alignSelf: 'stretch' }}
-              />
+        {/* Input Form - Hidden for archived sessions */}
+        {!isArchived && (
+          <div
+            style={{
+              position: 'sticky',
+              bottom: 24,
+              margin: '0 auto 24px',
+              maxWidth: 768,
+              width: 'calc(100% - 48px)',
+              background: '#fff',
+              border: '1px solid #e5e5e5',
+              borderRadius: 12,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+              padding: '12px 16px',
+            }}
+          >
+            <Flex vertical gap={8}>
+              {/* Image previews above input */}
               <ImageUpload
                 images={attachedImages}
                 onImagesChange={setAttachedImages}
                 disabled={!isConnected || isConverting}
-                showButtonOnly={true}
+                showButtonOnly={false}
               />
-              <Button
-                type="primary"
-                shape="circle"
-                icon={<SendOutlined />}
-                disabled={
-                  !isConnected ||
-                  isConverting ||
-                  (!input.trim() && attachedImages.length === 0)
-                }
-                loading={isConverting}
-                onClick={handleSubmit}
-              />
+              <Flex gap={8} align="flex-end">
+                <TextArea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === 'Enter' &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing
+                    ) {
+                      e.preventDefault();
+                      handleSubmit();
+                    }
+                  }}
+                  placeholder={t('sessionPage.typeMessage')}
+                  disabled={!isConnected || isConverting}
+                  variant="borderless"
+                  autoSize={{ minRows: 1, maxRows: 9 }}
+                  style={{ flex: 1, padding: 0, alignSelf: 'stretch' }}
+                />
+                <ImageUpload
+                  images={attachedImages}
+                  onImagesChange={setAttachedImages}
+                  disabled={!isConnected || isConverting}
+                  showButtonOnly={true}
+                />
+                <Button
+                  type="primary"
+                  shape="circle"
+                  icon={<SendOutlined />}
+                  disabled={
+                    !isConnected ||
+                    isConverting ||
+                    (!input.trim() && attachedImages.length === 0)
+                  }
+                  loading={isConverting}
+                  onClick={handleSubmit}
+                />
+              </Flex>
             </Flex>
-          </Flex>
-        </div>
+          </div>
+        )}
       </div>
     </Flex>
   );
