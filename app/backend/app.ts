@@ -259,15 +259,12 @@ fastify.post<{ Body: CreateSessionBody }>(
         ? (session_context.autoWorkspacePush ?? false)
         : false;
 
-    // Get user settings for claudeConfigSync
+    // Get user settings for claudeConfigSync (still needed for agent hook)
     const userSettings = await getSettingsDirect(userId);
     const claudeConfigSync = userSettings?.claudeConfigSync ?? true;
 
-    // Pull workspace files in background (non-blocking)
     // Compute paths (same logic as in agent/index.ts)
     const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
-    const workspaceHomePath = path.join('/Workspace/Users', userEmail);
-    const workspaceClaudeConfigPath = path.join(workspaceHomePath, '.claude');
     const localClaudeConfigPath = path.join(
       localBasePath,
       userEmail,
@@ -276,27 +273,6 @@ fastify.post<{ Body: CreateSessionBody }>(
 
     // Ensure claude config directory exists
     fs.mkdirSync(localClaudeConfigPath, { recursive: true });
-
-    // Start workspace pull in background (fire-and-forget)
-    // Pull .claude config if enabled (always overwrite)
-    if (claudeConfigSync) {
-      console.log(
-        `[New Session] Starting background pull of claude config from ${workspaceClaudeConfigPath}...`
-      );
-      const spToken = await getOidcAccessToken();
-      workspacePull(
-        workspaceClaudeConfigPath,
-        localClaudeConfigPath,
-        true,
-        spToken
-      )
-        .then(() => {
-          console.log('[New Session] Claude config pull completed');
-        })
-        .catch((err) => {
-          console.error('[New Session] Claude config pull failed:', err);
-        });
-    }
 
     // Promise to wait for init message with timeout and error handling
     let sessionId = '';
@@ -725,6 +701,53 @@ fastify.patch<{
 
   await upsertSettings(userId, updates);
   return { success: true };
+});
+
+// Pull claude config from workspace (manual operation)
+fastify.post('/api/v1/users/me/claude-config/pull', async (request, reply) => {
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(401).send({ error: error.message });
+  }
+
+  const { userId, userEmail } = context;
+
+  // Ensure user exists
+  await upsertUser(userId, userEmail);
+
+  // Build paths
+  const isProduction = process.env.NODE_ENV === 'production';
+  const homeBase = isProduction
+    ? '/home/app/u'
+    : path.join(process.env.HOME ?? '/tmp', 'u');
+  const localClaudeConfigPath = path.join(homeBase, userEmail, '.claude');
+  const workspaceClaudeConfigPath = `/Workspace/Users/${userEmail}/.claude`;
+
+  try {
+    // Get SP access token
+    const spAccessToken = await getAccessToken();
+
+    // Pull .claude config (overwrite)
+    console.log(
+      `[Manual Pull] Pulling claude config from ${workspaceClaudeConfigPath} to ${localClaudeConfigPath}...`
+    );
+    await workspacePull(
+      workspaceClaudeConfigPath,
+      localClaudeConfigPath,
+      true, // overwrite
+      spAccessToken
+    );
+
+    console.log('[Manual Pull] Claude config pull completed');
+    return { success: true };
+  } catch (error: any) {
+    console.error(
+      `[Manual Pull] Failed to pull claude config: ${error.message}`
+    );
+    return reply.status(500).send({ error: 'Failed to pull claude config' });
+  }
 });
 
 // Get service principal info

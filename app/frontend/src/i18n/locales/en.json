@@ -22,13 +22,16 @@
   },
   "accountMenu": {
     "accountSettings": "Account settings",
+    "appSettings": "Application Settings",
+    "claudeCodeSettings": "Claude Code Settings",
+    "autoBackup": "Backup and Restore",
     "settings": "Settings",
     "skills": "Skills",
     "databricksApp": "Open Databricks App",
     "language": "Language"
   },
-  "settingsModal": {
-    "title": "Settings",
+  "appSettingsModal": {
+    "title": "Application Settings",
     "initialTitle": "Workspace Access Permission",
     "noPermission": "No access to workspace",
     "grantPermissionTo": "Grant permission to:",
@@ -40,6 +43,17 @@
     "checkAgain": "Check Permission",
     "recheckPermission": "Recheck Permission",
     "permissionGranted": "Workspace access permission confirmed",
+    "saved": "Settings saved successfully",
+    "saveFailed": "Failed to save settings"
+  },
+  "settingsModal": {
+    "title": "Claude Code Settings Backup and Restore",
+    "autoBackupTitle": "Auto Backup",
+    "autoBackupDescription": "Automatically save Claude configuration (.claude directory) to Databricks Workspace on task completion.",
+    "manualPullButton": "Pull from Workspace",
+    "manualPullDescription": "Manually pull Claude configuration from Databricks Workspace.",
+    "pullSuccess": "Claude configuration pulled successfully",
+    "pullFailed": "Failed to pull Claude configuration",
     "claudeConfigSyncTitle": "Claude Config Sync",
     "claudeConfigSyncDescription": "Automatically sync Claude configuration (.claude directory) to Databricks Workspace on task completion.",
     "saved": "Settings saved successfully",

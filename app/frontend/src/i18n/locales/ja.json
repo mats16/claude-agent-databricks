@@ -22,13 +22,16 @@
   },
   "accountMenu": {
     "accountSettings": "アカウント設定",
+    "appSettings": "アプリケーション設定",
+    "claudeCodeSettings": "Claude Code 設定",
+    "autoBackup": "バックアップとリストア",
     "settings": "設定",
     "skills": "スキル",
     "databricksApp": "Databricks App を開く",
     "language": "言語"
   },
-  "settingsModal": {
-    "title": "設定",
+  "appSettingsModal": {
+    "title": "アプリケーション設定",
     "initialTitle": "ワークスペースへのアクセス許可",
     "noPermission": "ワークスペースへのアクセス権限がありません",
     "grantPermissionTo": "以下に権限を付与してください:",
@@ -40,6 +43,17 @@
     "checkAgain": "権限を再確認",
     "recheckPermission": "権限を再確認",
     "permissionGranted": "ワークスペースへのアクセス権限が確認できました",
+    "saved": "設定を保存しました",
+    "saveFailed": "設定の保存に失敗しました"
+  },
+  "settingsModal": {
+    "title": "Claude Code の設定のバックアップとリストア",
+    "autoBackupTitle": "自動バックアップ",
+    "autoBackupDescription": "タスク完了時に Claude の設定（.claude フォルダ）を Databricks Workspace へ自動的に保存します。",
+    "manualPullButton": "Workspace から取得",
+    "manualPullDescription": "Databricks Workspace から Claude 設定を手動で取得します。",
+    "pullSuccess": "Claude 設定を取得しました",
+    "pullFailed": "Claude 設定の取得に失敗しました",
     "claudeConfigSyncTitle": "Claude 設定の同期",
     "claudeConfigSyncDescription": "タスク完了時に Claude の設定（.claude フォルダ）を Databricks Workspace へ自動的に同期します。",
     "saved": "設定を保存しました",

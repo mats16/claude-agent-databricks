@@ -7,7 +7,10 @@ import {
   GlobalOutlined,
   CheckOutlined,
   ThunderboltOutlined,
+  RobotOutlined,
+  SaveOutlined,
 } from '@ant-design/icons';
+import AppSettingsModal from './AppSettingsModal';
 import SettingsModal from './SettingsModal';
 import SkillsModal from './SkillsModal';
 import { useUser } from '../contexts/UserContext';
@@ -20,11 +23,20 @@ const LANGUAGES = [
 export default function AccountMenu() {
   const { t, i18n } = useTranslation();
   const { userInfo } = useUser();
+  const [isAppSettingsModalOpen, setIsAppSettingsModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
 
   const handleLanguageChange = (langCode: string) => {
     i18n.changeLanguage(langCode);
+  };
+
+  const handleOpenAppSettings = () => {
+    setIsAppSettingsModalOpen(true);
+  };
+
+  const handleCloseAppSettings = () => {
+    setIsAppSettingsModalOpen(false);
   };
 
   const handleOpenSettings = () => {
@@ -78,16 +90,29 @@ export default function AccountMenu() {
     },
     { type: 'divider' },
     {
-      key: 'settings',
+      key: 'app-settings',
       icon: <SettingOutlined />,
-      label: t('accountMenu.settings'),
-      onClick: handleOpenSettings,
+      label: t('accountMenu.appSettings'),
+      onClick: handleOpenAppSettings,
     },
     {
-      key: 'skills',
-      icon: <ThunderboltOutlined />,
-      label: t('accountMenu.skills'),
-      onClick: handleOpenSkills,
+      key: 'claude-code-settings',
+      icon: <RobotOutlined />,
+      label: t('accountMenu.claudeCodeSettings'),
+      children: [
+        {
+          key: 'auto-backup',
+          icon: <SaveOutlined />,
+          label: t('accountMenu.autoBackup'),
+          onClick: handleOpenSettings,
+        },
+        {
+          key: 'skills',
+          icon: <ThunderboltOutlined />,
+          label: t('accountMenu.skills'),
+          onClick: handleOpenSkills,
+        },
+      ],
     },
     {
       key: 'language',
@@ -122,6 +147,11 @@ export default function AccountMenu() {
           }}
         />
       </Dropdown>
+
+      <AppSettingsModal
+        isOpen={isAppSettingsModalOpen}
+        onClose={handleCloseAppSettings}
+      />
 
       <SettingsModal
         isOpen={isSettingsModalOpen}

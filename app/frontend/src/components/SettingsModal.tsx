@@ -1,66 +1,32 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Modal, Button, Alert, Typography, Flex, Switch, Divider } from 'antd';
 import {
-  Modal,
-  Button,
-  Alert,
-  Typography,
-  Flex,
-  Switch,
-  Divider,
-  Spin,
-} from 'antd';
-import {
+  SaveOutlined,
   SyncOutlined,
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
-  ReloadOutlined,
-  FolderOpenOutlined,
-  RobotOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import { useUser, UserSettings } from '../contexts/UserContext';
 
-const { Text, Title, Link } = Typography;
+const { Text, Title } = Typography;
 
 export type { UserSettings };
-
-interface ServicePrincipalInfo {
-  displayName: string;
-  applicationId: string | null;
-  databricksHost: string | null;
-}
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  isInitialSetup?: boolean;
-  onPermissionGranted?: () => void;
 }
 
-export default function SettingsModal({
-  isOpen,
-  onClose,
-  isInitialSetup = false,
-  onPermissionGranted,
-}: SettingsModalProps) {
-  const { t, i18n } = useTranslation();
-  const {
-    userInfo,
-    userSettings,
-    isLoading: isUserLoading,
-    refetchUserInfo,
-  } = useUser();
-  const [spInfo, setSpInfo] = useState<ServicePrincipalInfo | null>(null);
+export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  const { t } = useTranslation();
+  const { userSettings } = useUser();
   const [claudeConfigSync, setClaudeConfigSync] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isCheckingPermission, setIsCheckingPermission] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
-
-  const hasPermission = userInfo?.hasWorkspacePermission ?? null;
-  const isLoading = isUserLoading || isCheckingPermission;
 
   // Sync claudeConfigSync state with userSettings
   useEffect(() => {
@@ -69,42 +35,25 @@ export default function SettingsModal({
     }
   }, [userSettings]);
 
-  // Fetch SP info if no permission
-  const fetchSpInfo = useCallback(async () => {
-    try {
-      const spRes = await fetch('/api/v1/service-principal');
-      if (spRes.ok) {
-        const spData = await spRes.json();
-        setSpInfo(spData);
-      }
-    } catch (error) {
-      console.error('Failed to fetch SP info:', error);
-    }
-  }, []);
-
-  // Fetch SP info when modal opens and no permission
-  useEffect(() => {
-    if (isOpen && hasPermission === false && !spInfo) {
-      fetchSpInfo();
-    }
-  }, [isOpen, hasPermission, spInfo, fetchSpInfo]);
-
-  // Call onPermissionGranted when permission is granted
-  useEffect(() => {
-    if (hasPermission === true && isInitialSetup) {
-      onPermissionGranted?.();
-    }
-  }, [hasPermission, isInitialSetup, onPermissionGranted]);
-
-  const checkPermission = useCallback(async () => {
-    setIsCheckingPermission(true);
+  const handleManualPull = async () => {
+    setIsPulling(true);
     setMessage(null);
     try {
-      await refetchUserInfo();
+      const response = await fetch('/api/v1/users/me/claude-config/pull', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to pull claude config');
+      }
+
+      setMessage({ type: 'success', text: t('settingsModal.pullSuccess') });
+    } catch {
+      setMessage({ type: 'error', text: t('settingsModal.pullFailed') });
     } finally {
-      setIsCheckingPermission(false);
+      setIsPulling(false);
     }
-  }, [refetchUserInfo]);
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -123,12 +72,6 @@ export default function SettingsModal({
 
       setMessage({ type: 'success', text: t('settingsModal.saved') });
       window.dispatchEvent(new Event('settings-changed'));
-
-      if (isInitialSetup && hasPermission) {
-        setTimeout(() => {
-          onClose();
-        }, 1000);
-      }
     } catch {
       setMessage({ type: 'error', text: t('settingsModal.saveFailed') });
     } finally {
@@ -136,111 +79,71 @@ export default function SettingsModal({
     }
   };
 
-  const renderPermissionInstructions = () => (
-    <div>
-      <Alert
-        type="warning"
-        icon={<ExclamationCircleOutlined />}
-        message={t('settingsModal.noPermission')}
-        showIcon
-        style={{ marginBottom: 16 }}
-      />
-
-      {/* Service Principal authentication note */}
-      <Alert
-        type="info"
-        message={t('settingsModal.spAuthNote')}
-        style={{ marginBottom: 16 }}
-      />
-
-      {/* Instructions */}
-      <div
-        style={{
-          background: '#fafafa',
-          borderRadius: 8,
-          padding: 16,
-          marginBottom: 16,
-        }}
-      >
-        <Text strong style={{ display: 'block', marginBottom: 12 }}>
-          {t('settingsModal.instructionsTitle')}
-        </Text>
-        <Text>
-          {i18n.language === 'ja' ? (
-            <>
-              <Text code>{spInfo?.displayName || 'Service Principal'}</Text>{' '}
-              {t('settingsModal.instructionsTextBefore')}{' '}
-              <Text code style={{ color: '#cf1322', fontSize: 14 }}>
-                Can Manage
-              </Text>{' '}
-              {t('settingsModal.instructionsTextAfter')}
-            </>
-          ) : (
-            <>
-              {t('settingsModal.instructionsTextBefore')}{' '}
-              <Text code style={{ color: '#cf1322', fontSize: 14 }}>
-                Can Manage
-              </Text>{' '}
-              {t('settingsModal.instructionsTextAfter')}{' '}
-              <Text code>{spInfo?.displayName || 'Service Principal'}</Text>
-            </>
-          )}
-        </Text>
-      </div>
-
-      {/* Open Databricks Console link */}
-      <Flex justify="center" style={{ marginBottom: 16 }}>
-        <Link href={`https://${spInfo?.databricksHost}/browse`} target="_blank">
-          {t('settingsModal.openDatabricksConsole')}
-        </Link>
-      </Flex>
-
-      <Flex justify="center">
-        <Button
-          type="primary"
-          icon={<ReloadOutlined />}
-          onClick={checkPermission}
-          loading={isLoading}
-        >
-          {t('settingsModal.checkAgain')}
-        </Button>
-      </Flex>
-    </div>
-  );
-
-  const renderSettings = () => (
-    <div>
-      {isInitialSetup && (
-        <Alert
-          type="success"
-          icon={<CheckCircleOutlined />}
-          message={t('settingsModal.permissionGranted')}
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
-      {/* Claude Config Sync Section */}
+  return (
+    <Modal
+      title={
+        <Flex align="center" gap={8}>
+          <SaveOutlined style={{ color: '#f5a623' }} />
+          {t('settingsModal.title')}
+        </Flex>
+      }
+      open={isOpen}
+      onOk={handleSave}
+      onCancel={onClose}
+      okText={isSaving ? t('common.saving') : t('common.save')}
+      cancelText={t('common.close')}
+      okButtonProps={{ loading: isSaving }}
+      cancelButtonProps={{ disabled: isSaving }}
+      width={500}
+    >
+      {/* Auto Backup Section */}
       <div style={{ marginBottom: 16 }}>
         <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
           <SyncOutlined style={{ color: '#f5a623' }} />
           <Title level={5} style={{ margin: 0 }}>
-            {t('settingsModal.claudeConfigSyncTitle')}
+            {t('settingsModal.autoBackupTitle')}
           </Title>
         </Flex>
 
-        <Flex justify="space-between" align="center">
+        <Flex
+          justify="space-between"
+          align="center"
+          style={{ marginBottom: 12 }}
+        >
           <div style={{ flex: 1, marginRight: 16 }}>
             <Text type="secondary">
-              {t('settingsModal.claudeConfigSyncDescription')}
+              {t('settingsModal.autoBackupDescription')}
             </Text>
           </div>
           <Switch
             checked={claudeConfigSync}
             onChange={setClaudeConfigSync}
-            disabled={isSaving || isLoading}
+            disabled={isSaving}
           />
         </Flex>
+
+        <Divider style={{ margin: '16px 0' }} />
+
+        {/* Manual Pull Section */}
+        <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+          <DownloadOutlined style={{ color: '#f5a623' }} />
+          <Title level={5} style={{ margin: 0 }}>
+            {t('settingsModal.manualPullButton')}
+          </Title>
+        </Flex>
+
+        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+          {t('settingsModal.manualPullDescription')}
+        </Text>
+
+        <Button
+          icon={<DownloadOutlined />}
+          onClick={handleManualPull}
+          loading={isPulling}
+          disabled={isSaving}
+        >
+          {t('settingsModal.manualPullButton')}
+        </Button>
       </div>
 
       {message && (
@@ -250,65 +153,6 @@ export default function SettingsModal({
           showIcon
           style={{ marginTop: 16 }}
         />
-      )}
-    </div>
-  );
-
-  const canClose = !isInitialSetup || hasPermission === true;
-
-  return (
-    <Modal
-      title={
-        <Flex align="center" gap={8}>
-          <FolderOpenOutlined style={{ color: '#f5a623' }} />
-          {isInitialSetup
-            ? t('settingsModal.initialTitle')
-            : t('settingsModal.title')}
-        </Flex>
-      }
-      open={isOpen}
-      onOk={hasPermission ? handleSave : undefined}
-      onCancel={canClose ? onClose : undefined}
-      okText={isSaving ? t('common.saving') : t('common.save')}
-      cancelText={t('common.close')}
-      okButtonProps={{
-        disabled: !hasPermission,
-        loading: isSaving,
-        style: hasPermission ? undefined : { display: 'none' },
-      }}
-      cancelButtonProps={{
-        disabled: isSaving,
-        style: canClose ? undefined : { display: 'none' },
-      }}
-      closable={canClose}
-      maskClosable={canClose}
-      keyboard={canClose}
-      width={500}
-    >
-      {isLoading && hasPermission === null ? (
-        <Flex justify="center" align="center" style={{ minHeight: 200 }}>
-          <Spin size="large" />
-        </Flex>
-      ) : hasPermission ? (
-        renderSettings()
-      ) : (
-        renderPermissionInstructions()
-      )}
-
-      {!isLoading && hasPermission && (
-        <>
-          <Divider style={{ margin: '16px 0' }} />
-          <Flex justify="center">
-            <Button
-              type="link"
-              icon={<ReloadOutlined />}
-              onClick={checkPermission}
-              size="small"
-            >
-              {t('settingsModal.recheckPermission')}
-            </Button>
-          </Flex>
-        </>
       )}
     </Modal>
   );
