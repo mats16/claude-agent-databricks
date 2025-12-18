@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r preset-skills dist/",
     "start": "node dist/app.js",
     "dev": "tsx watch --env-file=../.env app.ts",
     "db:migrate": "tsx --env-file=../.env db/migrate.ts",
