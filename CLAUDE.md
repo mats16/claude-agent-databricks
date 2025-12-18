@@ -118,17 +118,21 @@ Sync between local storage and Databricks Workspace uses Databricks CLI commands
 - Uses `databricks sync` command with exclusions (.gitignore, .bundle, node_modules, etc.)
 - Only runs when `autoWorkspacePush` or `claudeConfigSync` flags are enabled
 - Executes at session end via SDK Stop hooks
+- Claude config sync uses `--full` flag for complete synchronization (deletes remote files not in local, important for `.claude/skills`)
 
 #### Sync Flags
 Sync behavior is controlled by these flags passed to `processAgentRequest()`:
 
 | Flag | Pull (new session) | Push (session end) |
 |------|-------------------|---------------------|
-| `autoWorkspacePush` | - | Enables workspace directory push |
-| `claudeConfigSync` | Enables claude config pull | Enables claude config push |
+| `autoWorkspacePush` | - | Enables workspace directory push (requires `workspacePath`) |
+| `claudeConfigSync` | Enables claude config pull | Enables claude config push (uses `--full` sync) |
 
 - `autoWorkspacePush`: Session-level setting (stored in `sessions.auto_workspace_push`)
+  - Automatically set to `false` when `workspacePath` is not specified (enforced in API and hooks)
+  - Frontend default: `false`, automatically set to `true` when workspace path is selected
 - `claudeConfigSync`: User-level setting (stored in `settings.claude_config_sync`)
+  - Uses `--full` flag for complete synchronization to ensure `.claude/skills` are properly synced
 - Workspace pull always uses `overwrite=true` since each session has isolated directory
 
 #### Path Structure

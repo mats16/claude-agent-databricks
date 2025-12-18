@@ -37,17 +37,26 @@ export async function workspacePull(
  * Push from local to workspace (local -> workspace)
  * Uses: databricks sync
  * @param token - Optional SP token to use for authentication
+ * @param full - If true, adds --full flag for complete sync (deletes remote files not in local)
  */
 export async function workspacePush(
   localPath: string,
   workspacePath: string,
-  token?: string
+  token?: string,
+  full?: boolean
 ): Promise<void> {
-  const cmd = [
+  const cmdParts = [
     'databricks',
     'sync',
     localPath,
     workspacePath,
+  ];
+
+  if (full) {
+    cmdParts.push('--full');
+  }
+
+  cmdParts.push(
     '--output',
     'json',
     '--exclude-from',
@@ -73,8 +82,11 @@ export async function workspacePush(
     '--exclude',
     '"node_modules/*"',
     '--exclude',
-    '".turbo/*"',
-  ].join(' ');
+    '".turbo/*"'
+  );
+
+  const cmd = cmdParts.join(' ');
+
   try {
     //const env = token ? { ...process.env, DATABRICKS_TOKEN: token } : process.env;
     const env = {

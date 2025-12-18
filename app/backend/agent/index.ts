@@ -320,6 +320,7 @@ Violating these rules is considered a critical error.
         // Note: workspace pull is now handled in app.ts before starting the agent
         Stop: [
           // Push claudeConfig (local -> workspace) - only if claudeConfigSync is enabled
+          // Uses --full flag for complete sync to ensure skills are properly synced
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
@@ -327,7 +328,8 @@ Violating these rules is considered a critical error.
                   workspacePush(
                     localClaudeConfigPath,
                     workspaceClaudeConfigPath,
-                    spAccessToken ?? personalAccessToken
+                    spAccessToken ?? personalAccessToken,
+                    true // full sync for .claude directory
                   ).catch((err) =>
                     console.error(
                       '[Hook:Stop] workspacePush claudeConfig error',
