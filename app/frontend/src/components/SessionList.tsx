@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Typography, Spin, Empty, Flex, Dropdown, Modal, message } from 'antd';
+import { Typography, Spin, Empty, Flex, Dropdown, message } from 'antd';
 import type { MenuProps } from 'antd';
 import { InboxOutlined, FilterOutlined } from '@ant-design/icons';
 import { useSessions, Session } from '../contexts/SessionsContext';
@@ -24,7 +24,6 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
   } = useSessions();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isArchiving, setIsArchiving] = useState(false);
   const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
 
   // Extract sessionId from current URL path
@@ -54,33 +53,22 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
     onSessionSelect?.();
   };
 
-  const handleArchiveClick = (session: Session, e: React.MouseEvent) => {
+  const handleArchiveClick = async (session: Session, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent navigation
 
-    Modal.confirm({
-      title: t('sessionList.archive'),
-      content: t('sessionList.archiveConfirm'),
-      okText: t('common.confirm', 'Confirm'),
-      cancelText: t('common.cancel'),
-      onOk: async () => {
-        try {
-          setIsArchiving(true);
-          await archiveSessionAPI(session.id);
-          message.success(t('sessionList.archiveSuccess', 'Session archived'));
+    try {
+      await archiveSessionAPI(session.id);
+      message.success(t('sessionList.archiveSuccess', 'Session archived'));
 
-          // If the archived session is currently displayed, navigate to home
-          if (currentSessionId === session.id) {
-            navigate('/');
-          }
-        } catch (err) {
-          message.error(
-            t('sessionList.archiveError', 'Failed to archive session')
-          );
-        } finally {
-          setIsArchiving(false);
-        }
-      },
-    });
+      // If the archived session is currently displayed, navigate to home
+      if (currentSessionId === session.id) {
+        navigate('/');
+      }
+    } catch (err) {
+      message.error(
+        t('sessionList.archiveError', 'Failed to archive session')
+      );
+    }
   };
 
   const filterMenuItems: MenuProps['items'] = [

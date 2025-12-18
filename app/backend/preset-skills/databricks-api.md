@@ -23,7 +23,6 @@ echo $DATABRICKS_TOKEN
 - Prefer CLI for operations that are supported
 - Use `-o json` option for CLI commands to get JSON output
 - Use `curl` for direct API calls
-- Parse API responses with `jq`
 
 ## Workspace API
 
@@ -54,7 +53,7 @@ Get detailed workspace information not supported by CLI:
 # Get workspace details
 curl -X GET "${DATABRICKS_HOST}/api/2.0/workspace/get-status" \
   -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
-  -d '{"path": "/Users/your.email@example.com"}' | jq .
+  -d '{"path": "/Users/your.email@example.com"}'
 ```
 
 ## Jobs API
@@ -100,7 +99,7 @@ curl -X POST "${DATABRICKS_HOST}/api/2.1/jobs/create" \
         "num_workers": 2
       }
     }]
-  }' | jq .
+  }'
 ```
 
 ## Clusters API
@@ -136,7 +135,7 @@ curl -X POST "${DATABRICKS_HOST}/api/2.0/clusters/create" \
     "node_type_id": "i3.xlarge",
     "num_workers": 2,
     "autotermination_minutes": 60
-  }' | jq .
+  }'
 ```
 
 ## DBFS API
@@ -203,15 +202,15 @@ databricks secrets delete --scope my-scope --key my-key -o json
 ```bash
 # List SQL warehouses
 curl -X GET "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" | jq .
+  -H "Authorization: Bearer ${DATABRICKS_TOKEN}"
 
 # Start SQL warehouse
 curl -X POST "${DATABRICKS_HOST}/api/2.0/sql/warehouses/<warehouse-id>/start" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" | jq .
+  -H "Authorization: Bearer ${DATABRICKS_TOKEN}"
 
 # Stop SQL warehouse
 curl -X POST "${DATABRICKS_HOST}/api/2.0/sql/warehouses/<warehouse-id>/stop" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" | jq .
+  -H "Authorization: Bearer ${DATABRICKS_TOKEN}"
 ```
 
 ### Execute Query (API)
@@ -225,7 +224,7 @@ curl -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements" \
     "warehouse_id": "<warehouse-id>",
     "statement": "SELECT * FROM catalog.schema.table LIMIT 10",
     "wait_timeout": "30s"
-  }' | jq .
+  }'
 ```
 
 ## MLflow API
@@ -235,7 +234,7 @@ curl -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements" \
 ```bash
 # List experiments
 curl -X GET "${DATABRICKS_HOST}/api/2.0/mlflow/experiments/list" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" | jq .
+  -H "Authorization: Bearer ${DATABRICKS_TOKEN}"
 
 # Create experiment
 curl -X POST "${DATABRICKS_HOST}/api/2.0/mlflow/experiments/create" \
@@ -243,12 +242,12 @@ curl -X POST "${DATABRICKS_HOST}/api/2.0/mlflow/experiments/create" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "/Users/your.email@example.com/my-experiment"
-  }' | jq .
+  }'
 
 # Search runs
 curl -X GET "${DATABRICKS_HOST}/api/2.0/mlflow/runs/search" \
   -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
-  -d "experiment_ids=<experiment-id>" | jq .
+  -d "experiment_ids=<experiment-id>"
 ```
 
 ## Unity Catalog API
@@ -260,7 +259,7 @@ Use API for detailed permission management not supported by CLI:
 ```bash
 # Get table permissions
 curl -X GET "${DATABRICKS_HOST}/api/2.1/unity-catalog/permissions/table/<catalog>.<schema>.<table>" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" | jq .
+  -H "Authorization: Bearer ${DATABRICKS_TOKEN}"
 
 # Grant permissions
 curl -X PATCH "${DATABRICKS_HOST}/api/2.1/unity-catalog/permissions/table/<catalog>.<schema>.<table>" \
@@ -271,13 +270,12 @@ curl -X PATCH "${DATABRICKS_HOST}/api/2.1/unity-catalog/permissions/table/<catal
       "principal": "user@example.com",
       "add": ["SELECT", "MODIFY"]
     }]
-  }' | jq .
+  }'
 ```
 
 ## Tips
 
 - Use `--help` option to display detailed help for each command
-- Format API responses with `jq` for better readability
 - Split long commands into variables for better readability
 - Add error handling with `|| echo "Error"`
 
@@ -292,7 +290,7 @@ http_code=$(echo "$response" | tail -n 1)
 body=$(echo "$response" | sed '$d')
 
 if [ "$http_code" -eq 200 ]; then
-  echo "$body" | jq .
+  echo "$body"
 else
   echo "Error: HTTP $http_code"
   echo "$body"
