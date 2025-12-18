@@ -331,11 +331,8 @@ fastify.post<{ Body: CreateSessionBody }>(
               await upsertUser(userId, userEmail);
 
               // Save session to database
-              // Extract title from message content
-              const sessionTitle = (
-                messageContent.find((c) => c.type === 'text')?.text ??
-                'New Session'
-              ).slice(0, 100);
+              // Use default title
+              const sessionTitle = 'No title';
               await createSession(
                 {
                   id: sessionId,
