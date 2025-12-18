@@ -1,11 +1,13 @@
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import postgres from 'postgres';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import postgres from 'postgres';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-async function migrate() {
+async function runMigrations() {
   const dbUrl = process.env.DB_URL;
 
   if (!dbUrl) {
@@ -13,21 +15,30 @@ async function migrate() {
     process.exit(1);
   }
 
-  const sql = postgres(dbUrl);
+  // Use separate connection for migrations (recommended)
+  const migrationClient = postgres(dbUrl, { max: 1 });
+  const db = drizzle(migrationClient);
 
   try {
-    const migrationsDir = path.join(__dirname, 'migrations');
-    const files = fs.readdirSync(migrationsDir).sort();
+    console.log('Running Drizzle Kit migrations...');
 
-    for (const file of files) {
-      if (!file.endsWith('.sql')) continue;
+    // Run Drizzle Kit managed migrations
+    await migrate(db, {
+      migrationsFolder: path.join(__dirname, 'drizzle'),
+    });
 
-      console.log(`Running migration: ${file}`);
-      const filePath = path.join(migrationsDir, file);
-      const content = fs.readFileSync(filePath, 'utf-8');
+    console.log('Drizzle migrations completed');
 
-      await sql.unsafe(content);
-      console.log(`Completed: ${file}`);
+    // Run custom RLS policies (idempotent)
+    console.log('Applying RLS policies...');
+    const rlsPath = path.join(__dirname, 'custom', 'rls-policies.sql');
+
+    if (fs.existsSync(rlsPath)) {
+      const rlsSql = fs.readFileSync(rlsPath, 'utf-8');
+      await migrationClient.unsafe(rlsSql);
+      console.log('RLS policies applied');
+    } else {
+      console.warn('RLS policies file not found, skipping');
     }
 
     console.log('All migrations completed successfully');
@@ -35,8 +46,8 @@ async function migrate() {
     console.error('Migration failed:', error);
     process.exit(1);
   } finally {
-    await sql.end();
+    await migrationClient.end();
   }
 }
 
-migrate();
+runMigrations();
