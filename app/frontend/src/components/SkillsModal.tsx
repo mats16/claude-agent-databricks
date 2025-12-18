@@ -234,7 +234,7 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
         setSelectedSkill(importedSkill);
       }
     } else {
-      message.error(t('skillsModal.presetExists'));
+      message.error(t('skillsModal.importFailed'));
     }
   };
 
@@ -578,12 +578,20 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
               >
                 <List.Item.Meta
                   title={
-                    <Text
-                      strong={selectedPreset === preset.name}
-                      style={{ fontFamily: 'monospace' }}
-                    >
-                      {preset.name}
-                    </Text>
+                    <Flex align="center" gap={8}>
+                      <Text
+                        strong={selectedPreset === preset.name}
+                        style={{ fontFamily: 'monospace' }}
+                      >
+                        {preset.name}
+                      </Text>
+                      <Text
+                        type="secondary"
+                        style={{ fontSize: '12px', fontFamily: 'monospace' }}
+                      >
+                        v{preset.version}
+                      </Text>
+                    </Flex>
                   }
                   description={preset.description}
                 />

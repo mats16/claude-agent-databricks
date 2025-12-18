@@ -1111,11 +1111,9 @@ fastify.post<{ Params: { presetName: string } }>(
     const skillPath = path.join(skillDirPath, 'SKILL.md');
 
     try {
-      // Check if skill already exists
+      // If skill already exists, remove it first (overwrite)
       if (fs.existsSync(skillDirPath)) {
-        return reply
-          .status(409)
-          .send({ error: 'A skill with this name already exists' });
+        fs.rmSync(skillDirPath, { recursive: true, force: true });
       }
 
       // Create skill directory

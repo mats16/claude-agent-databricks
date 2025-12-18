@@ -53,6 +53,7 @@
     "importPresetTitle": "プリセットスキルを選択",
     "import": "インポート",
     "importSuccess": "プリセットスキルをインポートしました",
+    "importFailed": "プリセットスキルのインポートに失敗しました",
     "presetExists": "同名のスキルが既に存在します",
     "noPresets": "プリセットスキルがありません",
     "skillName": "スキル名",

@@ -53,6 +53,7 @@
     "importPresetTitle": "Select preset skill",
     "import": "Import",
     "importSuccess": "Preset skill imported successfully",
+    "importFailed": "Failed to import preset skill",
     "presetExists": "A skill with this name already exists",
     "noPresets": "No preset skills available",
     "skillName": "Skill Name",
