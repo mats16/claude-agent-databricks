@@ -259,29 +259,51 @@ Apply the path to `app/frontend/public/favicon.svg`:
 - `/` - Home page (create new session via Sidebar)
 - `/sessions/:sessionId` - Chat page
 
-## Important Files
+## Backend Structure
 
-### Backend Core
-- `app/backend/app.ts` - Fastify server, REST/WebSocket endpoints, session creation with workspace pull, archive endpoint
+The backend follows Fastify best practices with separated concerns:
+
+```
+app/backend/
+├── app.ts              # Fastify setup, plugin/route registration
+├── server.ts           # Entry point with graceful shutdown
+├── plugins/            # Fastify plugins (websocket, static, auth)
+├── routes/             # Route definitions with handlers
+│   ├── health/
+│   └── v1/
+│       ├── sessions/   # handlers.ts, index.ts, websocket.ts
+│       ├── users/
+│       ├── skills/
+│       ├── workspace/
+│       └── service-principal/
+├── services/           # Business logic layer
+│   ├── sessionState.ts # In-memory session queue management
+│   ├── skillService.ts
+│   ├── workspaceService.ts
+│   ├── userService.ts
+│   └── claudeBackupService.ts
+├── schemas/            # Zod validation schemas
+├── db/                 # Drizzle ORM (schema, queries, migrations)
+├── agent/              # Claude Agent SDK configuration
+└── utils/              # Shared utilities (databricks, headers, skills)
+```
+
+### Key Files
 - `app/backend/agent/index.ts` - Claude Agent SDK configuration, Stop hooks for workspace push
+- `app/backend/services/sessionState.ts` - In-memory state for session queues, WebSocket connections
 - `app/backend/utils/databricks.ts` - Databricks CLI wrapper functions (`workspacePull`, `workspacePush`, `deleteWorkDir`)
-- `app/backend/utils/headers.ts` - Request header extraction utilities (`extractRequestContext`, `extractRequestContextFromHeaders`)
+- `app/backend/utils/headers.ts` - Request header extraction (`extractRequestContext`)
 
 ### Database Layer
 - `app/backend/db/schema.ts` - Drizzle ORM table definitions
-- `app/backend/db/sessions.ts` - Session queries with RLS support, archive operations
-- `app/backend/db/users.ts` - User CRUD operations
-- `app/backend/db/settings.ts` - User settings operations
+- `app/backend/db/sessions.ts` - Session queries with RLS support
 - `app/backend/db/drizzle/` - Drizzle Kit managed migrations
 - `app/backend/db/custom/rls-policies.sql` - RLS policies (applied after migrations)
-- `app/backend/db/migrate.ts` - Migration runner
 
 ### Frontend Core
 - `app/frontend/src/hooks/useAgent.ts` - WebSocket handling, SDK message parsing
-- `app/frontend/src/contexts/SessionsContext.tsx` - Session list state with client-side filtering and real-time updates
+- `app/frontend/src/contexts/SessionsContext.tsx` - Session list state with client-side filtering
 - `app/frontend/src/contexts/UserContext.tsx` - User info and settings state
 - `app/frontend/src/pages/SessionPage.tsx` - Chat UI with message streaming
 - `app/frontend/src/components/SessionList.tsx` - Session list with filtering and archive UI
-- `app/frontend/src/components/MessageRenderer.tsx` - Tool output rendering
-- `app/frontend/src/components/Sidebar.tsx` - Session creation UI
 - `app/frontend/src/components/SettingsModal.tsx` - Settings UI using Claude backup API endpoints

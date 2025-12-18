@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc && cp -r preset-skills dist/",
-    "start": "node dist/app.js",
-    "dev": "tsx watch --env-file=../.env app.ts",
+    "start": "node dist/server.js",
+    "dev": "tsx watch --env-file=../.env server.ts",
     "db:migrate": "tsx --env-file=../.env db/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
@@ -18,8 +18,10 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.70",
     "@app/shared": "*",
+    "@fastify/autoload": "^6.1.0",
     "@fastify/static": "^7.0.4",
     "@fastify/websocket": "^10.0.1",
+    "fastify-plugin": "^5.0.1",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.1",
     "fastify": "^4.28.1",
