@@ -2,13 +2,22 @@ resources:
   apps:
     claude_agent:
       name: claude-agent
-      description: A basic starter application.
+      description: Claude Code on Databricks
       source_code_path: ../app
+      resources:
+        - name: secret
+          secret:
+            scope: claude_agent
+            key: db_url
+            permission: READ
       user_api_scopes:
         - sql
+        - dashboards.genie
         - files.files
+        - serving.serving-endpoints
         - catalog.catalogs:read
         - catalog.schemas:read
         - catalog.tables:read
-        - serving.serving-endpoints
-      compute_size: LARGE
+      permissions:
+        - level: CAN_USE
+          group_name: users
