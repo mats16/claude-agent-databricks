@@ -750,6 +750,157 @@ fastify.post('/api/v1/users/me/claude-config/pull', async (request, reply) => {
   }
 });
 
+// Claude Backup Settings API - Get backup settings
+fastify.get(
+  '/api/v1/users/me/settings/claude/backup',
+  async (request, reply) => {
+    let context;
+    try {
+      context = extractRequestContext(request);
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
+    }
+
+    const { userId } = context;
+
+    const userSettings = await getSettings(userId);
+
+    return {
+      claudeConfigSync: userSettings?.claudeConfigSync ?? true,
+    };
+  }
+);
+
+// Claude Backup Settings API - Update backup settings
+fastify.patch<{
+  Body: { claudeConfigSync: boolean };
+}>('/api/v1/users/me/settings/claude/backup', async (request, reply) => {
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
+  }
+
+  const { userId, userEmail } = context;
+  const { claudeConfigSync } = request.body;
+
+  if (claudeConfigSync === undefined) {
+    return reply.status(400).send({ error: 'claudeConfigSync is required' });
+  }
+
+  // Ensure user exists before updating settings
+  await upsertUser(userId, userEmail);
+
+  await upsertSettings(userId, { claudeConfigSync });
+  return { success: true, claudeConfigSync };
+});
+
+// Claude Backup Settings API - Pull (restore) from workspace
+fastify.post(
+  '/api/v1/users/me/settings/claude/backup/pull',
+  async (request, reply) => {
+    let context;
+    try {
+      context = extractRequestContext(request);
+    } catch (error: any) {
+      return reply.status(401).send({ error: error.message });
+    }
+
+    const { userId, userEmail } = context;
+
+    // Ensure user exists
+    await upsertUser(userId, userEmail);
+
+    // Build paths
+    const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
+    const localClaudeConfigPath = path.join(
+      localBasePath,
+      userEmail,
+      '.claude'
+    );
+    const workspaceClaudeConfigPath = `/Workspace/Users/${userEmail}/.claude`;
+
+    try {
+      // Get SP access token
+      const spAccessToken = await getOidcAccessToken();
+
+      // Pull .claude config (overwrite)
+      console.log(
+        `[Backup Pull] Pulling claude config from ${workspaceClaudeConfigPath} to ${localClaudeConfigPath}...`
+      );
+      await workspacePull(
+        workspaceClaudeConfigPath,
+        localClaudeConfigPath,
+        true, // overwrite
+        spAccessToken
+      );
+
+      console.log('[Backup Pull] Claude config pull completed');
+      return { success: true };
+    } catch (error: any) {
+      console.error(
+        `[Backup Pull] Failed to pull claude config: ${error.message}`
+      );
+      return reply.status(500).send({ error: 'Failed to pull claude config' });
+    }
+  }
+);
+
+// Claude Backup Settings API - Push (backup) to workspace
+fastify.post(
+  '/api/v1/users/me/settings/claude/backup/push',
+  async (request, reply) => {
+    let context;
+    try {
+      context = extractRequestContext(request);
+    } catch (error: any) {
+      return reply.status(401).send({ error: error.message });
+    }
+
+    const { userId, userEmail } = context;
+
+    // Ensure user exists
+    await upsertUser(userId, userEmail);
+
+    // Build paths
+    const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
+    const localClaudeConfigPath = path.join(
+      localBasePath,
+      userEmail,
+      '.claude'
+    );
+    const workspaceClaudeConfigPath = `/Workspace/Users/${userEmail}/.claude`;
+
+    try {
+      // Get SP access token
+      const spAccessToken = await getOidcAccessToken();
+
+      // Ensure workspace directory exists
+      await ensureWorkspaceDirectory(workspaceClaudeConfigPath, spAccessToken);
+
+      // Push .claude config with --full flag for complete synchronization
+      console.log(
+        `[Backup Push] Pushing claude config from ${localClaudeConfigPath} to ${workspaceClaudeConfigPath}...`
+      );
+      await workspacePush(
+        localClaudeConfigPath,
+        workspaceClaudeConfigPath,
+        spAccessToken,
+        true // full sync
+      );
+
+      console.log('[Backup Push] Claude config push completed');
+      return { success: true };
+    } catch (error: any) {
+      console.error(
+        `[Backup Push] Failed to push claude config: ${error.message}`
+      );
+      return reply.status(500).send({ error: 'Failed to push claude config' });
+    }
+  }
+);
+
 // Get service principal info
 fastify.get('/api/v1/service-principal', async (_request, reply) => {
   try {
