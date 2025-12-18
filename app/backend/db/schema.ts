@@ -47,9 +47,7 @@ export const events = pgTable(
     seq: integer('seq').notNull(),
     type: text('type').notNull(),
     subtype: text('subtype'),
-    message: jsonb('message'),
-    data: jsonb('data'),
-    parentToolUseId: text('parent_tool_use_id'),
+    message: jsonb('message').notNull(), // SDKMessage全体を保存
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [

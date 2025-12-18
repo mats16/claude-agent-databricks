@@ -23,35 +23,6 @@ export async function saveMessage(sdkMessage: SDKMessage): Promise<void> {
   const subtype = 'subtype' in sdkMessage ? String(sdkMessage.subtype) : null;
   const seq = await getNextSeq(sdkMessage.session_id);
 
-  // Extract message field if present
-  const messageField =
-    'message' in sdkMessage ? (sdkMessage.message as object) : null;
-
-  // Extract parent_tool_use_id if present and not null/undefined
-  const rawParentToolUseId =
-    'parent_tool_use_id' in sdkMessage
-      ? (sdkMessage as Record<string, unknown>).parent_tool_use_id
-      : null;
-  const parentToolUseId =
-    rawParentToolUseId != null ? String(rawParentToolUseId) : null;
-
-  // Build data object (everything except standard fields)
-  // If message exists, data is null; otherwise store relevant data
-  let data: object | null = null;
-  if (!messageField) {
-    // For events without 'message' field, store other relevant data
-    const {
-      type,
-      session_id,
-      uuid: _uuid,
-      subtype: _subtype,
-      ...rest
-    } = sdkMessage as Record<string, unknown>;
-    if (Object.keys(rest).length > 0) {
-      data = rest;
-    }
-  }
-
   try {
     await db
       .insert(events)
@@ -61,9 +32,7 @@ export async function saveMessage(sdkMessage: SDKMessage): Promise<void> {
         seq,
         type: sdkMessage.type,
         subtype,
-        message: messageField,
-        data,
-        parentToolUseId,
+        message: sdkMessage, // SDKMessage全体を保存
       })
       .onConflictDoNothing({ target: events.uuid });
   } catch (error: unknown) {
@@ -90,30 +59,5 @@ export async function getMessagesBySessionId(
     .where(eq(events.sessionId, sessionId))
     .orderBy(asc(events.seq));
 
-  // Reconstruct SDKMessage from stored columns
-  return result.map((row) => {
-    const base: Record<string, unknown> = {
-      type: row.type,
-      session_id: row.sessionId,
-      uuid: row.uuid,
-    };
-
-    if (row.subtype) {
-      base.subtype = row.subtype;
-    }
-
-    if (row.message) {
-      base.message = row.message;
-    }
-
-    if (row.data) {
-      Object.assign(base, row.data);
-    }
-
-    if (row.parentToolUseId) {
-      base.parent_tool_use_id = row.parentToolUseId;
-    }
-
-    return base as SDKMessage;
-  });
+  return result.map((row) => row.message as SDKMessage);
 }

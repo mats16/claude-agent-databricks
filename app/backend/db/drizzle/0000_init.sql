@@ -4,9 +4,7 @@ CREATE TABLE "events" (
 	"seq" integer NOT NULL,
 	"type" text NOT NULL,
 	"subtype" text,
-	"message" jsonb,
-	"data" jsonb,
-	"parent_tool_use_id" text,
+	"message" jsonb NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
