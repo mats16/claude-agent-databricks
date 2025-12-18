@@ -31,9 +31,11 @@ npm run build
 npm run format
 npm run format:check
 
-# Database migration
-npm run db:migrate
-# Or manually: psql $DB_URL -f app/backend/db/migrations/0001_init.sql
+# Database commands (Drizzle Kit)
+npm run db:migrate      # Run migrations + apply RLS policies
+npm run db:generate     # Generate migration from schema changes
+npm run db:baseline     # Mark existing DB as baseline (for existing databases)
+npm run db:studio       # Open Drizzle Studio for DB inspection
 
 # Databricks Apps deployment
 databricks bundle validate
@@ -69,7 +71,7 @@ Backend always expects these headers and does not use fallback values, ensuring 
 Tables defined in `app/backend/db/schema.ts`:
 - `users` - User records (id, email)
 - `sessions` - Chat sessions with foreign key to users (includes `cwd` for working directory, `is_archived` for archive status)
-- `events` - Session messages/events
+- `events` - Session messages/events (SDKMessage stored as JSONB in `message` column)
 - `settings` - User settings (config sync)
 
 ### Row Level Security (RLS)
@@ -78,7 +80,10 @@ Tables defined in `app/backend/db/schema.ts`:
 await db.execute(sql`SELECT set_config('app.current_user_id', ${userId}, true)`);
 ```
 
-Migration: `app/backend/db/migrations/0001_init.sql` (run with `npm run db:migrate`)
+### Migration Structure
+- Migrations managed by Drizzle Kit in `app/backend/db/drizzle/`
+- RLS policies applied separately via `app/backend/db/custom/rls-policies.sql`
+- Migration runner: `app/backend/db/migrate.ts` (runs Drizzle migrations + RLS)
 
 ## Key Concepts
 
@@ -267,7 +272,9 @@ Apply the path to `app/frontend/public/favicon.svg`:
 - `app/backend/db/sessions.ts` - Session queries with RLS support, archive operations
 - `app/backend/db/users.ts` - User CRUD operations
 - `app/backend/db/settings.ts` - User settings operations
-- `app/backend/db/migrations/` - SQL migration files with RLS policies
+- `app/backend/db/drizzle/` - Drizzle Kit managed migrations
+- `app/backend/db/custom/rls-policies.sql` - RLS policies (applied after migrations)
+- `app/backend/db/migrate.ts` - Migration runner
 
 ### Frontend Core
 - `app/frontend/src/hooks/useAgent.ts` - WebSocket handling, SDK message parsing
