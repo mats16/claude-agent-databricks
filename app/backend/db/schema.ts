@@ -28,6 +28,7 @@ export const sessions = pgTable('sessions', {
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
   autoWorkspacePush: boolean('auto_workspace_push').default(false).notNull(),
   cwd: text('cwd'),
+  isArchived: boolean('is_archived').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

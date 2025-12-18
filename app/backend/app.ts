@@ -18,6 +18,7 @@ import {
   getSessionById,
   getSessionsByUserId,
   updateSession,
+  archiveSession,
 } from './db/sessions.js';
 import {
   getSettings,
@@ -25,7 +26,7 @@ import {
   upsertSettings,
 } from './db/settings.js';
 import { upsertUser } from './db/users.js';
-import { workspacePull } from './utils/databricks.js';
+import { workspacePull, deleteWorkDir } from './utils/databricks.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -276,12 +277,7 @@ fastify.post<{ Body: CreateSessionBody }>(
 
     // Generate unique uuid for workDir and create it before starting agent
     const workDirUuid = crypto.randomUUID();
-    const localWorkPath = path.join(
-      localBasePath,
-      userEmail,
-      'w',
-      workDirUuid
-    );
+    const localWorkPath = path.join(localBasePath, userEmail, 'w', workDirUuid);
     console.log(`[New Session] Creating workDir: ${localWorkPath}`);
     fs.mkdirSync(localWorkPath, { recursive: true });
 
@@ -435,7 +431,9 @@ fastify.post<{ Body: CreateSessionBody }>(
 );
 
 // Get all sessions for the current user
-fastify.get('/api/v1/sessions', async (request, reply) => {
+fastify.get<{
+  Querystring: { filter?: 'active' | 'archived' | 'all' };
+}>('/api/v1/sessions', async (request, reply) => {
   const userId =
     (request.headers['x-forwarded-user'] as string | undefined) ||
     DEFAULT_USER_ID;
@@ -447,7 +445,8 @@ fastify.get('/api/v1/sessions', async (request, reply) => {
     });
   }
 
-  const sessionList = await getSessionsByUserId(userId);
+  const filter = request.query.filter || 'active';
+  const sessionList = await getSessionsByUserId(userId, filter);
 
   return { sessions: sessionList };
 });
@@ -499,6 +498,48 @@ fastify.patch<{
   await updateSession(sessionId, updates, userId);
   return { success: true };
 });
+
+// Archive session
+fastify.patch<{ Params: { sessionId: string } }>(
+  '/api/v1/sessions/:sessionId/archive',
+  async (request, reply) => {
+    const { sessionId } = request.params;
+    const userId =
+      (request.headers['x-forwarded-user'] as string | undefined) ||
+      DEFAULT_USER_ID;
+
+    if (!userId) {
+      return reply.status(400).send({
+        error:
+          'User authentication required. Please set DEFAULT_USER_ID environment variable for local development.',
+      });
+    }
+
+    // Get session to retrieve cwd before archiving
+    const session = await getSessionById(sessionId, userId);
+    if (!session) {
+      return reply.status(404).send({ error: 'Session not found' });
+    }
+
+    // Archive the session in database
+    await archiveSession(sessionId, userId);
+
+    // Delete working directory in background if it exists
+    if (session.cwd) {
+      console.log(
+        `[Archive] Scheduling background deletion of: ${session.cwd}`
+      );
+      // Fire-and-forget: don't await
+      deleteWorkDir(session.cwd).catch((err) => {
+        console.error(
+          `[Archive] Failed to delete working directory: ${err.message}`
+        );
+      });
+    }
+
+    return { success: true };
+  }
+);
 
 // Get session events from database
 fastify.get<{ Params: { sessionId: string } }>(

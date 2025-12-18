@@ -6,7 +6,8 @@
     "close": "Close",
     "select": "Select",
     "loading": "Loading...",
-    "error": "Error"
+    "error": "Error",
+    "confirm": "Confirm"
   },
   "sidebar": {
     "title": "Claude Code on Databricks",
@@ -70,7 +71,16 @@
     "justNow": "just now",
     "minutesAgo": "{{count}}m ago",
     "hoursAgo": "{{count}}h ago",
-    "daysAgo": "{{count}}d ago"
+    "daysAgo": "{{count}}d ago",
+    "filter": {
+      "active": "Active",
+      "archived": "Archived",
+      "all": "All"
+    },
+    "archive": "Archive session",
+    "archiveConfirm": "Archive this session? The working directory will be deleted.",
+    "archiveSuccess": "Session archived",
+    "archiveError": "Failed to archive session"
   },
   "sessionPage": {
     "clickToEdit": "Click to edit title",

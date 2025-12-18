@@ -549,7 +549,9 @@ export function useAgent(options: UseAgentOptions = {}) {
                       `(\\[Tool: \\w+ id=${block.tool_use_id}\\][^\\n]*\\n)`,
                       'g'
                     );
-                    const match = toolIdPattern.exec(currentResponseRef.current);
+                    const match = toolIdPattern.exec(
+                      currentResponseRef.current
+                    );
                     if (match) {
                       const insertPos = match.index + match[0].length;
                       currentResponseRef.current =

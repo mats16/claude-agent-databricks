@@ -216,11 +216,7 @@ export async function* processAgentRequest(
   options: ProcessAgentRequestOptions = {},
   messageStream?: MessageStream
 ): AsyncGenerator<SDKMessage> {
-  const {
-    autoWorkspacePush = false,
-    claudeConfigSync = true,
-    cwd,
-  } = options;
+  const { autoWorkspacePush = false, claudeConfigSync = true, cwd } = options;
   // Determine base directory based on environment
   // Local development: $HOME/u, Production: /home/app/u
   const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
@@ -241,12 +237,7 @@ export async function* processAgentRequest(
   // workDir should be created by the caller (app.ts) before calling this function
   const localWorkPath =
     cwd ??
-    path.join(
-      localBasePath,
-      userEmail ?? 'me',
-      'w',
-      sessionId ?? 'temp'
-    );
+    path.join(localBasePath, userEmail ?? 'me', 'w', sessionId ?? 'temp');
 
   const spAccessToken = await getOidcAccessToken();
 

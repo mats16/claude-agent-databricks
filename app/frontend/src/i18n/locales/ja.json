@@ -6,7 +6,8 @@
     "close": "閉じる",
     "select": "選択",
     "loading": "読み込み中...",
-    "error": "エラー"
+    "error": "エラー",
+    "confirm": "確認"
   },
   "sidebar": {
     "title": "Claude Code on Databricks",
@@ -70,7 +71,16 @@
     "justNow": "たった今",
     "minutesAgo": "{{count}}分前",
     "hoursAgo": "{{count}}時間前",
-    "daysAgo": "{{count}}日前"
+    "daysAgo": "{{count}}日前",
+    "filter": {
+      "active": "アクティブ",
+      "archived": "アーカイブ済み",
+      "all": "すべて"
+    },
+    "archive": "セッションをアーカイブ",
+    "archiveConfirm": "このセッションをアーカイブしますか？作業ディレクトリは削除されます。",
+    "archiveSuccess": "セッションをアーカイブしました",
+    "archiveError": "セッションのアーカイブに失敗しました"
   },
   "sessionPage": {
     "clickToEdit": "クリックしてタイトルを編集",

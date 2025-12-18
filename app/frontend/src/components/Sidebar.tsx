@@ -415,21 +415,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
           flexDirection: 'column',
         }}
       >
-        <div
-          style={{
-            padding: '12px 20px 8px',
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#999',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}
-        >
-          {t('sidebar.sessions')}
-        </div>
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <SessionList />
-        </div>
+        <SessionList />
       </div>
 
       {/* Footer */}

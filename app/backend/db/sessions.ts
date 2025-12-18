@@ -1,4 +1,4 @@
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, and } from 'drizzle-orm';
 import { db } from './index.js';
 import { sessions, type NewSession, type Session } from './schema.js';
 
@@ -53,12 +53,31 @@ export async function getSessionByIdDirect(
 }
 
 // Get all sessions for a user (with RLS)
-export async function getSessionsByUserId(userId: string): Promise<Session[]> {
+export async function getSessionsByUserId(
+  userId: string,
+  filter: 'active' | 'archived' | 'all' = 'active'
+): Promise<Session[]> {
   return withUserContext(userId, async () => {
+    let whereClause;
+    if (filter === 'active') {
+      whereClause = and(
+        eq(sessions.userId, userId),
+        eq(sessions.isArchived, false)
+      );
+    } else if (filter === 'archived') {
+      whereClause = and(
+        eq(sessions.userId, userId),
+        eq(sessions.isArchived, true)
+      );
+    } else {
+      // 'all' - no isArchived filter
+      whereClause = eq(sessions.userId, userId);
+    }
+
     return db
       .select()
       .from(sessions)
-      .where(eq(sessions.userId, userId))
+      .where(whereClause)
       .orderBy(desc(sessions.createdAt));
   });
 }
@@ -91,6 +110,19 @@ export async function updateSession(
     await db
       .update(sessions)
       .set({ ...updates, updatedAt: new Date() })
+      .where(eq(sessions.id, id));
+  });
+}
+
+// Archive session (with RLS)
+export async function archiveSession(
+  id: string,
+  userId: string
+): Promise<void> {
+  return withUserContext(userId, async () => {
+    await db
+      .update(sessions)
+      .set({ isArchived: true, updatedAt: new Date() })
       .where(eq(sessions.id, id));
   });
 }

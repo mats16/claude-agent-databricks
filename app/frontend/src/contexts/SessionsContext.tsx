@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
 } from 'react';
 
@@ -14,6 +15,7 @@ export interface Session {
   workspacePath: string | null;
   userEmail: string | null;
   autoWorkspacePush: boolean;
+  isArchived: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,9 +24,12 @@ interface SessionsContextType {
   sessions: Session[];
   isLoading: boolean;
   error: string | null;
+  filter: 'active' | 'archived' | 'all';
+  setFilter: (filter: 'active' | 'archived' | 'all') => void;
   refetch: () => Promise<void>;
   getSession: (sessionId: string) => Session | undefined;
   updateSessionLocally: (sessionId: string, updates: Partial<Session>) => void;
+  archiveSession: (sessionId: string) => Promise<void>;
 }
 
 const SessionsContext = createContext<SessionsContextType | undefined>(
@@ -39,12 +44,14 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'active' | 'archived' | 'all'>('active');
 
   const fetchSessions = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch('/api/v1/sessions');
+      // Always fetch all sessions
+      const response = await fetch('/api/v1/sessions?filter=all');
       if (!response.ok) {
         throw new Error('Failed to fetch sessions');
       }
@@ -60,6 +67,18 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  // Filter sessions on the client side
+  const filteredSessions = useMemo(() => {
+    if (filter === 'all') {
+      return sessions;
+    } else if (filter === 'active') {
+      return sessions.filter((s) => !s.isArchived);
+    } else {
+      // archived
+      return sessions.filter((s) => s.isArchived);
+    }
+  }, [sessions, filter]);
 
   // WebSocket connection for real-time session list updates
   useEffect(() => {
@@ -86,6 +105,7 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
             model: '',
             userEmail: null,
             autoWorkspacePush: data.session.autoWorkspacePush ?? false,
+            isArchived: false, // New sessions are always active
           };
           setSessions((prev) => [newSession, ...prev]);
         }
@@ -103,6 +123,7 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
     };
   }, []);
 
+  // Get session from all sessions (not filtered)
   const getSession = useCallback(
     (sessionId: string) => {
       return sessions.find((s) => s.id === sessionId);
@@ -119,15 +140,38 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
     []
   );
 
+  const archiveSession = useCallback(async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/v1/sessions/${sessionId}/archive`, {
+        method: 'PATCH',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to archive session');
+      }
+
+      // Update local state - set isArchived to true
+      // Filtering is handled automatically by useMemo
+      setSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, isArchived: true } : s))
+      );
+    } catch (err) {
+      console.error('Failed to archive session:', err);
+      throw err;
+    }
+  }, []);
+
   return (
     <SessionsContext.Provider
       value={{
-        sessions,
+        sessions: filteredSessions, // Use filtered sessions
         isLoading,
         error,
+        filter,
+        setFilter,
         refetch: fetchSessions,
         getSession,
         updateSessionLocally,
+        archiveSession,
       }}
     >
       {children}

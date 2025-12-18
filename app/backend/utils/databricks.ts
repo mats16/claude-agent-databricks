@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { rm } from 'fs/promises';
 
 const execAsync = promisify(exec);
 
@@ -66,5 +67,20 @@ export async function workspacePush(
     await execAsync(cmd);
   } catch (error: any) {
     console.error(`[workspacePush] Error: ${error.message}`);
+  }
+}
+
+/**
+ * Delete working directory
+ * Uses fire-and-forget pattern for background deletion
+ */
+export async function deleteWorkDir(localPath: string): Promise<void> {
+  try {
+    await rm(localPath, { recursive: true, force: true });
+    console.log(`[deleteWorkDir] Successfully deleted: ${localPath}`);
+  } catch (error: any) {
+    console.error(
+      `[deleteWorkDir] Error deleting ${localPath}: ${error.message}`
+    );
   }
 }
