@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ImageContent, MessageContent } from '@app/shared';
 import type {
   SDKMessage,
+  SDKUserMessage,
   SDKAssistantMessage,
   ChatMessage,
   UseAgentOptions,
@@ -46,6 +47,11 @@ export function useAgent(options: UseAgentOptions = {}) {
   const loadedSessionIdRef = useRef<string | null>(null);
   const prevSessionIdRef = useRef<string | undefined>(undefined);
   const reconnectAttemptsRef = useRef(0);
+  // Buffer for WebSocket events while history is loading
+  const eventBufferRef = useRef<SDKMessage[]>([]);
+  const isHistoryLoadedRef = useRef(false);
+  // Track loaded event UUIDs to skip duplicates from WebSocket
+  const loadedEventUuidsRef = useRef<Set<string>>(new Set());
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
@@ -90,6 +96,9 @@ export function useAgent(options: UseAgentOptions = {}) {
       currentResponseRef.current = '';
       currentMessageIdRef.current = '';
       reconnectAttemptsRef.current = 0;
+      eventBufferRef.current = [];
+      isHistoryLoadedRef.current = false;
+      loadedEventUuidsRef.current = new Set();
 
       // Reset state
       setMessages([]);
@@ -123,11 +132,117 @@ export function useAgent(options: UseAgentOptions = {}) {
         const response = await fetch(`/api/v1/sessions/${sessionId}/events`);
         if (response.ok) {
           const data = await response.json();
-          if (data.events && data.events.length > 0) {
-            const loadedMessages = convertSDKMessagesToChat(data.events);
+          const events = data.events as SDKMessage[];
+          if (events && events.length > 0) {
+            // Track all loaded event UUIDs for deduplication
+            const uuids = new Set<string>();
+            for (const event of events) {
+              if (event.uuid) {
+                uuids.add(event.uuid);
+              }
+            }
+            loadedEventUuidsRef.current = uuids;
+
+            const loadedMessages = convertSDKMessagesToChat(events);
             setMessages(loadedMessages);
+
+            // Check if the last message is an in-progress agent response
+            // (no 'result' message at the end means agent is still processing)
+            const lastEvent = events[events.length - 1];
+            if (lastEvent.type === 'assistant') {
+              // Agent is still processing - prepare for continuation
+              const lastAgentMsg = loadedMessages[loadedMessages.length - 1];
+              if (lastAgentMsg && lastAgentMsg.role === 'agent') {
+                currentMessageIdRef.current = lastAgentMsg.id;
+                currentResponseRef.current = lastAgentMsg.content;
+                setIsProcessing(true);
+              }
+            }
           }
           loadedSessionIdRef.current = sessionId;
+          isHistoryLoadedRef.current = true;
+
+          // Process any buffered WebSocket events that are not in loaded history
+          if (eventBufferRef.current.length > 0) {
+            console.log(
+              `Processing ${eventBufferRef.current.length} buffered events`
+            );
+            const bufferedEvents = [...eventBufferRef.current];
+            eventBufferRef.current = [];
+
+            // Process buffered assistant events for response continuation
+            for (const event of bufferedEvents) {
+              // Skip events already loaded from REST API
+              if (event.uuid && loadedEventUuidsRef.current.has(event.uuid)) {
+                continue;
+              }
+
+              // Handle assistant messages (response continuation)
+              if (event.type === 'assistant' && 'message' in event) {
+                const assistantMsg = event as SDKAssistantMessage;
+
+                // Update currentMessageIdRef if needed
+                if (
+                  event.uuid &&
+                  (!currentMessageIdRef.current ||
+                    currentMessageIdRef.current.startsWith('agent-'))
+                ) {
+                  currentMessageIdRef.current = event.uuid;
+                }
+
+                // Process content blocks
+                for (const block of assistantMsg.message.content) {
+                  if (block.type === 'text' && block.text) {
+                    currentResponseRef.current += block.text;
+                  } else if (block.type === 'tool_use' && block.name) {
+                    const toolInput = block.input
+                      ? formatToolInput(block.input)
+                      : '';
+                    const toolId = block.id || `tool-${Date.now()}`;
+                    const marker = `[Tool: ${block.name} id=${toolId}] ${toolInput}`;
+                    currentResponseRef.current += `\n\n${marker}\n`;
+                    pendingToolUsesRef.current.push({
+                      id: toolId,
+                      name: block.name,
+                      position: currentResponseRef.current.length,
+                    });
+                  }
+                }
+
+                // Update message in state
+                setMessages((prev) => {
+                  const existingIndex = prev.findIndex(
+                    (m) => m.id === currentMessageIdRef.current
+                  );
+                  if (existingIndex >= 0) {
+                    const updated = [...prev];
+                    updated[existingIndex] = {
+                      ...updated[existingIndex],
+                      content: currentResponseRef.current.trim(),
+                    };
+                    return updated;
+                  } else {
+                    return [
+                      ...prev,
+                      {
+                        id: currentMessageIdRef.current,
+                        role: 'agent' as const,
+                        content: currentResponseRef.current.trim(),
+                        timestamp: new Date(),
+                      },
+                    ];
+                  }
+                });
+              }
+
+              // Handle result messages
+              if (event.type === 'result') {
+                setIsProcessing(false);
+                currentResponseRef.current = '';
+                currentMessageIdRef.current = '';
+              }
+            }
+          }
         } else if (response.status === 404) {
           setSessionNotFound(true);
         }
@@ -170,6 +285,25 @@ export function useAgent(options: UseAgentOptions = {}) {
           session_id?: string;
         };
 
+        // Check if this is an existing session (no initialMessage)
+        const hasInitialMessage =
+          typeof initialMessageRef.current === 'string' &&
+          initialMessageRef.current.length > 0;
+
+        // For existing sessions, buffer events while history is loading
+        if (!hasInitialMessage && !isHistoryLoadedRef.current) {
+          // Always allow control messages through
+          if (message.type !== 'connected') {
+            eventBufferRef.current.push(message);
+            return;
+          }
+        }
+
+        // Skip events that were already loaded from REST API
+        if (message.uuid && loadedEventUuidsRef.current.has(message.uuid)) {
+          return;
+        }
+
         // Handle control message: connected
         if (message.type === 'connected') {
           console.log('Connection established');
@@ -203,6 +337,16 @@ export function useAgent(options: UseAgentOptions = {}) {
         // Handle SDK assistant message
         if (message.type === 'assistant' && 'message' in message) {
           const assistantMsg = message as SDKAssistantMessage;
+
+          // Use SDK message UUID for consistent message identification
+          // This ensures messages loaded from REST API and WebSocket use the same ID
+          if (
+            message.uuid &&
+            (!currentMessageIdRef.current ||
+              currentMessageIdRef.current.startsWith('agent-'))
+          ) {
+            currentMessageIdRef.current = message.uuid;
+          }
 
           // Process content blocks
           for (const block of assistantMsg.message.content) {
