@@ -59,6 +59,8 @@ export default function SessionPage() {
   const [input, setInput] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
 
   const maxImages = 5;
   const initialMessageConsumedRef = useRef(false);
@@ -177,8 +179,27 @@ export default function SessionPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Check if user is at bottom of scroll container
+  const checkIsAtBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return true;
+    const threshold = 100; // pixels from bottom tolerance
+    return (
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      threshold
+    );
+  }, []);
+
+  // Handle scroll events to track position
+  const handleScrollContainer = useCallback(() => {
+    isAtBottomRef.current = checkIsAtBottom();
+  }, [checkIsAtBottom]);
+
+  // Auto-scroll only if user was already at bottom
   useEffect(() => {
-    scrollToBottom();
+    if (isAtBottomRef.current) {
+      scrollToBottom();
+    }
   }, [messages]);
 
   const handleSubmit = useCallback(async () => {
@@ -374,6 +395,8 @@ export default function SessionPage() {
 
       {/* Messages - Drop Zone */}
       <div
+        ref={scrollContainerRef}
+        onScroll={handleScrollContainer}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
