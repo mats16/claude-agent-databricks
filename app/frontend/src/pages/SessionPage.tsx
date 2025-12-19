@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { useAgent } from '../hooks/useAgent';
 import { useImageUpload } from '../hooks/useImageUpload';
+import { useFileUpload } from '../hooks/useFileUpload';
 import { useSessions } from '../contexts/SessionsContext';
 import TitleEditModal from '../components/TitleEditModal';
 import MessageRenderer from '../components/MessageRenderer';
@@ -208,15 +209,32 @@ export default function SessionPage() {
     attachedImages,
     setAttachedImages,
     isConverting,
-    isDragging,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
     convertImages,
     clearImages,
   } = useImageUpload({
     maxImages,
     isDisabled: () => !isConnected || isConverting,
+  });
+
+  // File upload handling via custom hook (with unified drag & drop for images)
+  const {
+    attachedFiles,
+    setAttachedFiles,
+    isUploading,
+    isDragging,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    uploadTextFiles,
+    convertPdfs,
+    clearFiles,
+  } = useFileUpload({
+    maxFiles: 10,
+    isDisabled: () => !isConnected || isUploading,
+    // Unified drag & drop: pass image state to handle both images and files
+    currentImages: attachedImages,
+    maxImages,
+    onImagesChange: setAttachedImages,
   });
 
   const scrollToBottom = () => {
@@ -247,30 +265,61 @@ export default function SessionPage() {
   }, [messages]);
 
   const handleSubmit = useCallback(async () => {
-    if ((!input.trim() && attachedImages.length === 0) || isConverting) {
+    const hasContent =
+      input.trim() || attachedImages.length > 0 || attachedFiles.length > 0;
+    if (!hasContent || isConverting || isUploading) {
       return;
     }
 
     try {
-      // Convert attached images to WebP format using hook
+      let finalInput = input.trim();
+
+      // Upload text files to server first (if any) and prepend @file_name references
+      if (
+        sessionId &&
+        attachedFiles.some((f) => f.type === 'text' && f.status === 'pending')
+      ) {
+        const uploadedFileNames = await uploadTextFiles(sessionId);
+        // Auto-prepend @file_name references for uploaded files
+        if (uploadedFileNames.length > 0) {
+          const fileReferences = uploadedFileNames
+            .map((name) => `@${name}`)
+            .join(' ');
+          finalInput = finalInput
+            ? `${fileReferences}\n${finalInput}`
+            : fileReferences;
+        }
+      }
+
+      // Convert PDFs to base64
+      const pdfContents = await convertPdfs();
+
+      // Convert attached images to WebP format
       const imageContents = await convertImages();
 
-      // Send message with images
-      sendMessage(input.trim(), imageContents);
+      // Send message with images and documents
+      sendMessage(finalInput, imageContents, pdfContents);
 
-      // Clear input and images
+      // Clear input, images, and files
       setInput('');
       clearImages();
+      clearFiles();
     } catch (error) {
-      console.error('Failed to convert images:', error);
+      console.error('Failed to process attachments:', error);
     }
   }, [
     input,
     attachedImages,
+    attachedFiles,
     isConverting,
+    isUploading,
+    sessionId,
     sendMessage,
     convertImages,
+    convertPdfs,
+    uploadTextFiles,
     clearImages,
+    clearFiles,
   ]);
 
   const getStatusText = () => {
@@ -530,6 +579,7 @@ export default function SessionPage() {
                     content={message.content}
                     role={message.role as 'user' | 'agent'}
                     images={message.images}
+                    sessionId={sessionId}
                   />
                   {showSpinnerInMessage && (
                     <div style={{ marginTop: spacing.sm }}>
@@ -577,8 +627,11 @@ export default function SessionPage() {
             onInputChange={setInput}
             attachedImages={attachedImages}
             onImagesChange={setAttachedImages}
+            attachedFiles={attachedFiles}
+            onFilesChange={setAttachedFiles}
             disabled={!isConnected}
             isConverting={isConverting}
+            isUploading={isUploading}
             onSubmit={handleSubmit}
           />
         )}

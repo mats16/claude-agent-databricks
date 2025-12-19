@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ImageContent, MessageContent } from '@app/shared';
+import type {
+  ImageContent,
+  DocumentContent,
+  MessageContent,
+} from '@app/shared';
 import type {
   SDKMessage,
   SDKUserMessage,
@@ -264,9 +268,19 @@ export function useAgent(options: UseAgentOptions = {}) {
     loadHistory();
   }, [sessionId, initialMessage]);
 
+  // Close WebSocket if session not found
   useEffect(() => {
-    // Don't connect if no sessionId
-    if (!sessionId) return;
+    if (sessionNotFound && wsRef.current) {
+      console.log('Session not found, closing WebSocket');
+      wsRef.current.close();
+      wsRef.current = null;
+      connectionInitiatedRef.current = false;
+    }
+  }, [sessionNotFound]);
+
+  useEffect(() => {
+    // Don't connect if no sessionId or session not found
+    if (!sessionId || sessionNotFound) return;
 
     // Prevent double connection in StrictMode
     if (connectionInitiatedRef.current) return;
@@ -637,7 +651,11 @@ export function useAgent(options: UseAgentOptions = {}) {
   }, [sessionId]);
 
   const sendMessage = useCallback(
-    (content: string, images?: ImageContent[]) => {
+    (
+      content: string,
+      images?: ImageContent[],
+      documents?: DocumentContent[]
+    ) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
         console.error('WebSocket is not connected');
         return;
@@ -672,6 +690,11 @@ export function useAgent(options: UseAgentOptions = {}) {
       // Add images first (Claude API recommends images before text)
       if (images && images.length > 0) {
         messageContent.push(...images);
+      }
+
+      // Add documents (PDFs)
+      if (documents && documents.length > 0) {
+        messageContent.push(...documents);
       }
 
       // Add text content

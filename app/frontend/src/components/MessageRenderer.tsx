@@ -2,13 +2,20 @@ import { useState, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import {
+  DownOutlined,
+  UpOutlined,
+  FilePdfOutlined,
+  FileTextOutlined,
+} from '@ant-design/icons';
 import type { ImageContent } from '@app/shared';
+import FilePreviewModal from './FilePreviewModal';
 
 interface MessageRendererProps {
   content: string;
   role: 'user' | 'agent';
   images?: ImageContent[];
+  sessionId?: string;
 }
 
 interface ParsedBlock {
@@ -281,20 +288,111 @@ const MarkdownContent = memo(function MarkdownContent({
   );
 });
 
+// Check if file is a PDF based on extension
+function isPdfFileName(fileName: string): boolean {
+  return fileName.toLowerCase().endsWith('.pdf');
+}
+
+// File card component for @file_name patterns (card style)
+const FileCard = memo(function FileCard({
+  filePath,
+  onClick,
+}: {
+  filePath: string;
+  onClick: () => void;
+}) {
+  const fileName = filePath.split('/').pop() || filePath;
+  const isPdf = isPdfFileName(fileName);
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '6px 10px',
+        borderRadius: 6,
+        border: '1px solid #e5e5e5',
+        background: '#fafafa',
+        cursor: 'pointer',
+        maxWidth: 220,
+        transition: 'background 0.2s',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f0f0')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = '#fafafa')}
+      title={fileName}
+    >
+      {isPdf ? (
+        <FilePdfOutlined
+          style={{ fontSize: 18, color: '#ff4d4f', flexShrink: 0 }}
+        />
+      ) : (
+        <FileTextOutlined
+          style={{ fontSize: 18, color: '#1890ff', flexShrink: 0 }}
+        />
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 12,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            color: '#262626',
+          }}
+        >
+          {fileName}
+        </div>
+        {isPdf && <div style={{ fontSize: 10, color: '#999' }}>PDF</div>}
+      </div>
+    </div>
+  );
+});
+
+// Parse text to extract @file_path patterns and remaining text
+function parseTextWithFiles(text: string): {
+  files: string[];
+  textContent: string;
+} {
+  // Pattern to match @file_path (supports subdirectories with slashes)
+  // Matches: @file.txt, @dir/file.txt, @path/to/file.txt
+  const filePattern = /@([\w./-]+)/g;
+  const files: string[] = [];
+  let match;
+
+  while ((match = filePattern.exec(text)) !== null) {
+    files.push(match[1]);
+  }
+
+  // Remove @file references from text to get clean text content
+  const textContent = text.replace(/@[\w./-]+/g, '').trim();
+
+  return { files, textContent };
+}
+
 export default memo(function MessageRenderer({
   content,
   role,
   images,
+  sessionId,
 }: MessageRendererProps) {
   const { t } = useTranslation();
+  const [previewFile, setPreviewFile] = useState<string | null>(null);
 
   if (role === 'user') {
+    // Parse content to extract file references and text
+    const { files, textContent } = content
+      ? parseTextWithFiles(content)
+      : { files: [], textContent: '' };
+
     return (
       <div className="user-message">
+        {/* Images */}
         {images && images.length > 0 && (
           <div
             className="user-images"
-            style={{ marginBottom: content ? 12 : 0 }}
+            style={{ marginBottom: content || files.length > 0 ? 12 : 0 }}
           >
             {images.map((img, idx) => (
               <img
@@ -314,7 +412,37 @@ export default memo(function MessageRenderer({
             ))}
           </div>
         )}
-        {content && <pre className="message-text">{content}</pre>}
+        {/* File cards */}
+        {files.length > 0 && sessionId && (
+          <div
+            className="user-files"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 8,
+              marginBottom: textContent ? 12 : 0,
+            }}
+          >
+            {files.map((filePath, idx) => (
+              <FileCard
+                key={idx}
+                filePath={filePath}
+                onClick={() => setPreviewFile(filePath)}
+              />
+            ))}
+          </div>
+        )}
+        {/* Text content */}
+        {textContent && <pre className="message-text">{textContent}</pre>}
+        {/* File preview modal */}
+        {sessionId && previewFile && (
+          <FilePreviewModal
+            isOpen={!!previewFile}
+            onClose={() => setPreviewFile(null)}
+            filePath={previewFile}
+            sessionId={sessionId}
+          />
+        )}
       </div>
     );
   }

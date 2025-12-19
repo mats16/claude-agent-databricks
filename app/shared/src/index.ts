@@ -11,12 +11,44 @@ export interface ImageContent {
   };
 }
 
+export interface DocumentContent {
+  type: 'document';
+  source: {
+    type: 'base64';
+    media_type: 'application/pdf';
+    data: string; // base64 encoded
+  };
+}
+
 export interface TextContent {
   type: 'text';
   text: string;
 }
 
-export type MessageContent = TextContent | ImageContent;
+export type MessageContent = TextContent | ImageContent | DocumentContent;
+
+// ============================================
+// File Upload Types
+// ============================================
+
+export interface FileAttachment {
+  fileName: string;
+  originalName: string;
+  size: number;
+  mimeType: string;
+  uploadedAt: string;
+}
+
+export interface FileListResponse {
+  files: FileAttachment[];
+}
+
+export interface FileUploadResponse {
+  fileName: string;
+  originalName: string;
+  size: number;
+  mimeType: string;
+}
 
 // ============================================
 // WebSocket Message Types (Client -> Server)

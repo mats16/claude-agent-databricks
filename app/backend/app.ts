@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import autoload from '@fastify/autoload';
+import multipart from '@fastify/multipart';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -8,6 +9,7 @@ import dotenv from 'dotenv';
 import healthRoutes from './routes/health/index.js';
 import sessionRoutes from './routes/v1/sessions/index.js';
 import sessionWebSocketRoutes from './routes/v1/sessions/websocket.js';
+import sessionFileRoutes from './routes/v1/sessions/files/index.js';
 import meRoutes from './routes/v1/me/index.js';
 import settingsRoutes from './routes/v1/settings/index.js';
 import claudeBackupRoutes from './routes/v1/settings/claude-backup/index.js';
@@ -37,10 +39,20 @@ export async function buildApp() {
     ignorePattern: /^(auth|session-state)\./,
   });
 
+  // Register multipart plugin for file uploads
+  await fastify.register(multipart, {
+    limits: {
+      fileSize: 50 * 1024 * 1024, // 50MB max
+    },
+  });
+
   // Register routes with explicit prefixes
   await fastify.register(healthRoutes, { prefix: '/api' });
   await fastify.register(sessionRoutes, { prefix: '/api/v1/sessions' });
   await fastify.register(sessionWebSocketRoutes, {
+    prefix: '/api/v1/sessions',
+  });
+  await fastify.register(sessionFileRoutes, {
     prefix: '/api/v1/sessions',
   });
   await fastify.register(meRoutes, { prefix: '/api/v1/me' });

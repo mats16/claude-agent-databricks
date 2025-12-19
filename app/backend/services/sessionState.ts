@@ -67,7 +67,7 @@ export function markQueueCompleted(sessionId: string) {
   }
 }
 
-// Create SDKMessage for user message (supports text and image content)
+// Create SDKMessage for user message (supports text, image, and document content)
 export function createUserMessage(
   sessionId: string,
   content: MessageContent[]
@@ -76,7 +76,7 @@ export function createUserMessage(
   const apiContent = content.map((c) => {
     if (c.type === 'text') {
       return { type: 'text' as const, text: c.text };
-    } else {
+    } else if (c.type === 'image') {
       return {
         type: 'image' as const,
         source: {
@@ -85,6 +85,19 @@ export function createUserMessage(
           data: c.source.data,
         },
       };
+    } else if (c.type === 'document') {
+      // Document content (PDF) - pass through as-is
+      return {
+        type: 'document' as const,
+        source: {
+          type: 'base64' as const,
+          media_type: c.source.media_type,
+          data: c.source.data,
+        },
+      };
+    } else {
+      // Unknown type - pass through
+      return c;
     }
   });
 

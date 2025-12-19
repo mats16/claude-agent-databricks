@@ -218,7 +218,27 @@
     "unsupportedType": "Unsupported file type: {{name}}",
     "fileTooLarge": "File too large (max 5MB): {{name}}"
   },
+  "fileUpload": {
+    "attachFile": "Attach file",
+    "dropFilesHere": "Drop files here",
+    "maxFilesReached": "Maximum {{max}} files allowed",
+    "unsupportedType": "Unsupported file type: {{name}}",
+    "fileTooLarge": "File too large (max {{max}}): {{name}}",
+    "pdfTooLarge": "PDF too large (max {{max}}): {{name}}",
+    "uploading": "Uploading...",
+    "uploadFailed": "Failed to upload: {{name}}",
+    "uploadSuccess": "File uploaded: {{name}}",
+    "pdfConversionFailed": "Failed to convert PDF: {{name}}"
+  },
   "toolOutput": {
     "linesRead": "{{count}} lines read"
+  },
+  "filePreview": {
+    "lines": " lines",
+    "formatWarning": "Format may not match source",
+    "loadError": "Failed to load file",
+    "pdfNoPreview": "PDF preview is not available",
+    "download": "Download",
+    "downloadError": "Failed to download file"
   }
 }

@@ -1,27 +1,59 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, Input, Select, Tooltip, Typography, Flex } from 'antd';
-import { SendOutlined, RocketOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Input,
+  Select,
+  Tooltip,
+  Typography,
+  Flex,
+  message,
+} from 'antd';
+import {
+  SendOutlined,
+  RocketOutlined,
+  PaperClipOutlined,
+  CloseOutlined,
+  FilePdfOutlined,
+} from '@ant-design/icons';
 import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
 import WorkspaceSelectModal from './WorkspaceSelectModal';
 import WorkspacePathSelector from './WorkspacePathSelector';
 import SettingsModal from './SettingsModal';
-import ImageUpload from './ImageUpload';
-import { useImageUpload } from '../hooks/useImageUpload';
+import type { AttachedImage } from './ImageUpload';
 import { useUser } from '../contexts/UserContext';
-import type { MessageContent } from '@app/shared';
-import { colors, spacing, borderRadius, typography } from '../styles/theme';
+import type { MessageContent, DocumentContent } from '@app/shared';
+import { colors, spacing, typography } from '../styles/theme';
 import {
   inputContainerStyle,
   getDropZoneStyle,
   dropZoneOverlayStyle,
   footerStyle,
 } from '../styles/common';
+import {
+  isSupportedImageType,
+  isWithinSizeLimit as isImageWithinSizeLimit,
+  createPreviewUrl as createImagePreviewUrl,
+  revokePreviewUrl,
+  convertToWebP,
+} from '../utils/imageUtils';
+import {
+  isPdfFile,
+  isWithinSizeLimit as isPdfWithinSizeLimit,
+  getMaxSizeForFile,
+  formatFileSize,
+  convertPdfToBase64,
+} from '../utils/fileUtils';
 
 const { TextArea } = Input;
-const { Text } = Typography;
+
+interface AttachedPdf {
+  id: string;
+  file: File;
+  previewUrl?: string;
+}
 
 interface SidebarProps {
   width?: number;
@@ -41,24 +73,16 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const [autoWorkspacePush, setAutoWorkspacePush] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const maxImages = 5;
+  const maxPdfs = 5;
 
-  // Image upload handling via custom hook
-  const {
-    attachedImages,
-    setAttachedImages,
-    isConverting,
-    isDragging,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
-    convertImages,
-    clearImages,
-  } = useImageUpload({
-    maxImages,
-    isDisabled: () => isSubmitting || isConverting,
-  });
+  // Attachment state
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [attachedPdfs, setAttachedPdfs] = useState<AttachedPdf[]>([]);
+  const [isConverting, setIsConverting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const hasPermission = userInfo?.hasWorkspacePermission ?? null;
 
@@ -73,19 +97,159 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
     }
   }, [isLoading, hasPermission]);
 
+  // Unified file handler - handles images and PDFs only
+  const handleFiles = useCallback(
+    (files: FileList | File[]) => {
+      const fileArray = Array.from(files);
+
+      for (const file of fileArray) {
+        // Check if it's an image
+        if (isSupportedImageType(file)) {
+          if (attachedImages.length >= maxImages) {
+            message.warning(
+              t('imageUpload.maxImagesReached', { max: maxImages })
+            );
+            continue;
+          }
+
+          if (!isImageWithinSizeLimit(file)) {
+            message.error(t('imageUpload.fileTooLarge', { name: file.name }));
+            continue;
+          }
+
+          const newImage: AttachedImage = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            file,
+            previewUrl: createImagePreviewUrl(file),
+          };
+          setAttachedImages((prev) => [...prev, newImage]);
+        }
+        // Check if it's a PDF
+        else if (isPdfFile(file)) {
+          if (attachedPdfs.length >= maxPdfs) {
+            message.warning(t('fileUpload.maxFilesReached', { max: maxPdfs }));
+            continue;
+          }
+
+          if (!isPdfWithinSizeLimit(file)) {
+            const maxSize = formatFileSize(getMaxSizeForFile(file));
+            message.error(
+              t('fileUpload.pdfTooLarge', { name: file.name, max: maxSize })
+            );
+            continue;
+          }
+
+          const newPdf: AttachedPdf = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            file,
+          };
+          setAttachedPdfs((prev) => [...prev, newPdf]);
+        } else {
+          // Text files not supported in sidebar (no session to upload to)
+          message.warning(t('fileUpload.unsupportedType', { name: file.name }));
+        }
+      }
+    },
+    [attachedImages.length, attachedPdfs.length, t]
+  );
+
+  // Drag handlers
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+
+      if (isSubmitting || isConverting) return;
+
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        handleFiles(files);
+      }
+    },
+    [handleFiles, isSubmitting, isConverting]
+  );
+
+  const handleAttachClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFiles(e.target.files);
+        e.target.value = '';
+      }
+    },
+    [handleFiles]
+  );
+
+  const handleRemoveImage = useCallback((id: string) => {
+    setAttachedImages((prev) => {
+      const image = prev.find((img) => img.id === id);
+      if (image) {
+        revokePreviewUrl(image.previewUrl);
+      }
+      return prev.filter((img) => img.id !== id);
+    });
+  }, []);
+
+  const handleRemovePdf = useCallback((id: string) => {
+    setAttachedPdfs((prev) => prev.filter((pdf) => pdf.id !== id));
+  }, []);
+
+  const clearAttachments = useCallback(() => {
+    attachedImages.forEach((img) => revokePreviewUrl(img.previewUrl));
+    setAttachedImages([]);
+    setAttachedPdfs([]);
+  }, [attachedImages]);
+
   const handleSubmit = async () => {
-    if (
-      (!input.trim() && attachedImages.length === 0) ||
-      isSubmitting ||
-      isConverting
-    )
-      return;
+    const hasContent =
+      input.trim() || attachedImages.length > 0 || attachedPdfs.length > 0;
+    if (!hasContent || isSubmitting || isConverting) return;
 
     setIsSubmitting(true);
+    setIsConverting(true);
 
     try {
-      // Convert attached images to WebP format using hook
-      const imageContents = await convertImages();
+      // Convert attached images to WebP format
+      const imageContents: MessageContent[] = [];
+      for (const img of attachedImages) {
+        const converted = await convertToWebP(img.file);
+        imageContents.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: converted.media_type,
+            data: converted.data,
+          },
+        });
+      }
+
+      // Convert PDFs to base64
+      const pdfContents: DocumentContent[] = [];
+      for (const pdf of attachedPdfs) {
+        const converted = await convertPdfToBase64(pdf.file);
+        pdfContents.push(converted);
+      }
 
       // Build message content array
       const messageContent: MessageContent[] = [];
@@ -93,6 +257,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
         messageContent.push({ type: 'text', text: input.trim() });
       }
       messageContent.push(...imageContents);
+      messageContent.push(...pdfContents);
 
       const response = await fetch('/api/v1/sessions', {
         method: 'POST',
@@ -124,7 +289,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       const sessionId = data.session_id;
 
       setInput('');
-      clearImages();
+      clearAttachments();
       onSessionCreated?.(sessionId);
 
       navigate(`/sessions/${sessionId}`, {
@@ -136,6 +301,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       console.error('Failed to create session:', error);
     } finally {
       setIsSubmitting(false);
+      setIsConverting(false);
     }
   };
 
@@ -156,6 +322,20 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
     setAutoWorkspacePush(path.trim().length > 0);
   };
 
+  const isProcessing = isSubmitting || isConverting;
+  const hasAttachments = attachedImages.length > 0 || attachedPdfs.length > 0;
+  const isSubmitDisabled =
+    (!input.trim() && !hasAttachments) || !hasPermission || isProcessing;
+
+  // Accept types for file input (images and PDFs only for sidebar)
+  const acceptTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'application/pdf',
+  ].join(',');
+
   return (
     <Flex
       vertical
@@ -164,6 +344,16 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
         background: colors.sidebarBg,
       }}
     >
+      {/* Hidden unified file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={acceptTypes}
+        multiple
+        onChange={handleInputChange}
+        style={{ display: 'none' }}
+      />
+
       {/* Header */}
       <div style={{ padding: `${spacing.lg}px ${spacing.xl}px` }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
@@ -206,34 +396,128 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
           </div>
         )}
         <div style={inputContainerStyle}>
-          {/* Image previews */}
-          <ImageUpload
-            images={attachedImages}
-            onImagesChange={setAttachedImages}
-            disabled={isSubmitting || isConverting}
-            showButtonOnly={false}
-          />
+          {/* Attachment previews */}
+          {hasAttachments && (
+            <Flex gap={8} wrap="wrap" style={{ marginBottom: spacing.sm }}>
+              {/* Image previews */}
+              {attachedImages.map((image) => (
+                <div
+                  key={image.id}
+                  style={{
+                    position: 'relative',
+                    width: 48,
+                    height: 48,
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                    border: '1px solid #e5e5e5',
+                  }}
+                >
+                  <img
+                    src={image.previewUrl}
+                    alt="preview"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CloseOutlined style={{ fontSize: 10 }} />}
+                    onClick={() => handleRemoveImage(image.id)}
+                    disabled={isProcessing}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      right: 0,
+                      padding: 2,
+                      minWidth: 16,
+                      height: 16,
+                      background: 'rgba(0, 0, 0, 0.5)',
+                      color: '#fff',
+                      borderRadius: '0 0 0 4px',
+                    }}
+                  />
+                </div>
+              ))}
+
+              {/* PDF previews */}
+              {attachedPdfs.map((pdf) => (
+                <div
+                  key={pdf.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '4px 8px',
+                    borderRadius: 6,
+                    border: '1px solid #e5e5e5',
+                    background: '#fafafa',
+                    maxWidth: 160,
+                  }}
+                >
+                  <FilePdfOutlined style={{ fontSize: 20, color: '#ff4d4f' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={pdf.file.name}
+                    >
+                      {pdf.file.name}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#999' }}>
+                      {formatFileSize(pdf.file.size)}
+                    </div>
+                  </div>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CloseOutlined style={{ fontSize: 10 }} />}
+                    onClick={() => handleRemovePdf(pdf.id)}
+                    disabled={isProcessing}
+                    style={{
+                      padding: 2,
+                      minWidth: 16,
+                      height: 16,
+                    }}
+                  />
+                </div>
+              ))}
+            </Flex>
+          )}
+
           <TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t('sidebar.placeholder')}
-            disabled={isSubmitting || isConverting}
+            disabled={isProcessing}
             autoSize={{ minRows: 3, maxRows: 19 }}
             variant="borderless"
             style={{ padding: 0, marginBottom: spacing.sm }}
           />
           <Flex justify="flex-end" align="center" gap={spacing.sm}>
-            <ImageUpload
-              images={attachedImages}
-              onImagesChange={setAttachedImages}
-              disabled={isSubmitting || isConverting}
-              showButtonOnly={true}
+            {/* Unified attachment button */}
+            <Button
+              type="text"
+              icon={<PaperClipOutlined />}
+              onClick={handleAttachClick}
+              disabled={
+                isProcessing ||
+                (attachedImages.length >= maxImages &&
+                  attachedPdfs.length >= maxPdfs)
+              }
+              title={t('fileUpload.attachFile')}
             />
             <Select
               value={selectedModel}
               onChange={setSelectedModel}
-              disabled={isSubmitting || isConverting}
+              disabled={isProcessing}
               style={{ width: 120 }}
               size="small"
               options={[
@@ -248,11 +532,8 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
                 type="primary"
                 shape="circle"
                 icon={<SendOutlined />}
-                loading={isSubmitting || isConverting}
-                disabled={
-                  (!input.trim() && attachedImages.length === 0) ||
-                  !hasPermission
-                }
+                loading={isProcessing}
+                disabled={isSubmitDisabled}
                 onClick={handleSubmit}
               />
             </Tooltip>

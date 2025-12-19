@@ -218,7 +218,27 @@
     "unsupportedType": "サポートされていないファイル形式: {{name}}",
     "fileTooLarge": "ファイルサイズが大きすぎます (最大5MB): {{name}}"
   },
+  "fileUpload": {
+    "attachFile": "ファイルを添付",
+    "dropFilesHere": "ここにファイルをドロップ",
+    "maxFilesReached": "最大{{max}}ファイルまで添付できます",
+    "unsupportedType": "サポートされていないファイル形式: {{name}}",
+    "fileTooLarge": "ファイルサイズが大きすぎます (最大{{max}}): {{name}}",
+    "pdfTooLarge": "PDFサイズが大きすぎます (最大{{max}}): {{name}}",
+    "uploading": "アップロード中...",
+    "uploadFailed": "アップロードに失敗しました: {{name}}",
+    "uploadSuccess": "ファイルをアップロードしました: {{name}}",
+    "pdfConversionFailed": "PDFの変換に失敗しました: {{name}}"
+  },
   "toolOutput": {
     "linesRead": "{{count}} 行を読み込み"
+  },
+  "filePreview": {
+    "lines": "行",
+    "formatWarning": "ソースと形式が一致しない可能性があります",
+    "loadError": "ファイルの読み込みに失敗しました",
+    "pdfNoPreview": "PDFのプレビューは利用できません",
+    "download": "ダウンロード",
+    "downloadError": "ファイルのダウンロードに失敗しました"
   }
 }

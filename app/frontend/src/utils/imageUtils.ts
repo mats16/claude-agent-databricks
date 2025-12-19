@@ -4,8 +4,8 @@
 
 // Maximum dimension for images (Claude API recommends 1568px max)
 const MAX_DIMENSION = 1568;
-// Maximum file size in bytes (5MB)
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+// Maximum file size in bytes (10MB)
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 // Supported image types
 const SUPPORTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
