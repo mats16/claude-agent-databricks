@@ -164,7 +164,7 @@ export async function createSessionHandler(
 
             // Save session to database
             // Use default title
-            const sessionTitle = 'No title';
+            const sessionTitle = 'Untitled';
             await createSession(
               {
                 id: sessionId,

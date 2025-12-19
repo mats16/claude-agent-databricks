@@ -2,4 +2,6 @@ command: ["npm", "run", "start", "--workspace=backend"]
 
 env:
   - name: DB_URL
-    valueFrom: secret
+    valueFrom: db-url-secret
+  - name: WAREHOUSE_ID
+    valueFrom: warehouse
