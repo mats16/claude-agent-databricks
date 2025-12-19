@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, Select, Tooltip, Typography, Flex, message } from 'antd';
+import {
+  Button,
+  Input,
+  Select,
+  Tooltip,
+  Typography,
+  Flex,
+  message,
+} from 'antd';
 import {
   SendOutlined,
   RocketOutlined,
@@ -14,7 +22,6 @@ import AccountMenu from './AccountMenu';
 import WorkspaceSelectModal from './WorkspaceSelectModal';
 import WorkspacePathSelector from './WorkspacePathSelector';
 import SettingsModal from './SettingsModal';
-import MarkdownEditor from './MarkdownEditor';
 import type { AttachedImage } from './ImageUpload';
 import { useUser } from '../contexts/UserContext';
 import type { MessageContent, DocumentContent } from '@app/shared';
@@ -39,6 +46,8 @@ import {
   formatFileSize,
   convertPdfToBase64,
 } from '../utils/fileUtils';
+
+const { TextArea } = Input;
 
 interface AttachedPdf {
   id: string;
@@ -296,6 +305,13 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   const handlePermissionGranted = () => {
     setShowPermissionModal(false);
   };
@@ -475,15 +491,16 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
             </Flex>
           )}
 
-          <div className="sidebar-editor">
-            <MarkdownEditor
-              value={input}
-              onChange={setInput}
-              onSubmit={handleSubmit}
-              placeholder={t('sidebar.placeholder')}
-              disabled={isProcessing}
-            />
-          </div>
+          <TextArea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t('sidebar.placeholder')}
+            disabled={isProcessing}
+            autoSize={{ minRows: 3, maxRows: 19 }}
+            variant="borderless"
+            style={{ padding: 0, marginBottom: spacing.sm }}
+          />
           <Flex justify="flex-end" align="center" gap={spacing.sm}>
             {/* Unified attachment button */}
             <Button
