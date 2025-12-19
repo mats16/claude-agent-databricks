@@ -71,13 +71,18 @@ const claudeBackupRoutes: FastifyPluginAsync = async (fastify) => {
     await userService.ensureUser(userId, userEmail);
 
     try {
-      await claudeBackupService.pullClaudeConfig(userEmail);
-      return { success: true };
+      const taskId = await claudeBackupService.pullClaudeConfig(
+        userEmail,
+        userId
+      );
+      return { success: true, taskId };
     } catch (error: any) {
       console.error(
-        `[Backup Pull] Failed to pull claude config: ${error.message}`
+        `[Backup Pull] Failed to enqueue claude config pull: ${error.message}`
       );
-      return reply.status(500).send({ error: 'Failed to pull claude config' });
+      return reply
+        .status(500)
+        .send({ error: 'Failed to enqueue claude config pull' });
     }
   });
 
@@ -95,13 +100,18 @@ const claudeBackupRoutes: FastifyPluginAsync = async (fastify) => {
     await userService.ensureUser(userId, userEmail);
 
     try {
-      await claudeBackupService.pushClaudeConfig(userEmail);
-      return { success: true };
+      const taskId = await claudeBackupService.pushClaudeConfig(
+        userEmail,
+        userId
+      );
+      return { success: true, taskId };
     } catch (error: any) {
       console.error(
-        `[Backup Push] Failed to push claude config: ${error.message}`
+        `[Backup Push] Failed to enqueue claude config push: ${error.message}`
       );
-      return reply.status(500).send({ error: 'Failed to push claude config' });
+      return reply
+        .status(500)
+        .send({ error: 'Failed to enqueue claude config push' });
     }
   });
 };

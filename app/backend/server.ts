@@ -1,4 +1,5 @@
 import { buildApp } from './app.js';
+import { drainQueue } from './services/workspaceQueueService.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8000;
 
@@ -16,6 +17,16 @@ try {
 // Graceful shutdown
 const shutdown = async (signal: string) => {
   console.log(`${signal} signal received: closing HTTP server`);
+
+  // Drain the workspace sync queue
+  console.log('Draining workspace sync queue...');
+  try {
+    await drainQueue();
+    console.log('Workspace sync queue drained');
+  } catch (err) {
+    console.error('Error draining workspace sync queue:', err);
+  }
+
   await app.close();
   console.log('HTTP server closed');
   process.exit(0);

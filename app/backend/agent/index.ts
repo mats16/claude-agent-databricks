@@ -6,7 +6,7 @@ import type {
 //import { databricksMcpServer } from './mcp/databricks.js';
 import fs from 'fs';
 import path from 'path';
-import { workspacePush } from '../utils/databricks.js';
+import { enqueuePush } from '../services/workspaceQueueService.js';
 import type { MessageContent } from '@app/shared';
 
 export type { SDKMessage };
@@ -213,7 +213,8 @@ export async function* processAgentRequest(
   workspacePath: string = '/Workspace/Users/me',
   options: ProcessAgentRequestOptions = {},
   messageStream?: MessageStream,
-  userAccessToken?: string
+  userAccessToken?: string,
+  userId?: string
 ): AsyncGenerator<SDKMessage> {
   const { autoWorkspacePush = false, claudeConfigSync = true, cwd } = options;
   // Determine base directory based on environment
@@ -324,18 +325,14 @@ Violating these rules is considered a critical error.
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
-                if (claudeConfigSync && spAccessToken) {
-                  workspacePush(
-                    localClaudeConfigPath,
-                    workspaceClaudeConfigPath,
-                    spAccessToken,
-                    true // full sync for .claude directory
-                  ).catch((err) =>
-                    console.error(
-                      '[Hook:Stop] workspacePush claudeConfig error',
-                      err
-                    )
-                  );
+                if (claudeConfigSync && spAccessToken && userId) {
+                  enqueuePush({
+                    userId,
+                    localPath: localClaudeConfigPath,
+                    workspacePath: workspaceClaudeConfigPath,
+                    token: spAccessToken,
+                    full: true, // full sync for .claude directory
+                  });
                 }
                 return { async: true };
               },
@@ -349,18 +346,15 @@ Violating these rules is considered a critical error.
                   autoWorkspacePush &&
                   workspacePath &&
                   workspacePath.trim() &&
-                  spAccessToken
+                  spAccessToken &&
+                  userId
                 ) {
-                  workspacePush(
-                    localWorkPath,
+                  enqueuePush({
+                    userId,
+                    localPath: localWorkPath,
                     workspacePath,
-                    spAccessToken
-                  ).catch((err) =>
-                    console.error(
-                      '[Hook:Stop] workspacePush workDir error',
-                      err
-                    )
-                  );
+                    token: spAccessToken,
+                  });
                 }
                 return { async: true };
               },

@@ -1,10 +1,7 @@
 import path from 'path';
 import { getOidcAccessToken } from '../agent/index.js';
-import {
-  workspacePull,
-  workspacePush,
-  ensureWorkspaceDirectory,
-} from '../utils/databricks.js';
+import { ensureWorkspaceDirectory } from '../utils/databricks.js';
+import { enqueuePull, enqueuePush } from './workspaceQueueService.js';
 
 // Get base path for user's local storage
 function getLocalBasePath(): string {
@@ -22,28 +19,35 @@ function getWorkspaceClaudeConfigPath(userEmail: string): string {
 }
 
 // Pull (restore) claude config from workspace to local
-export async function pullClaudeConfig(userEmail: string): Promise<void> {
+export async function pullClaudeConfig(
+  userEmail: string,
+  userId: string
+): Promise<string> {
   const localClaudeConfigPath = getLocalClaudeConfigPath(userEmail);
   const workspaceClaudeConfigPath = getWorkspaceClaudeConfigPath(userEmail);
 
   const spAccessToken = await getOidcAccessToken();
 
   console.log(
-    `[Backup Pull] Pulling claude config from ${workspaceClaudeConfigPath} to ${localClaudeConfigPath}...`
+    `[Backup Pull] Enqueueing claude config pull from ${workspaceClaudeConfigPath} to ${localClaudeConfigPath}...`
   );
 
-  await workspacePull(
-    workspaceClaudeConfigPath,
-    localClaudeConfigPath,
-    true, // overwrite
-    spAccessToken
-  );
+  const taskId = enqueuePull({
+    userId,
+    workspacePath: workspaceClaudeConfigPath,
+    localPath: localClaudeConfigPath,
+    overwrite: true,
+    token: spAccessToken,
+  });
 
-  console.log('[Backup Pull] Claude config pull completed');
+  return taskId;
 }
 
 // Push (backup) claude config from local to workspace
-export async function pushClaudeConfig(userEmail: string): Promise<void> {
+export async function pushClaudeConfig(
+  userEmail: string,
+  userId: string
+): Promise<string> {
   const localClaudeConfigPath = getLocalClaudeConfigPath(userEmail);
   const workspaceClaudeConfigPath = getWorkspaceClaudeConfigPath(userEmail);
 
@@ -53,21 +57,25 @@ export async function pushClaudeConfig(userEmail: string): Promise<void> {
   await ensureWorkspaceDirectory(workspaceClaudeConfigPath, spAccessToken);
 
   console.log(
-    `[Backup Push] Pushing claude config from ${localClaudeConfigPath} to ${workspaceClaudeConfigPath}...`
+    `[Backup Push] Enqueueing claude config push from ${localClaudeConfigPath} to ${workspaceClaudeConfigPath}...`
   );
 
-  await workspacePush(
-    localClaudeConfigPath,
-    workspaceClaudeConfigPath,
-    spAccessToken,
-    true // full sync
-  );
+  const taskId = enqueuePush({
+    userId,
+    localPath: localClaudeConfigPath,
+    workspacePath: workspaceClaudeConfigPath,
+    token: spAccessToken,
+    full: true, // full sync
+  });
 
-  console.log('[Backup Push] Claude config push completed');
+  return taskId;
 }
 
 // Manual pull for /me/claude-config/pull endpoint (uses different path calculation for production)
-export async function manualPullClaudeConfig(userEmail: string): Promise<void> {
+export async function manualPullClaudeConfig(
+  userEmail: string,
+  userId: string
+): Promise<string> {
   const isProduction = process.env.NODE_ENV === 'production';
   const homeBase = isProduction
     ? '/home/app/u'
@@ -78,15 +86,16 @@ export async function manualPullClaudeConfig(userEmail: string): Promise<void> {
   const spAccessToken = await getOidcAccessToken();
 
   console.log(
-    `[Manual Pull] Pulling claude config from ${workspaceClaudeConfigPath} to ${localClaudeConfigPath}...`
+    `[Manual Pull] Enqueueing claude config pull from ${workspaceClaudeConfigPath} to ${localClaudeConfigPath}...`
   );
 
-  await workspacePull(
-    workspaceClaudeConfigPath,
-    localClaudeConfigPath,
-    true, // overwrite
-    spAccessToken
-  );
+  const taskId = enqueuePull({
+    userId,
+    workspacePath: workspaceClaudeConfigPath,
+    localPath: localClaudeConfigPath,
+    overwrite: true,
+    token: spAccessToken,
+  });
 
-  console.log('[Manual Pull] Claude config pull completed');
+  return taskId;
 }

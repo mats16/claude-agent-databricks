@@ -17,7 +17,10 @@ import {
 } from '../../../db/sessions.js';
 import { getSettingsDirect } from '../../../db/settings.js';
 import { upsertUser } from '../../../db/users.js';
-import { workspacePull, deleteWorkDir } from '../../../utils/databricks.js';
+import {
+  enqueuePull,
+  enqueueDelete,
+} from '../../../services/workspaceQueueService.js';
 import { extractRequestContext } from '../../../utils/headers.js';
 import {
   sessionMessageStreams,
@@ -114,16 +117,16 @@ export async function createSessionHandler(
   // Pull workspace directory in background if workspacePath is provided (always overwrite)
   if (workspacePath) {
     console.log(
-      `[New Session] Starting background pull of workspace directory from ${workspacePath}...`
+      `[New Session] Enqueueing workspace pull from ${workspacePath}...`
     );
     const spToken = await getOidcAccessToken();
-    workspacePull(workspacePath, localWorkPath, true, spToken)
-      .then(() => {
-        console.log('[New Session] Workspace directory pull completed');
-      })
-      .catch((err) => {
-        console.error('[New Session] Workspace directory pull failed:', err);
-      });
+    enqueuePull({
+      userId,
+      workspacePath,
+      localPath: localWorkPath,
+      overwrite: true,
+      token: spToken,
+    });
   }
 
   const startAgentProcessing = () => {
@@ -139,7 +142,8 @@ export async function createSessionHandler(
       workspacePath,
       { autoWorkspacePush, claudeConfigSync, cwd: localWorkPath },
       stream,
-      accessToken
+      accessToken,
+      userId
     );
 
     // Process events in background
@@ -370,12 +374,10 @@ export async function archiveSessionHandler(
 
   // Delete working directory in background if it exists
   if (session.cwd) {
-    console.log(`[Archive] Scheduling background deletion of: ${session.cwd}`);
-    // Fire-and-forget: don't await
-    deleteWorkDir(session.cwd).catch((err) => {
-      console.error(
-        `[Archive] Failed to delete working directory: ${err.message}`
-      );
+    console.log(`[Archive] Enqueueing deletion of: ${session.cwd}`);
+    enqueueDelete({
+      userId,
+      localPath: session.cwd,
     });
   }
 
