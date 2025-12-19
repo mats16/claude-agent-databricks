@@ -75,7 +75,8 @@ function formatToolOutput(
     toolName === 'Glob' ||
     toolName === 'Skill' ||
     toolName === 'Write' ||
-    toolName === 'NotebookEdit'
+    toolName === 'NotebookEdit' ||
+    toolName === 'WebSearch'
   ) {
     return null;
   }
