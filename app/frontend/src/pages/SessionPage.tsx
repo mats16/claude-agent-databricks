@@ -95,7 +95,11 @@ export default function SessionPage() {
   const { t } = useTranslation();
   const { sessionId } = useParams<{ sessionId: string }>();
   const location = useLocation();
-  const { getSession, updateSessionLocally } = useSessions();
+  const {
+    getSession,
+    updateSessionLocally,
+    isLoading: isLoadingSessions,
+  } = useSessions();
   const [input, setInput] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -367,7 +371,9 @@ export default function SessionPage() {
                 ...ellipsisStyle,
               }}
             >
-              {sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
+              {isLoadingSessions && !session
+                ? t('sessionPage.loading')
+                : sessionTitle || t('sessionPage.untitled')}
             </Text>
             <EditOutlined
               style={{
@@ -426,7 +432,7 @@ export default function SessionPage() {
 
       <TitleEditModal
         isOpen={isModalOpen}
-        currentTitle={sessionTitle || `Session ${sessionId?.slice(0, 8)}...`}
+        currentTitle={sessionTitle || ''}
         currentAutoWorkspacePush={sessionAutoWorkspacePush}
         currentWorkspacePath={sessionWorkspacePath}
         onSave={handleSaveSettings}

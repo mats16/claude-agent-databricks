@@ -191,7 +191,9 @@
     "openInDatabricks": "Databricks で開く",
     "autoSyncDisabled": "自動同期は無効",
     "notFound": "セッションが見つかりません",
-    "notFoundDescription": "お探しのセッションは存在しないか、削除されています。"
+    "notFoundDescription": "お探しのセッションは存在しないか、削除されています。",
+    "loading": "読み込み中...",
+    "untitled": "無題"
   },
   "welcome": {
     "exploreTitle": "ワークスペースファイルを探索",

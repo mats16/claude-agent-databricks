@@ -191,7 +191,9 @@
     "openInDatabricks": "Open in Databricks",
     "autoSyncDisabled": "Auto sync disabled",
     "notFound": "Session not found",
-    "notFoundDescription": "The session you are looking for does not exist or has been deleted."
+    "notFoundDescription": "The session you are looking for does not exist or has been deleted.",
+    "loading": "Loading...",
+    "untitled": "Untitled"
   },
   "welcome": {
     "exploreTitle": "Explore workspace files",
