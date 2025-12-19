@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Typography, Spin, Empty, Flex, Dropdown, message } from 'antd';
@@ -15,7 +15,108 @@ interface SessionListProps {
   onSessionSelect?: () => void;
 }
 
-export default function SessionList({ onSessionSelect }: SessionListProps) {
+interface SessionItemProps {
+  session: Session;
+  isActive: boolean;
+  isHovering: boolean;
+  onSessionClick: (session: Session) => void;
+  onArchiveClick: (session: Session, e: React.MouseEvent) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  formatDate: (date: string) => string;
+}
+
+const SessionItem = memo(function SessionItem({
+  session,
+  isActive,
+  isHovering,
+  onSessionClick,
+  onArchiveClick,
+  onMouseEnter,
+  onMouseLeave,
+  formatDate,
+}: SessionItemProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      onClick={() => onSessionClick(session)}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      style={{
+        padding: `${spacing.sm}px ${spacing.lg}px`,
+        margin: `${spacing.xs}px ${spacing.md}px`,
+        cursor: 'pointer',
+        background: isActive ? colors.sessionActiveBg : 'transparent',
+        borderLeft: isActive
+          ? `3px solid ${colors.brand}`
+          : '3px solid transparent',
+        borderRadius: borderRadius.md,
+        transition: 'background 0.15s',
+        position: 'relative',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            strong={!session.isArchived}
+            type={session.isArchived ? 'secondary' : undefined}
+            style={{
+              display: 'block',
+              ...ellipsisStyle,
+              marginBottom: spacing.xs,
+            }}
+          >
+            {session.title || t('sessionList.untitledSession')}
+          </Text>
+          <div>
+            {session.workspacePath && (
+              <Text
+                type="secondary"
+                style={{
+                  fontSize: 11,
+                  display: 'block',
+                  ...ellipsisStyle,
+                }}
+              >
+                {session.workspacePath}
+              </Text>
+            )}
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {formatDate(session.createdAt)}
+            </Text>
+          </div>
+        </div>
+
+        {/* Archive Button - shown on hover, only for non-archived sessions */}
+        {!session.isArchived && isHovering && (
+          <InboxOutlined
+            style={{
+              fontSize: typography.fontSizeLarge,
+              color: colors.textMuted,
+              cursor: 'pointer',
+              marginLeft: spacing.sm,
+              flexShrink: 0,
+              alignSelf: 'center',
+            }}
+            onClick={(e) => onArchiveClick(session, e)}
+            title={t('sessionList.archive')}
+          />
+        )}
+      </div>
+    </div>
+  );
+});
+
+export default memo(function SessionList({
+  onSessionSelect,
+}: SessionListProps) {
   const { t, i18n } = useTranslation();
   const {
     sessions,
@@ -155,87 +256,20 @@ export default function SessionList({ onSessionSelect }: SessionListProps) {
         {!isLoading &&
           !error &&
           sessions.length > 0 &&
-          sessions.map((session) => {
-            const isActive = currentSessionId === session.id;
-            const isHovering = hoveredSessionId === session.id;
-
-            return (
-              <div
-                key={session.id}
-                onClick={() => handleSessionClick(session)}
-                onMouseEnter={() => setHoveredSessionId(session.id)}
-                onMouseLeave={() => setHoveredSessionId(null)}
-                style={{
-                  padding: `${spacing.sm}px ${spacing.lg}px`,
-                  margin: `${spacing.xs}px ${spacing.md}px`,
-                  cursor: 'pointer',
-                  background: isActive ? '#E8EEF2' : 'transparent',
-                  borderLeft: isActive
-                    ? `3px solid ${colors.brand}`
-                    : '3px solid transparent',
-                  borderRadius: borderRadius.md,
-                  transition: 'background 0.15s',
-                  position: 'relative',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <Text
-                      strong={!session.isArchived}
-                      type={session.isArchived ? 'secondary' : undefined}
-                      style={{
-                        display: 'block',
-                        ...ellipsisStyle,
-                        marginBottom: spacing.xs,
-                      }}
-                    >
-                      {session.title || t('sessionList.untitledSession')}
-                    </Text>
-                    <div>
-                      {session.workspacePath && (
-                        <Text
-                          type="secondary"
-                          style={{
-                            fontSize: 11,
-                            display: 'block',
-                            ...ellipsisStyle,
-                          }}
-                        >
-                          {session.workspacePath}
-                        </Text>
-                      )}
-                      <Text type="secondary" style={{ fontSize: 11 }}>
-                        {formatDate(session.createdAt)}
-                      </Text>
-                    </div>
-                  </div>
-
-                  {/* Archive Button - shown on hover, only for non-archived sessions */}
-                  {!session.isArchived && isHovering && (
-                    <InboxOutlined
-                      style={{
-                        fontSize: typography.fontSizeLarge,
-                        color: colors.textMuted,
-                        cursor: 'pointer',
-                        marginLeft: spacing.sm,
-                        flexShrink: 0,
-                        alignSelf: 'center',
-                      }}
-                      onClick={(e) => handleArchiveClick(session, e)}
-                      title={t('sessionList.archive')}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          sessions.map((session) => (
+            <SessionItem
+              key={session.id}
+              session={session}
+              isActive={currentSessionId === session.id}
+              isHovering={hoveredSessionId === session.id}
+              onSessionClick={handleSessionClick}
+              onArchiveClick={handleArchiveClick}
+              onMouseEnter={() => setHoveredSessionId(session.id)}
+              onMouseLeave={() => setHoveredSessionId(null)}
+              formatDate={formatDate}
+            />
+          ))}
       </div>
     </div>
   );
-}
+});

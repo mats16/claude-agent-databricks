@@ -1,6 +1,7 @@
 import { ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { Layout as AntLayout } from 'antd';
 import Sidebar from './Sidebar';
+import { colors } from '../styles/theme';
 
 const { Sider, Content } = AntLayout;
 
@@ -20,18 +21,20 @@ export default function Layout({ children }: LayoutProps) {
   });
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const sidebarWidthRef = useRef(sidebarWidth);
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      setIsResizing(true);
-      resizeRef.current = {
-        startX: e.clientX,
-        startWidth: sidebarWidth,
-      };
-    },
-    [sidebarWidth]
-  );
+  useEffect(() => {
+    sidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeRef.current = {
+      startX: e.clientX,
+      startWidth: sidebarWidthRef.current,
+    };
+  }, []);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -77,7 +80,7 @@ export default function Layout({ children }: LayoutProps) {
         width={sidebarWidth}
         theme="light"
         style={{
-          background: '#fff',
+          background: colors.background,
           borderRight: 'none',
           height: '100%',
           overflow: 'hidden',
@@ -91,7 +94,7 @@ export default function Layout({ children }: LayoutProps) {
       />
       <Content
         style={{
-          background: '#fafafa',
+          background: colors.backgroundSecondary,
           overflow: 'hidden',
         }}
       >

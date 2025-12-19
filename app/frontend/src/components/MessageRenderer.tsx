@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
@@ -154,7 +154,7 @@ function parseAgentMessage(content: string): ParsedBlock[] {
   return blocks;
 }
 
-function CollapsibleOutput({
+const CollapsibleOutput = memo(function CollapsibleOutput({
   content,
   toolName,
 }: {
@@ -219,9 +219,13 @@ function CollapsibleOutput({
       )}
     </div>
   );
-}
+});
 
-function MarkdownContent({ content }: { content: string }) {
+const MarkdownContent = memo(function MarkdownContent({
+  content,
+}: {
+  content: string;
+}) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -262,9 +266,9 @@ function MarkdownContent({ content }: { content: string }) {
       {content}
     </ReactMarkdown>
   );
-}
+});
 
-export default function MessageRenderer({
+export default memo(function MessageRenderer({
   content,
   role,
   images,
@@ -352,4 +356,4 @@ export default function MessageRenderer({
       })}
     </div>
   );
-}
+});

@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons';
 import Layout from './components/Layout';
 import SessionPage from './pages/SessionPage';
+import { colors, borderRadius, typography } from './styles/theme';
 import './App.css';
 
 const { Title, Text } = Typography;
@@ -17,17 +18,20 @@ function WelcomePage() {
 
   const actionCards = [
     {
-      icon: <FolderOutlined style={{ fontSize: 24, color: '#f5a623' }} />,
+      id: 'explore',
+      icon: <FolderOutlined style={{ fontSize: 24, color: colors.brand }} />,
       title: t('welcome.exploreTitle'),
       description: t('welcome.exploreDescription'),
     },
     {
-      icon: <BookOutlined style={{ fontSize: 24, color: '#f5a623' }} />,
+      id: 'eda',
+      icon: <BookOutlined style={{ fontSize: 24, color: colors.brand }} />,
       title: t('welcome.edaTitle'),
       description: t('welcome.edaDescription'),
     },
     {
-      icon: <RocketOutlined style={{ fontSize: 24, color: '#f5a623' }} />,
+      id: 'apps',
+      icon: <RocketOutlined style={{ fontSize: 24, color: colors.brand }} />,
       title: t('welcome.appsTitle'),
       description: t('welcome.appsDescription'),
     },
@@ -41,7 +45,7 @@ function WelcomePage() {
       style={{
         height: '100%',
         padding: 32,
-        background: '#fafafa',
+        background: colors.backgroundSecondary,
       }}
     >
       <Flex vertical align="center" style={{ maxWidth: 600, width: '100%' }}>
@@ -54,23 +58,44 @@ function WelcomePage() {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <rect x="10" y="30" width="80" height="50" rx="8" fill="#f5a623" />
-            <rect x="20" y="20" width="60" height="15" rx="4" fill="#f5a623" />
-            <circle cx="35" cy="50" r="8" fill="#1a1a1a" />
-            <circle cx="65" cy="50" r="8" fill="#1a1a1a" />
-            <rect x="30" y="65" width="40" height="5" rx="2" fill="#1a1a1a" />
+            <rect
+              x="10"
+              y="30"
+              width="80"
+              height="50"
+              rx="8"
+              fill={colors.brand}
+            />
+            <rect
+              x="20"
+              y="20"
+              width="60"
+              height="15"
+              rx="4"
+              fill={colors.brand}
+            />
+            <circle cx="35" cy="50" r="8" fill={colors.textPrimary} />
+            <circle cx="65" cy="50" r="8" fill={colors.textPrimary} />
+            <rect
+              x="30"
+              y="65"
+              width="40"
+              height="5"
+              rx="2"
+              fill={colors.textPrimary}
+            />
           </svg>
         </div>
 
         {/* Action Cards */}
         <Flex vertical gap={12} style={{ width: '100%' }}>
-          {actionCards.map((card, index) => (
+          {actionCards.map((card) => (
             <Card
-              key={index}
+              key={card.id}
               size="small"
               style={{
-                borderRadius: 12,
-                border: '1px solid #f0f0f0',
+                borderRadius: borderRadius.lg,
+                border: `1px solid ${colors.border}`,
                 boxShadow: 'none',
               }}
               hoverable
@@ -80,7 +105,10 @@ function WelcomePage() {
                   <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
                     {card.title}
                   </Title>
-                  <Text type="secondary" style={{ fontSize: 13 }}>
+                  <Text
+                    type="secondary"
+                    style={{ fontSize: typography.fontSizeSmall + 1 }}
+                  >
                     {card.description}
                   </Text>
                 </div>
@@ -88,8 +116,8 @@ function WelcomePage() {
                   style={{
                     width: 48,
                     height: 48,
-                    borderRadius: 8,
-                    background: '#fff8e6',
+                    borderRadius: borderRadius.md,
+                    background: colors.brandBg,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

@@ -34,6 +34,10 @@ export const colors = {
   // UI specific
   link: '#1677ff',
   danger: '#ff4d4f',
+
+  // Session specific
+  sessionActiveBg: '#E8EEF2',
+  brandBg: '#fff8e6',
 } as const;
 
 // Spacing scale (in pixels)

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Input, Checkbox, Typography, Button } from 'antd';
+import { Modal, Input, Switch, Typography, Button, Flex } from 'antd';
 import { SyncOutlined, FolderOutlined } from '@ant-design/icons';
 import WorkspaceSelectModal from './WorkspaceSelectModal';
 import { useUser } from '../contexts/UserContext';
@@ -129,20 +129,24 @@ export default function TitleEditModal({
         </Text>
       </div>
       <div>
-        <Checkbox
-          checked={autoWorkspacePush}
-          onChange={(e) => setAutoWorkspacePush(e.target.checked)}
-          disabled={isSaving}
-        >
-          <SyncOutlined style={{ marginRight: 4 }} />
-          {t('sidebar.autoSync')}
-        </Checkbox>
+        <Flex align="center" gap={8}>
+          <Switch
+            checked={autoWorkspacePush}
+            onChange={setAutoWorkspacePush}
+            disabled={isSaving}
+            size="small"
+          />
+          <Flex align="center" gap={4}>
+            <SyncOutlined />
+            <Text>{t('sidebar.autoSync')}</Text>
+          </Flex>
+        </Flex>
         <Text
           type="secondary"
           style={{
             display: 'block',
             marginTop: 4,
-            marginLeft: 24,
+            marginLeft: 44,
             fontSize: 12,
           }}
         >

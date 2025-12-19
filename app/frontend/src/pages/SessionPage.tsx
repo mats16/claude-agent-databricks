@@ -46,12 +46,6 @@ export default function SessionPage() {
   const location = useLocation();
   const { getSession, updateSessionLocally } = useSessions();
   const [input, setInput] = useState('');
-  const [sessionTitle, setSessionTitle] = useState<string | null>(null);
-  const [sessionAutoWorkspacePush, setSessionAutoWorkspacePush] =
-    useState(false);
-  const [sessionWorkspacePath, setSessionWorkspacePath] = useState<
-    string | null
-  >(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -64,21 +58,12 @@ export default function SessionPage() {
     prevSessionIdRef.current = sessionId;
   }
 
-  // Sync session data from context
+  // Get session data from context
   const session = sessionId ? getSession(sessionId) : undefined;
   const isArchived = session?.isArchived ?? false;
-
-  useEffect(() => {
-    if (!sessionId) return;
-    const session = getSession(sessionId);
-    if (session) {
-      if (session.title) {
-        setSessionTitle(session.title);
-      }
-      setSessionAutoWorkspacePush(session.autoWorkspacePush ?? false);
-      setSessionWorkspacePath(session.workspacePath ?? null);
-    }
-  }, [sessionId, getSession]);
+  const sessionTitle = session?.title ?? null;
+  const sessionAutoWorkspacePush = session?.autoWorkspacePush ?? false;
+  const sessionWorkspacePath = session?.workspacePath ?? null;
 
   const handleSaveSettings = useCallback(
     async (
@@ -99,9 +84,6 @@ export default function SessionPage() {
       });
 
       if (response.ok) {
-        setSessionTitle(newTitle);
-        setSessionAutoWorkspacePush(autoWorkspacePush);
-        setSessionWorkspacePath(workspacePath);
         updateSessionLocally(sessionId, {
           title: newTitle,
           autoWorkspacePush,
