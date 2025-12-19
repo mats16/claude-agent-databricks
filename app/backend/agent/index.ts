@@ -114,11 +114,18 @@ export class MessageStream {
     // This allows SDK to emit init message while we wait
     if (this.waitForReady) {
       try {
-        console.log('[MessageStream] Waiting for workspace pull to complete...');
+        console.log(
+          '[MessageStream] Waiting for workspace pull to complete...'
+        );
         await this.waitForReady;
-        console.log('[MessageStream] Workspace pull completed, starting message processing');
+        console.log(
+          '[MessageStream] Workspace pull completed, starting message processing'
+        );
       } catch (error) {
-        console.error('[MessageStream] Workspace pull failed, continuing anyway:', error);
+        console.error(
+          '[MessageStream] Workspace pull failed, continuing anyway:',
+          error
+        );
         // Continue even if pull fails - agent can still work with empty/partial directory
       }
     }

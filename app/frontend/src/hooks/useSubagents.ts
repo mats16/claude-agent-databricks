@@ -46,7 +46,8 @@ export function useSubagents() {
       const data: SubagentsResponse = await response.json();
       setSubagents(Array.isArray(data.subagents) ? data.subagents : []);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch subagents';
+      const message =
+        err instanceof Error ? err.message : 'Failed to fetch subagents';
       setError(message);
       console.error('Failed to fetch subagents:', err);
     } finally {
@@ -79,7 +80,8 @@ export function useSubagents() {
         await fetchSubagents(); // Refresh list
         return true;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Failed to create subagent';
+        const message =
+          err instanceof Error ? err.message : 'Failed to create subagent';
         setError(message);
         console.error('Failed to create subagent:', err);
         return false;
@@ -115,7 +117,8 @@ export function useSubagents() {
         await fetchSubagents(); // Refresh list
         return true;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Failed to update subagent';
+        const message =
+          err instanceof Error ? err.message : 'Failed to update subagent';
         setError(message);
         console.error('Failed to update subagent:', err);
         return false;
@@ -143,7 +146,8 @@ export function useSubagents() {
         await fetchSubagents(); // Refresh list
         return true;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Failed to delete subagent';
+        const message =
+          err instanceof Error ? err.message : 'Failed to delete subagent';
         setError(message);
         console.error('Failed to delete subagent:', err);
         return false;
@@ -165,7 +169,8 @@ export function useSubagents() {
       const data: PresetSubagentsResponse = await response.json();
       setPresetSubagents(Array.isArray(data.presets) ? data.presets : []);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch preset subagents';
+      const message =
+        err instanceof Error ? err.message : 'Failed to fetch preset subagents';
       setError(message);
       console.error('Failed to fetch preset subagents:', err);
     } finally {
@@ -193,7 +198,10 @@ export function useSubagents() {
         await fetchSubagents(); // Refresh list
         return true;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Failed to import preset subagent';
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Failed to import preset subagent';
         setError(message);
         console.error('Failed to import preset subagent:', err);
         return false;

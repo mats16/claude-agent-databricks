@@ -17,9 +17,7 @@ import {
 } from '../../../db/sessions.js';
 import { getSettingsDirect } from '../../../db/settings.js';
 import { upsertUser } from '../../../db/users.js';
-import {
-  enqueueDelete,
-} from '../../../services/workspaceQueueService.js';
+import { enqueueDelete } from '../../../services/workspaceQueueService.js';
 import { workspacePull } from '../../../utils/databricks.js';
 import { extractRequestContext } from '../../../utils/headers.js';
 import {
