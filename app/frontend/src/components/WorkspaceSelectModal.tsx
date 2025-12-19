@@ -79,7 +79,13 @@ export default function WorkspaceSelectModal({
     setError(null);
 
     try {
-      const apiPath = path.replace(/^\/Workspace/, '').toLowerCase();
+      // Convert /Workspace/Users/ to /users/ and /Workspace/Shared/ to /shared/
+      // Preserve original case for folder names
+      const apiPath = path
+        .replace(/^\/Workspace\/Users\//, '/users/')
+        .replace(/^\/Workspace\/Users$/, '/users')
+        .replace(/^\/Workspace\/Shared\//, '/shared/')
+        .replace(/^\/Workspace\/Shared$/, '/shared');
       const res = await fetch(`/api/v1/workspace${apiPath}`);
 
       if (res.status === 403) {
@@ -186,8 +192,13 @@ export default function WorkspaceSelectModal({
     setIsSubmitting(true);
     try {
       const newPath = `${currentPath}/${newFolderName.trim()}`;
-      // Convert to lowercase API path: /Workspace/Users/email/folder -> /users/email/folder
-      const apiPath = newPath.replace(/^\/Workspace/, '').toLowerCase();
+      // Convert /Workspace/Users/ to /users/ and /Workspace/Shared/ to /shared/
+      // Preserve original case for folder names
+      const apiPath = newPath
+        .replace(/^\/Workspace\/Users\//, '/users/')
+        .replace(/^\/Workspace\/Users$/, '/users')
+        .replace(/^\/Workspace\/Shared\//, '/shared/')
+        .replace(/^\/Workspace\/Shared$/, '/shared');
       const res = await fetch(`/api/v1/workspace${apiPath}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
