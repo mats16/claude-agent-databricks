@@ -51,21 +51,27 @@ export default function WorkspaceSelectModal({
   const [newFolderName, setNewFolderName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Sort objects: directories first, then alphabetically
+  // Filter and sort objects: hide hidden files, directories first, then alphabetically
   const sortedObjects = useMemo(() => {
-    return [...objects].sort((a, b) => {
-      const aIsDir = a.object_type === 'DIRECTORY';
-      const bIsDir = b.object_type === 'DIRECTORY';
+    return [...objects]
+      .filter((obj) => {
+        // Hide hidden files/folders (starting with '.')
+        const name = obj.path.split('/').pop() || '';
+        return !name.startsWith('.');
+      })
+      .sort((a, b) => {
+        const aIsDir = a.object_type === 'DIRECTORY';
+        const bIsDir = b.object_type === 'DIRECTORY';
 
-      // Directories come first
-      if (aIsDir && !bIsDir) return -1;
-      if (!aIsDir && bIsDir) return 1;
+        // Directories come first
+        if (aIsDir && !bIsDir) return -1;
+        if (!aIsDir && bIsDir) return 1;
 
-      // Then sort alphabetically by path name
-      const aName = a.path.split('/').pop()?.toLowerCase() || '';
-      const bName = b.path.split('/').pop()?.toLowerCase() || '';
-      return aName.localeCompare(bName);
-    });
+        // Then sort alphabetically by path name
+        const aName = a.path.split('/').pop()?.toLowerCase() || '';
+        const bName = b.path.split('/').pop()?.toLowerCase() || '';
+        return aName.localeCompare(bName);
+      });
   }, [objects]);
 
   const fetchDirectories = async (path: string) => {
