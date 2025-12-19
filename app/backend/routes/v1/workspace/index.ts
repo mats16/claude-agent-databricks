@@ -2,21 +2,22 @@ import type { FastifyPluginAsync } from 'fastify';
 import {
   listRootWorkspaceHandler,
   listUserWorkspaceHandler,
-  getWorkspaceStatusHandler,
   listWorkspacePathHandler,
 } from './handlers.js';
 
 const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
   // List root workspace (returns Users and Shared)
+  // GET /api/v1/workspace
   fastify.get('/', listRootWorkspaceHandler);
 
   // List user's workspace directory (uses Service Principal token)
-  fastify.get('/Users/:email', listUserWorkspaceHandler);
+  // GET /api/v1/workspace/users/:email
+  // Note: 'me' is resolved to actual email from header
+  fastify.get('/users/:email', listUserWorkspaceHandler);
 
-  // Get workspace object status (includes object_id)
-  fastify.post('/status', getWorkspaceStatusHandler);
-
-  // List any workspace path (Shared, Repos, etc.)
+  // List any workspace path (uses Service Principal token)
+  // GET /api/v1/workspace/*
+  // Supports: /users/me/..., /users/:email/..., /shared/...
   // Note: This must be registered last due to wildcard
   fastify.get('/*', listWorkspacePathHandler);
 };

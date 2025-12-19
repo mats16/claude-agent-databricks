@@ -34,8 +34,8 @@ export default function WorkspaceSelectModal({
     setError(null);
 
     try {
-      const apiPath = path.replace(/^\/Workspace/, '');
-      const res = await fetch(`/api/v1/Workspace${apiPath}`);
+      const apiPath = path.replace(/^\/Workspace/, '').toLowerCase();
+      const res = await fetch(`/api/v1/workspace${apiPath}`);
 
       if (res.status === 403) {
         setError(t('workspaceModal.noPermission'));
@@ -79,7 +79,7 @@ export default function WorkspaceSelectModal({
     setError(null);
 
     try {
-      const res = await fetch('/api/v1/Workspace/Users/me');
+      const res = await fetch('/api/v1/workspace/users/me');
 
       if (res.status === 403) {
         setError(t('workspaceModal.noPermission'));

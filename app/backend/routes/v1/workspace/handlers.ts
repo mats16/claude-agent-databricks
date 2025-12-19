@@ -47,31 +47,33 @@ export async function listUserWorkspaceHandler(
   }
 }
 
-// Get workspace object status (includes object_id, uses Service Principal token)
-export async function getWorkspaceStatusHandler(
-  request: FastifyRequest<{ Body: { path: string } }>,
-  reply: FastifyReply
-) {
-  const { path: workspacePath } = request.body;
-
-  if (!workspacePath) {
-    return reply.status(400).send({ error: 'path is required' });
+// Convert lowercase API path to Databricks workspace path
+// e.g., "users/foo@example.com/bar" -> "Users/foo@example.com/bar"
+//       "shared/project" -> "Shared/project"
+function convertToWorkspacePath(subpath: string, userEmail?: string): string {
+  // Handle users/me/... pattern - replace 'me' with actual email
+  if (subpath.startsWith('users/me/') && userEmail) {
+    return `Users/${userEmail}/${subpath.slice(9)}`;
+  }
+  if (subpath === 'users/me' && userEmail) {
+    return `Users/${userEmail}`;
   }
 
-  try {
-    const result = await workspaceService.getWorkspaceStatus(workspacePath);
-    return result;
-  } catch (error: any) {
-    if (error instanceof workspaceService.WorkspaceError) {
-      if (error.code === 'PERMISSION_DENIED') {
-        return reply.status(403).send({ error: 'PERMISSION_DENIED' });
-      }
-      if (error.code === 'NOT_FOUND') {
-        return reply.status(404).send({ error: error.message });
-      }
-    }
-    return reply.status(500).send({ error: error.message });
+  // Handle users/... pattern
+  if (subpath.startsWith('users/')) {
+    return `Users/${subpath.slice(6)}`;
   }
+
+  // Handle shared/... pattern
+  if (subpath.startsWith('shared/')) {
+    return `Shared/${subpath.slice(7)}`;
+  }
+  if (subpath === 'shared') {
+    return 'Shared';
+  }
+
+  // Return as-is for other paths (already capitalized or unknown)
+  return subpath;
 }
 
 // List any workspace path (Shared, Repos, etc., uses Service Principal token)
@@ -81,8 +83,20 @@ export async function listWorkspacePathHandler(
 ) {
   const subpath = request.params['*'];
 
+  // Get user email for 'me' resolution
+  let userEmail: string | undefined;
   try {
-    const result = await workspaceService.listWorkspacePath(subpath);
+    const context = extractRequestContext(request);
+    userEmail = context.userEmail;
+  } catch {
+    // Ignore - userEmail will be undefined
+  }
+
+  // Convert lowercase API path to Databricks workspace path
+  const workspacePath = convertToWorkspacePath(subpath, userEmail);
+
+  try {
+    const result = await workspaceService.listWorkspacePath(workspacePath);
     return result;
   } catch (error: any) {
     if (error instanceof workspaceService.WorkspaceError) {

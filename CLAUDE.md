@@ -305,8 +305,10 @@ Apply the path to `app/frontend/public/favicon.svg`:
 - `PATCH /api/v1/sessions/:id/archive` - Archive session (sets `is_archived=true`, deletes working directory)
 
 #### Workspace
-- `GET /api/v1/Workspace` - List root workspace
-- `GET /api/v1/Workspace/*` - List workspace path
+- `GET /api/v1/workspace` - List root workspace
+- `GET /api/v1/workspace/users/:email` - List user's workspace
+- `GET /api/v1/workspace/users/me` - List current user's workspace (`me` as email alias)
+- `GET /api/v1/workspace/*` - List any workspace path (path converted to Databricks format internally)
 
 ### WebSocket
 - `/api/v1/sessions/ws` - Real-time session list updates (notifies on session creation)
