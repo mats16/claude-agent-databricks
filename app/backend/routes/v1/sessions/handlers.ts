@@ -115,23 +115,27 @@ export async function createSessionHandler(
   fs.mkdirSync(localWorkPath, { recursive: true });
 
   // Pull workspace directory in background if workspacePath is provided (always overwrite)
+  // Get completion promise to make agent wait for pull before processing
+  let pullCompleted: Promise<void> | undefined;
   if (workspacePath) {
     console.log(
       `[New Session] Enqueueing workspace pull from ${workspacePath}...`
     );
     const spToken = await getOidcAccessToken();
-    enqueuePull({
+    const pullResult = enqueuePull({
       userId,
       workspacePath,
       localPath: localWorkPath,
       overwrite: true,
       token: spToken,
     });
+    pullCompleted = pullResult.completed;
   }
 
   const startAgentProcessing = () => {
     // Create MessageStream for this session
-    const stream = new MessageStream(messageContent);
+    // Pass pullCompleted promise so agent waits for workspace sync before processing
+    const stream = new MessageStream(messageContent, pullCompleted);
 
     // Start processing in background
     const agentIterator = processAgentRequest(

@@ -58,6 +58,10 @@ const DEFAULT_CONFIG: QueueConfig = {
 // In-memory state
 const userTaskCounts = new Map<string, number>();
 const pendingTasks = new Map<string, WorkspaceSyncTask>();
+const taskCompletionCallbacks = new Map<
+  string,
+  { resolve: () => void; reject: (error: Error) => void }
+>();
 
 // Queue instance (singleton)
 let queue: queueAsPromised<WorkspaceSyncTask> | null = null;
@@ -115,9 +119,11 @@ async function processTask(task: WorkspaceSyncTask): Promise<void> {
         break;
     }
 
-    // Success: cleanup
+    // Success: cleanup and resolve completion callback
     pendingTasks.delete(task.id);
     decrementUserCount(task.userId);
+    taskCompletionCallbacks.get(task.id)?.resolve();
+    taskCompletionCallbacks.delete(task.id);
     console.log(
       `[WorkspaceQueue] Task ${task.id} (${task.type}) completed successfully`
     );
@@ -143,9 +149,17 @@ async function processTask(task: WorkspaceSyncTask): Promise<void> {
         });
       }, delay);
     } else {
-      // Final failure: cleanup
+      // Final failure: cleanup and reject completion callback
       pendingTasks.delete(task.id);
       decrementUserCount(task.userId);
+      taskCompletionCallbacks
+        .get(task.id)
+        ?.reject(
+          new Error(
+            `Task ${task.id} failed after ${config.maxRetries} retries: ${error.message}`
+          )
+        );
+      taskCompletionCallbacks.delete(task.id);
       console.error(
         `[WorkspaceQueue] Task ${task.id} (${task.type}) failed after ${config.maxRetries} retries`
       );
@@ -185,6 +199,12 @@ export function initQueue(customConfig?: Partial<QueueConfig>): void {
   );
 }
 
+// Enqueue pull task result type
+export interface EnqueuePullResult {
+  taskId: string;
+  completed: Promise<void>;
+}
+
 // Enqueue pull task
 export function enqueuePull(params: {
   userId: string;
@@ -192,7 +212,7 @@ export function enqueuePull(params: {
   localPath: string;
   overwrite?: boolean;
   token?: string;
-}): string {
+}): EnqueuePullResult {
   ensureQueueInitialized();
   const task: PullTask = {
     id: crypto.randomUUID(),
@@ -205,8 +225,14 @@ export function enqueuePull(params: {
     createdAt: Date.now(),
     retryCount: 0,
   };
+
+  // Create completion promise
+  const completed = new Promise<void>((resolve, reject) => {
+    taskCompletionCallbacks.set(task.id, { resolve, reject });
+  });
+
   enqueueTask(task);
-  return task.id;
+  return { taskId: task.id, completed };
 }
 
 // Enqueue push task
