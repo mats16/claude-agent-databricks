@@ -18,9 +18,9 @@ import {
 import { getSettingsDirect } from '../../../db/settings.js';
 import { upsertUser } from '../../../db/users.js';
 import {
-  enqueuePull,
   enqueueDelete,
 } from '../../../services/workspaceQueueService.js';
+import { workspacePull } from '../../../utils/databricks.js';
 import { extractRequestContext } from '../../../utils/headers.js';
 import {
   sessionMessageStreams,
@@ -114,22 +114,16 @@ export async function createSessionHandler(
   console.log(`[New Session] Creating workDir: ${localWorkPath}`);
   fs.mkdirSync(localWorkPath, { recursive: true });
 
-  // Pull workspace directory in background if workspacePath is provided (always overwrite)
-  // Get completion promise to make agent wait for pull before processing
+  // Pull workspace directory if workspacePath is provided
+  // Start pull immediately but don't await - agent will wait via MessageStream
   let pullCompleted: Promise<void> | undefined;
   if (workspacePath) {
     console.log(
-      `[New Session] Enqueueing workspace pull from ${workspacePath}...`
+      `[New Session] Starting workspace pull from ${workspacePath}...`
     );
     const spToken = await getOidcAccessToken();
-    const pullResult = enqueuePull({
-      userId,
-      workspacePath,
-      localPath: localWorkPath,
-      overwrite: true,
-      token: spToken,
-    });
-    pullCompleted = pullResult.completed;
+    // Start pull immediately, agent will wait for completion before processing
+    pullCompleted = workspacePull(workspacePath, localWorkPath, true, spToken);
   }
 
   const startAgentProcessing = () => {

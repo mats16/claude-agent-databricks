@@ -32,7 +32,7 @@ export async function pullClaudeConfig(
     `[Backup Pull] Enqueueing claude config pull from ${workspaceClaudeConfigPath} to ${localClaudeConfigPath}...`
   );
 
-  const { taskId } = enqueuePull({
+  const taskId = enqueuePull({
     userId,
     workspacePath: workspaceClaudeConfigPath,
     localPath: localClaudeConfigPath,
@@ -89,7 +89,7 @@ export async function manualPullClaudeConfig(
     `[Manual Pull] Enqueueing claude config pull from ${workspaceClaudeConfigPath} to ${localClaudeConfigPath}...`
   );
 
-  const { taskId } = enqueuePull({
+  const taskId = enqueuePull({
     userId,
     workspacePath: workspaceClaudeConfigPath,
     localPath: localClaudeConfigPath,
