@@ -10,7 +10,7 @@ import { ThunderboltOutlined } from '@ant-design/icons';
 import { useSkills, type Skill } from '../hooks/useSkills';
 import SkillsList from './skills/SkillsList';
 import SkillEditor from './skills/SkillEditor';
-import PresetImportModal from './skills/PresetImportModal';
+import PresetImportModal, { type ImportTab } from './skills/PresetImportModal';
 import { colors, spacing } from '../styles/theme';
 
 const { Text } = Typography;
@@ -25,14 +25,20 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
   const {
     skills,
     presetSkills,
+    githubSkills,
     loading,
     error,
+    githubLoading,
+    githubError,
+    githubCached,
     fetchSkills,
     createSkill,
     updateSkill,
     deleteSkill,
     fetchPresetSkills,
     importPresetSkill,
+    fetchGitHubSkills,
+    importGitHubSkill,
   } = useSkills();
 
   // Selection state
@@ -50,6 +56,10 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [selectedGitHubSkill, setSelectedGitHubSkill] = useState<string | null>(
+    null
+  );
+  const [activeImportTab, setActiveImportTab] = useState<ImportTab>('local');
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Fetch skills when modal opens
@@ -59,12 +69,19 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
     }
   }, [isOpen, fetchSkills]);
 
-  // Fetch preset skills when import modal opens
+  // Fetch preset skills when import modal opens (local tab)
   useEffect(() => {
-    if (isImportModalOpen) {
+    if (isImportModalOpen && activeImportTab === 'local') {
       fetchPresetSkills();
     }
-  }, [isImportModalOpen, fetchPresetSkills]);
+  }, [isImportModalOpen, activeImportTab, fetchPresetSkills]);
+
+  // Fetch GitHub skills when import modal opens (github tab)
+  useEffect(() => {
+    if (isImportModalOpen && activeImportTab === 'github') {
+      fetchGitHubSkills();
+    }
+  }, [isImportModalOpen, activeImportTab, fetchGitHubSkills]);
 
   // Update edited fields when selected skill changes
   useEffect(() => {
@@ -246,9 +263,35 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
     }
   }, [selectedPreset, importPresetSkill, skills, t]);
 
+  const handleImportGitHubSkill = useCallback(async () => {
+    if (!selectedGitHubSkill) return;
+
+    setIsSaving(true);
+    const success = await importGitHubSkill(selectedGitHubSkill);
+    setIsSaving(false);
+
+    if (success) {
+      message.success(t('skillsModal.importGitHubSuccess'));
+      setIsImportModalOpen(false);
+      setSelectedGitHubSkill(null);
+      // Refresh skills list to get the imported skill
+      await fetchSkills();
+    } else {
+      message.error(t('skillsModal.importGitHubFailed'));
+    }
+  }, [selectedGitHubSkill, importGitHubSkill, fetchSkills, t]);
+
   const handleCloseImportModal = useCallback(() => {
     setIsImportModalOpen(false);
     setSelectedPreset(null);
+    setSelectedGitHubSkill(null);
+  }, []);
+
+  const handleTabChange = useCallback((tab: ImportTab) => {
+    setActiveImportTab(tab);
+    // Clear selections when switching tabs
+    setSelectedPreset(null);
+    setSelectedGitHubSkill(null);
   }, []);
 
   const hasChanges = isCreating
@@ -314,10 +357,19 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
         presetSkills={presetSkills}
         selectedPreset={selectedPreset}
         loading={loading}
+        githubSkills={githubSkills}
+        selectedGitHubSkill={selectedGitHubSkill}
+        githubLoading={githubLoading}
+        githubError={githubError}
+        githubCached={githubCached}
         isSaving={isSaving}
+        activeTab={activeImportTab}
         onClose={handleCloseImportModal}
         onSelectPreset={setSelectedPreset}
-        onImport={handleImportPreset}
+        onSelectGitHubSkill={setSelectedGitHubSkill}
+        onImportPreset={handleImportPreset}
+        onImportGitHubSkill={handleImportGitHubSkill}
+        onTabChange={handleTabChange}
       />
     </Modal>
   );
