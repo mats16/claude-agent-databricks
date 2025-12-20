@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, Tag, Typography, Flex, Tooltip, Spin } from 'antd';
+import { Button, Typography, Flex, Tooltip, Spin } from 'antd';
 import {
   EditOutlined,
   LinkOutlined,
@@ -198,7 +198,6 @@ export default function SessionPage() {
     sessionNotFound,
     connectionError,
     sendMessage,
-    selectedModel,
   } = useAgent({
     sessionId,
     initialMessage,
@@ -462,22 +461,19 @@ export default function SessionPage() {
             </Flex>
           )}
         </Flex>
-        <Flex align="center" gap={spacing.md}>
-          <Tag style={{ margin: 0 }}>{selectedModel}</Tag>
-          <Tooltip title={getStatusText()}>
-            <div
-              style={{
-                width: spacing.sm,
-                height: spacing.sm,
-                borderRadius: '50%',
-                background: getStatusColor(isConnected, isReconnecting),
-                animation: isReconnecting
-                  ? 'pulse 1s ease-in-out infinite'
-                  : undefined,
-              }}
-            />
-          </Tooltip>
-        </Flex>
+        <Tooltip title={getStatusText()} placement="left">
+          <div
+            style={{
+              width: spacing.sm,
+              height: spacing.sm,
+              borderRadius: '50%',
+              background: getStatusColor(isConnected, isReconnecting),
+              animation: isReconnecting
+                ? 'pulse 1s ease-in-out infinite'
+                : undefined,
+            }}
+          />
+        </Tooltip>
       </Flex>
 
       <TitleEditModal
