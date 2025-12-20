@@ -90,7 +90,12 @@ export default function WorkspacePathSelector({
         )}
       </div>
       {showAutoSync && (
-        <Tooltip title={t('sidebar.autoSyncTooltip')}>
+        <Tooltip
+          title={t('sidebar.autoSyncTooltip')}
+          placement="bottomRight"
+          arrow={{ pointAtCenter: true }}
+          overlayStyle={{ maxWidth: 'none', whiteSpace: 'nowrap' }}
+        >
           <Checkbox
             checked={autoWorkspacePush}
             onChange={(e) => onAutoWorkspacePushChange(e.target.checked)}
