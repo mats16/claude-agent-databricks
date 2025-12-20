@@ -16,6 +16,7 @@ import {
   PaperClipOutlined,
   CloseOutlined,
   FilePdfOutlined,
+  CaretDownOutlined,
 } from '@ant-design/icons';
 import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
@@ -519,11 +520,36 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
               value={selectedModel}
               onChange={setSelectedModel}
               disabled={isProcessing}
-              style={{ width: 120 }}
+              style={{ width: 140 }}
               size="small"
+              popupMatchSelectWidth={240}
+              placement="bottomRight"
+              suffixIcon={<CaretDownOutlined />}
+              optionRender={(option) => (
+                <div>
+                  <div style={{ fontWeight: 500 }}>{option.label}</div>
+                  <div style={{ fontSize: 12, color: '#666' }}>
+                    {option.data.description}
+                  </div>
+                </div>
+              )}
               options={[
-                { value: 'databricks-claude-opus-4-5', label: 'Opus 4.5' },
-                { value: 'databricks-claude-sonnet-4-5', label: 'Sonnet 4.5' },
+                {
+                  value: 'databricks-claude-opus-4-5',
+                  label: t('models.opus'),
+                  description: t('models.opusDescription'),
+                },
+                {
+                  value: 'databricks-claude-sonnet-4-5',
+                  label: t('models.sonnet'),
+                  description: t('models.sonnetDescription'),
+                },
+                {
+                  value: 'databricks-claude-haiku-4-5',
+                  label: t('models.haiku'),
+                  description: t('models.haikuDescription'),
+                  disabled: true,
+                },
               ]}
             />
             <Tooltip

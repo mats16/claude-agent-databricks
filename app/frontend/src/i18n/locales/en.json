@@ -20,6 +20,15 @@
     "autoSyncTooltip": "Automatically sync changes back to Workspace on task completion",
     "permissionRequired": "No access to workspace. Please grant permissions in Settings."
   },
+  "models": {
+    "opus": "Opus 4.5",
+    "opusDescription": "Most capable for complex work",
+    "sonnet": "Sonnet 4.5",
+    "sonnetDescription": "Best for everyday tasks",
+    "haiku": "Haiku 4.5",
+    "haikuDescription": "Fastest for quick answers",
+    "comingSoon": "Coming soon"
+  },
   "accountMenu": {
     "accountSettings": "Account settings",
     "appSettings": "Application Settings",
