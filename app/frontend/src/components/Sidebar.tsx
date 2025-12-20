@@ -501,7 +501,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
             variant="borderless"
             style={{ padding: 0, marginBottom: spacing.sm }}
           />
-          <Flex justify="flex-end" align="center" gap={spacing.sm}>
+          <Flex align="center" gap={spacing.sm}>
             {/* Unified attachment button */}
             <Button
               type="text"
@@ -514,6 +514,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
               }
               title={t('fileUpload.attachFile')}
             />
+            <div style={{ flex: 1 }} />
             <Select
               value={selectedModel}
               onChange={setSelectedModel}

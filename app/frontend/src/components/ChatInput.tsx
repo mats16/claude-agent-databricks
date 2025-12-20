@@ -355,16 +355,6 @@ export default function ChatInput({
 
         {/* Input row */}
         <Flex gap={spacing.sm} align="flex-end">
-          <TextArea
-            value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder || t('sessionPage.typeMessage')}
-            disabled={disabled || isProcessing}
-            variant="borderless"
-            autoSize={{ minRows: 1, maxRows: 9 }}
-            style={{ flex: 1, padding: 0, alignSelf: 'stretch' }}
-          />
           {/* Unified attachment button */}
           <Button
             type="text"
@@ -377,6 +367,16 @@ export default function ChatInput({
                 attachedFiles.length >= maxFiles)
             }
             title={t('fileUpload.attachFile')}
+          />
+          <TextArea
+            value={input}
+            onChange={(e) => onInputChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder || t('sessionPage.typeMessage')}
+            disabled={disabled || isProcessing}
+            variant="borderless"
+            autoSize={{ minRows: 1, maxRows: 9 }}
+            style={{ flex: 1, padding: 0, alignSelf: 'stretch' }}
           />
           <Button
             type="primary"
