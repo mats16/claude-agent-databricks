@@ -65,7 +65,9 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const { t } = useTranslation();
   const { userInfo, isLoading } = useUser();
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState('sonnet');
+  const [selectedModel, setSelectedModel] = useState(() => {
+    return localStorage.getItem('selectedModel') || 'sonnet';
+  });
   const [workspacePath, setWorkspacePath] = useState('');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -321,6 +323,12 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
     setAutoWorkspacePush(path.trim().length > 0);
   };
 
+  // Handle model change: save to localStorage
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    localStorage.setItem('selectedModel', model);
+  };
+
   const isProcessing = isSubmitting || isConverting;
   const hasAttachments = attachedImages.length > 0 || attachedPdfs.length > 0;
   const isSubmitDisabled =
@@ -516,7 +524,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
             <div style={{ flex: 1 }} />
             <Select
               value={selectedModel}
-              onChange={setSelectedModel}
+              onChange={handleModelChange}
               disabled={isProcessing}
               style={{ width: 'auto', minWidth: 100 }}
               size="small"
