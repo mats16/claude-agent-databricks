@@ -311,12 +311,10 @@ Violating these rules is considered a critical error.
         CLAUDE_CONFIG_DIR: localClaudeConfigPath,
         ANTHROPIC_BASE_URL: `${databricksHost}/serving-endpoints/anthropic`,
         ANTHROPIC_AUTH_TOKEN: spAccessToken,
-        ANTHROPIC_MODEL: model,
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'databricks-claude-opus-4-5',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'databricks-claude-sonnet-4-5',
         DATABRICKS_HOST: databricksHost,
         DATABRICKS_TOKEN: userAccessToken,
-        DATABRICKS_SP_TOKEN: spAccessToken,
       },
       maxTurns: 100,
       tools: {
