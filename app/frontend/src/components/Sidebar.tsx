@@ -65,9 +65,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const { t } = useTranslation();
   const { userInfo, isLoading } = useUser();
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState(
-    'databricks-claude-sonnet-4-5'
-  );
+  const [selectedModel, setSelectedModel] = useState('sonnet');
   const [workspacePath, setWorkspacePath] = useState('');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -535,17 +533,17 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
               )}
               options={[
                 {
-                  value: 'databricks-claude-opus-4-5',
+                  value: 'opus',
                   label: t('models.opus'),
                   description: t('models.opusDescription'),
                 },
                 {
-                  value: 'databricks-claude-sonnet-4-5',
+                  value: 'sonnet',
                   label: t('models.sonnet'),
                   description: t('models.sonnetDescription'),
                 },
                 {
-                  value: 'databricks-claude-haiku-4-5',
+                  value: 'haiku',
                   label: t('models.haiku'),
                   description: t('models.haikuDescription'),
                   disabled: true,
