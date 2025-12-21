@@ -16,7 +16,7 @@ import {
 import type { AttachedImage } from './ImageUpload';
 import type { AttachedFile } from '../hooks/useFileUpload';
 import { stickyInputStyle } from '../styles/common';
-import { spacing } from '../styles/theme';
+import { colors, spacing } from '../styles/theme';
 import {
   isSupportedImageType,
   isWithinSizeLimit as isImageWithinSizeLimit,
@@ -206,9 +206,9 @@ export default function ChatInput({
 
   const getFileIcon = (file: AttachedFile) => {
     if (isPdfFile(file.file)) {
-      return <FilePdfOutlined style={{ fontSize: 20, color: '#ff4d4f' }} />;
+      return <FilePdfOutlined style={{ fontSize: 20, color: colors.danger }} />;
     }
-    return <FileTextOutlined style={{ fontSize: 20, color: '#1890ff' }} />;
+    return <FileTextOutlined style={{ fontSize: 20, color: colors.info }} />;
   };
 
   const isProcessing = isConverting || isUploading;
@@ -270,7 +270,7 @@ export default function ChatInput({
                   height: 48,
                   borderRadius: 6,
                   overflow: 'hidden',
-                  border: '1px solid #e5e5e5',
+                  border: `1px solid ${colors.borderDark}`,
                 }}
               >
                 <img
@@ -295,8 +295,8 @@ export default function ChatInput({
                     padding: 2,
                     minWidth: 16,
                     height: 16,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    color: '#fff',
+                    background: colors.overlayDark,
+                    color: colors.background,
                     borderRadius: '0 0 0 4px',
                   }}
                 />
@@ -313,8 +313,11 @@ export default function ChatInput({
                   gap: 8,
                   padding: '4px 8px',
                   borderRadius: 6,
-                  border: '1px solid #e5e5e5',
-                  background: file.status === 'error' ? '#fff2f0' : '#fafafa',
+                  border: `1px solid ${colors.borderDark}`,
+                  background:
+                    file.status === 'error'
+                      ? colors.errorBg
+                      : colors.backgroundTertiary,
                   maxWidth: 200,
                 }}
               >
@@ -331,7 +334,7 @@ export default function ChatInput({
                   >
                     {file.file.name}
                   </div>
-                  <div style={{ fontSize: 10, color: '#999' }}>
+                  <div style={{ fontSize: 10, color: colors.textMuted }}>
                     {formatFileSize(file.file.size)}
                     {file.type === 'pdf' && ' (PDF)'}
                   </div>

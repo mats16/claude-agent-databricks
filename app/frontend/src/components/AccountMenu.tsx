@@ -11,6 +11,7 @@ import {
 import AppSettingsModal from './AppSettingsModal';
 import ClaudeCodeSettingsModal from './ClaudeCodeSettingsModal';
 import { useUser } from '../contexts/UserContext';
+import { colors } from '../styles/theme';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -61,7 +62,7 @@ export default function AccountMenu() {
       >
         {lang.label}
         {lang.code === i18n.language && (
-          <CheckOutlined style={{ color: '#f5a623' }} />
+          <CheckOutlined style={{ color: colors.brand }} />
         )}
       </span>
     ),
@@ -103,7 +104,7 @@ export default function AccountMenu() {
           }}
         >
           {t('accountMenu.language')}
-          <span style={{ color: '#888', fontSize: 12, marginLeft: 8 }}>
+          <span style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>
             {currentLang.label}
           </span>
         </span>
@@ -118,7 +119,7 @@ export default function AccountMenu() {
         <Avatar
           icon={<UserOutlined />}
           style={{
-            backgroundColor: '#f5a623',
+            backgroundColor: colors.brand,
             cursor: 'pointer',
           }}
         />

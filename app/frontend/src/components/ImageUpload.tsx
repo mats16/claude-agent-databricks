@@ -8,6 +8,7 @@ import {
   createPreviewUrl,
   revokePreviewUrl,
 } from '../utils/imageUtils';
+import { colors, typography } from '../styles/theme';
 
 export interface AttachedImage {
   id: string;
@@ -132,7 +133,7 @@ export default function ImageUpload({
       onDrop={handleDrop}
       style={{
         position: 'relative',
-        border: isDragging ? '2px dashed #f5a623' : 'none',
+        border: isDragging ? `2px dashed ${colors.brand}` : 'none',
         borderRadius: 8,
         padding: isDragging ? 4 : 0,
         transition: 'all 0.2s ease',
@@ -172,7 +173,7 @@ export default function ImageUpload({
                     height: 48,
                     borderRadius: 6,
                     overflow: 'hidden',
-                    border: '1px solid #e5e5e5',
+                    border: `1px solid ${colors.borderDark}`,
                   }}
                 >
                   <img
@@ -196,8 +197,8 @@ export default function ImageUpload({
                       padding: 2,
                       minWidth: 16,
                       height: 16,
-                      background: 'rgba(0, 0, 0, 0.5)',
-                      color: '#fff',
+                      background: colors.overlayDark,
+                      color: colors.background,
                       borderRadius: '0 0 0 4px',
                     }}
                   />
@@ -212,7 +213,7 @@ export default function ImageUpload({
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'rgba(245, 166, 35, 0.1)',
+            background: colors.brandLight,
             borderRadius: 8,
             display: 'flex',
             alignItems: 'center',
@@ -220,7 +221,12 @@ export default function ImageUpload({
             pointerEvents: 'none',
           }}
         >
-          <span style={{ color: '#f5a623', fontWeight: 500 }}>
+          <span
+            style={{
+              color: colors.brand,
+              fontWeight: typography.fontWeightMedium,
+            }}
+          >
             {t('imageUpload.dropHere')}
           </span>
         </div>

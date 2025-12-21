@@ -21,6 +21,7 @@ import {
   CheckOutlined,
   CloseOutlined,
 } from '@ant-design/icons';
+import { colors } from '../styles/theme';
 
 const { Text } = Typography;
 
@@ -240,16 +241,16 @@ export default function WorkspaceSelectModal({
 
   const getIcon = (objectType: string, isParent: boolean) => {
     if (isParent) {
-      return <FolderOutlined style={{ color: '#999', fontSize: 16 }} />;
+      return <FolderOutlined style={{ color: colors.textMuted, fontSize: 16 }} />;
     }
 
     switch (objectType) {
       case 'DIRECTORY':
-        return <FolderOutlined style={{ color: '#f5a623', fontSize: 16 }} />;
+        return <FolderOutlined style={{ color: colors.brand, fontSize: 16 }} />;
       case 'NOTEBOOK':
-        return <BookOutlined style={{ color: '#999', fontSize: 16 }} />;
+        return <BookOutlined style={{ color: colors.textMuted, fontSize: 16 }} />;
       default:
-        return <FileOutlined style={{ color: '#999', fontSize: 16 }} />;
+        return <FileOutlined style={{ color: colors.textMuted, fontSize: 16 }} />;
     }
   };
 
@@ -314,12 +315,12 @@ export default function WorkspaceSelectModal({
         gap={8}
         style={{
           padding: '8px 12px',
-          background: '#f5f5f5',
+          background: colors.backgroundHover,
           borderRadius: 6,
           marginBottom: 16,
         }}
       >
-        <FolderOpenOutlined style={{ color: '#f5a623' }} />
+        <FolderOpenOutlined style={{ color: colors.brand }} />
         <Text strong>{t('workspaceModal.current')}</Text>
         <Text style={{ flex: 1, wordBreak: 'break-all' }}>
           {currentPath || '/'}
@@ -337,7 +338,7 @@ export default function WorkspaceSelectModal({
 
       <div
         style={{
-          border: '1px solid #f0f0f0',
+          border: `1px solid ${colors.border}`,
           borderRadius: 8,
           maxHeight: 300,
           overflow: 'auto',
@@ -387,7 +388,7 @@ export default function WorkspaceSelectModal({
                   }}
                   onMouseEnter={(e) => {
                     if (isClickable) {
-                      e.currentTarget.style.background = '#fafafa';
+                      e.currentTarget.style.background = colors.backgroundTertiary;
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -398,7 +399,7 @@ export default function WorkspaceSelectModal({
                     {getIcon(item.object_type, item.isParent)}
                     <Text
                       style={{
-                        color: isClickable ? undefined : '#999',
+                        color: isClickable ? undefined : colors.textMuted,
                       }}
                     >
                       {item.isParent ? '..' : item.path.split('/').pop()}

@@ -11,6 +11,7 @@ import {
 import type { ImageContent } from '@app/shared';
 import FilePreviewModal from './FilePreviewModal';
 import SqlResultTable, { parseSqlResult } from './SqlResultTable';
+import { colors } from '../styles/theme';
 
 interface MessageRendererProps {
   content: string;
@@ -188,12 +189,12 @@ const CollapsibleOutput = memo(function CollapsibleOutput({
     gap: '4px',
     padding: '4px 8px',
     marginTop: '4px',
-    border: '1px solid #d9d9d9',
+    border: `1px solid ${colors.borderAntd}`,
     borderRadius: '4px',
-    background: '#fafafa',
+    background: colors.backgroundTertiary,
     cursor: 'pointer',
     fontSize: '12px',
-    color: '#595959',
+    color: colors.textSecondary,
   };
 
   // SQL result rendering with Ant Design Table
@@ -338,23 +339,27 @@ const FileCard = memo(function FileCard({
         gap: 8,
         padding: '6px 10px',
         borderRadius: 6,
-        border: '1px solid #e5e5e5',
-        background: '#fafafa',
+        border: `1px solid ${colors.borderDark}`,
+        background: colors.backgroundTertiary,
         cursor: 'pointer',
         maxWidth: 220,
         transition: 'background 0.2s',
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f0f0')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = '#fafafa')}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.background = colors.backgroundHover)
+      }
+      onMouseLeave={(e) =>
+        (e.currentTarget.style.background = colors.backgroundTertiary)
+      }
       title={fileName}
     >
       {isPdf ? (
         <FilePdfOutlined
-          style={{ fontSize: 18, color: '#ff4d4f', flexShrink: 0 }}
+          style={{ fontSize: 18, color: colors.danger, flexShrink: 0 }}
         />
       ) : (
         <FileTextOutlined
-          style={{ fontSize: 18, color: '#1890ff', flexShrink: 0 }}
+          style={{ fontSize: 18, color: colors.info, flexShrink: 0 }}
         />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -364,12 +369,14 @@ const FileCard = memo(function FileCard({
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            color: '#262626',
+            color: colors.textHeading,
           }}
         >
           {fileName}
         </div>
-        {isPdf && <div style={{ fontSize: 10, color: '#999' }}>PDF</div>}
+        {isPdf && (
+          <div style={{ fontSize: 10, color: colors.textMuted }}>PDF</div>
+        )}
       </div>
     </div>
   );

@@ -416,7 +416,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
                     height: 48,
                     borderRadius: 6,
                     overflow: 'hidden',
-                    border: '1px solid #e5e5e5',
+                    border: `1px solid ${colors.borderDark}`,
                   }}
                 >
                   <img
@@ -441,8 +441,8 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
                       padding: 2,
                       minWidth: 16,
                       height: 16,
-                      background: 'rgba(0, 0, 0, 0.5)',
-                      color: '#fff',
+                      background: colors.overlayDark,
+                      color: colors.background,
                       borderRadius: '0 0 0 4px',
                     }}
                   />
@@ -459,12 +459,12 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
                     gap: 8,
                     padding: '4px 8px',
                     borderRadius: 6,
-                    border: '1px solid #e5e5e5',
-                    background: '#fafafa',
+                    border: `1px solid ${colors.borderDark}`,
+                    background: colors.backgroundTertiary,
                     maxWidth: 160,
                   }}
                 >
-                  <FilePdfOutlined style={{ fontSize: 20, color: '#ff4d4f' }} />
+                  <FilePdfOutlined style={{ fontSize: 20, color: colors.danger }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
@@ -477,7 +477,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
                     >
                       {pdf.file.name}
                     </div>
-                    <div style={{ fontSize: 10, color: '#999' }}>
+                    <div style={{ fontSize: 10, color: colors.textMuted }}>
                       {formatFileSize(pdf.file.size)}
                     </div>
                   </div>
@@ -535,7 +535,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
               optionRender={(option) => (
                 <div>
                   <div style={{ fontWeight: 500 }}>{option.label}</div>
-                  <div style={{ fontSize: 12, color: '#666' }}>
+                  <div style={{ fontSize: 12, color: colors.textSecondary }}>
                     {option.data.description}
                   </div>
                 </div>

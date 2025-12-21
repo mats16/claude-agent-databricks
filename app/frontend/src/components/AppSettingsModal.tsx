@@ -8,6 +8,7 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 import { useUser } from '../contexts/UserContext';
+import { colors } from '../styles/theme';
 
 const { Text, Link } = Typography;
 
@@ -94,7 +95,7 @@ export default function AppSettingsModal({
       {/* Instructions */}
       <div
         style={{
-          background: '#fafafa',
+          background: colors.backgroundTertiary,
           borderRadius: 8,
           padding: 16,
           marginBottom: 16,
@@ -108,7 +109,7 @@ export default function AppSettingsModal({
             <>
               <Text code>{spInfo?.displayName || 'Service Principal'}</Text>{' '}
               {t('appSettingsModal.instructionsTextBefore')}{' '}
-              <Text code style={{ color: '#cf1322', fontSize: 14 }}>
+              <Text code style={{ color: colors.danger, fontSize: 14 }}>
                 Can Manage
               </Text>{' '}
               {t('appSettingsModal.instructionsTextAfter')}
@@ -116,7 +117,7 @@ export default function AppSettingsModal({
           ) : (
             <>
               {t('appSettingsModal.instructionsTextBefore')}{' '}
-              <Text code style={{ color: '#cf1322', fontSize: 14 }}>
+              <Text code style={{ color: colors.danger, fontSize: 14 }}>
                 Can Manage
               </Text>{' '}
               {t('appSettingsModal.instructionsTextAfter')}{' '}
@@ -170,7 +171,7 @@ export default function AppSettingsModal({
     <Modal
       title={
         <Flex align="center" gap={8}>
-          <SettingOutlined style={{ color: '#f5a623' }} />
+          <SettingOutlined style={{ color: colors.brand }} />
           {isInitialSetup
             ? t('appSettingsModal.initialTitle')
             : t('appSettingsModal.title')}

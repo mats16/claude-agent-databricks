@@ -6,6 +6,7 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { colors } from '../styles/theme';
 
 const { Text } = Typography;
 
@@ -130,9 +131,9 @@ export default function FilePreviewModal({
         {/* Header */}
         <Flex align="center" gap={12} style={{ marginBottom: 8 }}>
           {isPdf ? (
-            <FilePdfOutlined style={{ fontSize: 24, color: '#ff4d4f' }} />
+            <FilePdfOutlined style={{ fontSize: 24, color: colors.danger }} />
           ) : (
-            <FileTextOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+            <FileTextOutlined style={{ fontSize: 24, color: colors.info }} />
           )}
           <Text strong style={{ fontSize: 18 }}>
             {fileName}
@@ -150,9 +151,9 @@ export default function FilePreviewModal({
         <div
           style={{
             marginTop: 16,
-            background: '#fafafa',
+            background: colors.backgroundTertiary,
             borderRadius: 8,
-            border: '1px solid #e5e5e5',
+            border: `1px solid ${colors.borderDark}`,
             maxHeight: 500,
             overflow: 'auto',
           }}
@@ -177,7 +178,7 @@ export default function FilePreviewModal({
               gap={16}
               style={{ padding: 48 }}
             >
-              <FilePdfOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
+              <FilePdfOutlined style={{ fontSize: 48, color: colors.danger }} />
               <Text type="secondary">{t('filePreview.pdfNoPreview')}</Text>
               <Button
                 type="primary"

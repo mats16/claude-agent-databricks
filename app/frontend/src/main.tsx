@@ -8,40 +8,23 @@ import '@fontsource/noto-sans-jp/700.css';
 import App from './App';
 import { UserProvider } from './contexts/UserContext';
 import { SessionsProvider } from './contexts/SessionsContext';
+import { useCssVariables } from './hooks/useCssVariables';
+import { antdTheme } from './styles/theme';
 import './i18n';
 import './index.css';
 
-const theme = {
-  token: {
-    colorPrimary: '#f5a623',
-    colorSuccess: '#4caf50',
-    colorError: '#f44336',
-    colorWarning: '#ff9800',
-    borderRadius: 8,
-    fontFamily:
-      "'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif",
-  },
-  components: {
-    Button: {
-      primaryShadow: 'none',
-    },
-    Input: {
-      activeBorderColor: '#f5a623',
-      hoverBorderColor: '#f5a623',
-    },
-    Modal: {
-      borderRadiusLG: 12,
-    },
-  },
-};
+function AppWrapper() {
+  useCssVariables();
+  return <App />;
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <ConfigProvider theme={theme}>
+      <ConfigProvider theme={antdTheme}>
         <UserProvider>
           <SessionsProvider>
-            <App />
+            <AppWrapper />
           </SessionsProvider>
         </UserProvider>
       </ConfigProvider>

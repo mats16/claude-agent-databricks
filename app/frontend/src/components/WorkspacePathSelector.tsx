@@ -6,6 +6,7 @@
 import { useTranslation } from 'react-i18next';
 import { Button, Checkbox, Tooltip, Typography, Flex } from 'antd';
 import { FolderOutlined, SyncOutlined, CloseOutlined } from '@ant-design/icons';
+import { colors } from '../styles/theme';
 
 const { Text } = Typography;
 
@@ -80,7 +81,7 @@ export default function WorkspacePathSelector({
               right: 8,
               top: '50%',
               transform: 'translateY(-50%)',
-              color: '#ff4d4f',
+              color: colors.danger,
               fontSize: 12,
               cursor: disabled ? 'not-allowed' : 'pointer',
               zIndex: 1,

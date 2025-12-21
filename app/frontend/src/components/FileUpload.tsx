@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons';
 import type { AttachedFile } from '../hooks/useFileUpload';
 import { formatFileSize, isPdfFile } from '../utils/fileUtils';
+import { colors } from '../styles/theme';
 
 interface FileUploadProps {
   files: AttachedFile[];
@@ -56,24 +57,24 @@ export default function FileUpload({
 
   const getFileIcon = (file: AttachedFile) => {
     if (isPdfFile(file.file)) {
-      return <FilePdfOutlined style={{ fontSize: 20, color: '#ff4d4f' }} />;
+      return <FilePdfOutlined style={{ fontSize: 20, color: colors.danger }} />;
     }
-    return <FileTextOutlined style={{ fontSize: 20, color: '#1890ff' }} />;
+    return <FileTextOutlined style={{ fontSize: 20, color: colors.info }} />;
   };
 
   const getStatusIcon = (file: AttachedFile) => {
     switch (file.status) {
       case 'uploading':
-        return <LoadingOutlined style={{ fontSize: 12, color: '#1890ff' }} />;
+        return <LoadingOutlined style={{ fontSize: 12, color: colors.info }} />;
       case 'uploaded':
         return (
-          <CheckCircleOutlined style={{ fontSize: 12, color: '#52c41a' }} />
+          <CheckCircleOutlined style={{ fontSize: 12, color: colors.success }} />
         );
       case 'error':
         return (
           <Tooltip title={file.errorMessage}>
             <ExclamationCircleOutlined
-              style={{ fontSize: 12, color: '#ff4d4f' }}
+              style={{ fontSize: 12, color: colors.danger }}
             />
           </Tooltip>
         );
@@ -139,8 +140,11 @@ export default function FileUpload({
                   gap: 8,
                   padding: '4px 8px',
                   borderRadius: 6,
-                  border: '1px solid #e5e5e5',
-                  background: file.status === 'error' ? '#fff2f0' : '#fafafa',
+                  border: `1px solid ${colors.borderDark}`,
+                  background:
+                    file.status === 'error'
+                      ? colors.errorBg
+                      : colors.backgroundTertiary,
                   maxWidth: 200,
                 }}
               >
@@ -157,7 +161,7 @@ export default function FileUpload({
                   >
                     {file.file.name}
                   </div>
-                  <div style={{ fontSize: 10, color: '#999' }}>
+                  <div style={{ fontSize: 10, color: colors.textMuted }}>
                     {formatFileSize(file.file.size)}
                     {file.type === 'pdf' && ' (PDF)'}
                   </div>
