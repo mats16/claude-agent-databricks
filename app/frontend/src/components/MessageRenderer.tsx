@@ -214,7 +214,7 @@ const CollapsibleOutput = memo(function CollapsibleOutput({
     }
 
     return (
-      <div>
+      <div style={{ minWidth: 0, width: '100%' }}>
         <SqlResultTable data={sqlResult} />
         <button onClick={() => setIsExpanded(false)} style={buttonStyle}>
           <UpOutlined style={{ fontSize: '10px' }} />

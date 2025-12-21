@@ -163,6 +163,12 @@ body {
 /* SQL Result Table */
 .sql-result-table {
   margin-top: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.sql-result-table .ant-table-wrapper {
+  min-width: 0;
 }
 
 .sql-result-table .ant-table {

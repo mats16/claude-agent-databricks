@@ -1,5 +1,6 @@
-import { memo, useMemo } from 'react';
-import { Table, Typography } from 'antd';
+import { memo, useMemo, useState } from 'react';
+import { Table, Typography, Input } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Text } = Typography;
@@ -47,7 +48,31 @@ function formatCellValue(value: unknown): React.ReactNode {
   return strValue;
 }
 
+// Generic sorter for table columns (handles null, numbers, strings)
+function createSorter(dataIndex: string) {
+  return (a: Record<string, unknown>, b: Record<string, unknown>) => {
+    const aVal = a[dataIndex];
+    const bVal = b[dataIndex];
+
+    // Handle nulls (nulls go to the end)
+    if (aVal === null || aVal === undefined) return 1;
+    if (bVal === null || bVal === undefined) return -1;
+
+    // Try numeric comparison
+    const aNum = Number(aVal);
+    const bNum = Number(bVal);
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return aNum - bNum;
+    }
+
+    // String comparison
+    return String(aVal).localeCompare(String(bVal));
+  };
+}
+
 export default memo(function SqlResultTable({ data }: SqlResultTableProps) {
+  const [searchText, setSearchText] = useState('');
+
   const columns: ColumnsType<Record<string, unknown>> = useMemo(
     () =>
       data.columns.map((col, index) => ({
@@ -55,6 +80,7 @@ export default memo(function SqlResultTable({ data }: SqlResultTableProps) {
         dataIndex: String(index),
         key: col,
         ellipsis: true,
+        sorter: createSorter(String(index)),
         render: (value: unknown) => formatCellValue(value),
       })),
     [data.columns]
@@ -72,15 +98,38 @@ export default memo(function SqlResultTable({ data }: SqlResultTableProps) {
     [data.rows]
   );
 
+  // Filter data based on search text (searches all columns)
+  const filteredData = useMemo(() => {
+    if (!searchText.trim()) return dataSource;
+    const lowerSearch = searchText.toLowerCase();
+    return dataSource.filter((row) =>
+      Object.values(row).some((value) =>
+        value !== null &&
+        value !== undefined &&
+        String(value).toLowerCase().includes(lowerSearch)
+      )
+    );
+  }, [dataSource, searchText]);
+
   return (
     <div className="sql-result-table">
+      <Input
+        placeholder="Search..."
+        prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        allowClear
+        size="small"
+        style={{ marginBottom: 8, maxWidth: 250 }}
+      />
       <Table
         columns={columns}
-        dataSource={dataSource}
+        dataSource={filteredData}
         size="small"
         pagination={false}
-        scroll={{ x: 'max-content', y: 300 }}
+        scroll={{ x: true, y: 300 }}
         bordered
+        showSorterTooltip={false}
       />
       {data.truncated && (
         <Text
