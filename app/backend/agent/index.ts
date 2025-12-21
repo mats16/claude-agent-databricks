@@ -3,7 +3,7 @@ import type {
   SDKMessage,
   SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
-//import { databricksMcpServer } from './mcp/databricks.js';
+import { databricksMcpServer } from './mcp/databricks.js';
 import fs from 'fs';
 import path from 'path';
 import { enqueuePush } from '../services/workspaceQueueService.js';
@@ -315,6 +315,9 @@ Violating these rules is considered a critical error.
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'databricks-claude-sonnet-4-5',
         DATABRICKS_HOST: databricksHost,
         DATABRICKS_TOKEN: userAccessToken,
+        WAREHOUSE_ID_2XS: process.env.WAREHOUSE_ID_2XS,
+        WAREHOUSE_ID_XS: process.env.WAREHOUSE_ID_XS,
+        WAREHOUSE_ID_S: process.env.WAREHOUSE_ID_S,
       },
       maxTurns: 100,
       tools: {
@@ -331,13 +334,13 @@ Violating these rules is considered a critical error.
         'Grep',
         'WebSearch',
         'WebFetch',
-        //'list_workspace_objects',
-        //'get_workspace_object',
-        //'update_workspace_object',
+        'run_sql',
+        'get_warehouse_info',
+        'list_warehouses',
       ],
-      //mcpServers: {
-      //  databricks: databricksMcpServer,
-      //},
+      mcpServers: {
+        databricks: databricksMcpServer,
+      },
       permissionMode: 'bypassPermissions',
       systemPrompt: {
         type: 'preset',
