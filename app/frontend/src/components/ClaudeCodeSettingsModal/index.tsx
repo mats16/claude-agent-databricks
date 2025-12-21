@@ -77,7 +77,9 @@ export default function ClaudeCodeSettingsModal({
         </Flex>
       ),
       children: (
-        <BackupRestoreSection isVisible={isOpen && activeSection === 'backup'} />
+        <BackupRestoreSection
+          isVisible={isOpen && activeSection === 'backup'}
+        />
       ),
     },
   ];

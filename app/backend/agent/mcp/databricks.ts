@@ -8,6 +8,16 @@ const databricksHost = process.env.DATABRICKS_HOST?.replace(/^https?:\/\//, '');
 const MAX_ROWS_DEFAULT = 1000;
 const MAX_ROWS_LIMIT = 10000;
 
+// Marker for structured SQL result data
+const SQL_RESULT_MARKER = '<!--SQL_RESULT-->';
+
+interface SQLResultData {
+  columns: string[];
+  rows: unknown[][];
+  totalRows: number;
+  truncated: boolean;
+}
+
 type WarehouseSize = '2xs' | 'xs' | 's';
 
 // Get WAREHOUSE_ID from size
@@ -18,12 +28,23 @@ function getWarehouseId(size: WarehouseSize): string {
     s: process.env.WAREHOUSE_ID_S,
   };
   const id = mapping[size];
-  if (!id)
-    throw new Error(`WAREHOUSE_ID_${size.toUpperCase()} not configured`);
+  if (!id) throw new Error(`WAREHOUSE_ID_${size.toUpperCase()} not configured`);
   return id;
 }
 
-// Format query result as Markdown table
+// Serialize value for display (handles complex objects)
+function serializeValue(value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'object') {
+    // Convert complex objects to JSON string to avoid [object Object]
+    return JSON.stringify(value);
+  }
+  return value;
+}
+
+// Format query result as structured JSON data
 function formatQueryResult(
   result: Record<string, unknown>[],
   maxRows: number
@@ -34,22 +55,21 @@ function formatQueryResult(
 
   const limitedResult = result.slice(0, maxRows);
   const truncated = result.length > maxRows;
-
   const columns = Object.keys(limitedResult[0]);
-  const header = `| ${columns.join(' | ')} |`;
-  const separator = `| ${columns.map(() => '---').join(' | ')} |`;
-  const rows = limitedResult.map(
-    (row) =>
-      `| ${columns.map((col) => String(row[col] ?? 'NULL')).join(' | ')} |`
+
+  // Convert to structured data with proper serialization
+  const rows = limitedResult.map((row) =>
+    columns.map((col) => serializeValue(row[col]))
   );
 
-  let output = [header, separator, ...rows].join('\n');
+  const sqlResultData: SQLResultData = {
+    columns,
+    rows,
+    totalRows: result.length,
+    truncated,
+  };
 
-  if (truncated) {
-    output += `\n\n*Results truncated. Showing ${maxRows} of ${result.length} rows.*`;
-  }
-
-  return output;
+  return SQL_RESULT_MARKER + JSON.stringify(sqlResultData);
 }
 
 // Execute SQL query
@@ -60,7 +80,9 @@ async function executeQuery(
 ): Promise<string> {
   const token = process.env.DATABRICKS_TOKEN;
   if (!token)
-    throw new Error('DATABRICKS_TOKEN not available. User authentication required.');
+    throw new Error(
+      'DATABRICKS_TOKEN not available. User authentication required.'
+    );
   if (!databricksHost) throw new Error('DATABRICKS_HOST not configured.');
 
   const client = new DBSQLClient();
@@ -135,12 +157,14 @@ export const databricksMcpServer = createSdkMcpServer({
           );
 
           // Determine warehouse ID
-          const warehouseId = args.warehouse_id ?? getWarehouseId(args.size ?? '2xs');
+          const warehouseId =
+            args.warehouse_id ?? getWarehouseId(args.size ?? '2xs');
 
           const result = await executeQuery(args.query, warehouseId, maxRows);
           return { content: [{ type: 'text', text: result }] };
         } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           return { content: [{ type: 'text', text: `Error: ${message}` }] };
         }
       }
@@ -189,7 +213,8 @@ export const databricksMcpServer = createSdkMcpServer({
             content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
           };
         } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           return { content: [{ type: 'text', text: `Error: ${message}` }] };
         }
       }
@@ -231,7 +256,8 @@ export const databricksMcpServer = createSdkMcpServer({
             content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
           };
         } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : String(error);
+          const message =
+            error instanceof Error ? error.message : String(error);
           return { content: [{ type: 'text', text: `Error: ${message}` }] };
         }
       }

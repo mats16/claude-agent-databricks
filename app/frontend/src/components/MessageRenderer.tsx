@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import type { ImageContent } from '@app/shared';
 import FilePreviewModal from './FilePreviewModal';
+import SqlResultTable, { parseSqlResult } from './SqlResultTable';
 
 interface MessageRendererProps {
   content: string;
@@ -168,28 +169,18 @@ const CollapsibleOutput = memo(function CollapsibleOutput({
   toolName?: string;
 }) {
   const lines = content.split('\n');
-
   const MAX_COLLAPSED_LINES = 3;
+
+  // Check if this is SQL result data (marker-based detection)
+  const sqlResult = parseSqlResult(content);
 
   // MCP tools always collapse, other tools collapse if they have 4+ lines
   const isMcpTool = toolName?.startsWith('mcp__');
-  const needsCollapse = isMcpTool || lines.length > MAX_COLLAPSED_LINES;
+  const needsCollapse =
+    sqlResult || isMcpTool || lines.length > MAX_COLLAPSED_LINES;
 
-  // MCP tools start collapsed, others start expanded if short
+  // SQL results and MCP tools start collapsed, others start expanded if short
   const [isExpanded, setIsExpanded] = useState(!needsCollapse);
-
-  if (!needsCollapse) {
-    return <pre className="tool-output-content">{content}</pre>;
-  }
-
-  // Calculate collapsed content (line-based for all tools)
-  // MCP tools show 0 lines when collapsed, others show up to MAX_COLLAPSED_LINES
-  const collapsedLineCount = isMcpTool ? 0 : MAX_COLLAPSED_LINES;
-  const collapsedContent = lines.slice(0, collapsedLineCount).join('\n');
-  const hiddenLines = lines.length - collapsedLineCount;
-  const hiddenInfo = `${hiddenLines} lines`;
-
-  const displayContent = isExpanded ? content : collapsedContent;
 
   const buttonStyle = {
     display: 'flex',
@@ -204,6 +195,48 @@ const CollapsibleOutput = memo(function CollapsibleOutput({
     fontSize: '12px',
     color: '#595959',
   };
+
+  // SQL result rendering with Ant Design Table
+  if (sqlResult) {
+    const rowInfo = sqlResult.truncated
+      ? `${sqlResult.rows.length} of ${sqlResult.totalRows} rows`
+      : `${sqlResult.rows.length} rows`;
+
+    if (!isExpanded) {
+      return (
+        <div>
+          <button onClick={() => setIsExpanded(true)} style={buttonStyle}>
+            <DownOutlined style={{ fontSize: '10px' }} />
+            <span>{rowInfo}</span>
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <SqlResultTable data={sqlResult} />
+        <button onClick={() => setIsExpanded(false)} style={buttonStyle}>
+          <UpOutlined style={{ fontSize: '10px' }} />
+          <span>Show less</span>
+        </button>
+      </div>
+    );
+  }
+
+  // Non-SQL tool output rendering
+  if (!needsCollapse) {
+    return <pre className="tool-output-content">{content}</pre>;
+  }
+
+  // Calculate collapsed content (line-based for all tools)
+  // MCP tools show 0 lines when collapsed, others show up to MAX_COLLAPSED_LINES
+  const collapsedLineCount = isMcpTool ? 0 : MAX_COLLAPSED_LINES;
+  const collapsedContent = lines.slice(0, collapsedLineCount).join('\n');
+  const hiddenLines = lines.length - collapsedLineCount;
+  const hiddenInfo = `${hiddenLines} lines`;
+
+  const displayContent = isExpanded ? content : collapsedContent;
 
   if (isExpanded) {
     // When expanded, make the entire content clickable to collapse

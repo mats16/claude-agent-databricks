@@ -117,7 +117,9 @@ export async function getStatusHandler(
   const { path: subpath } = request.query;
 
   if (!subpath) {
-    return reply.status(400).send({ error: 'Path query parameter is required' });
+    return reply
+      .status(400)
+      .send({ error: 'Path query parameter is required' });
   }
 
   // Get user email for 'me' resolution
