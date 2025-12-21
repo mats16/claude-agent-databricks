@@ -60,7 +60,7 @@ function ThinkingIndicator() {
   }, [charIndex]);
 
   return (
-    <Flex align="center" gap={spacing.sm}>
+    <Flex align="center" gap={spacing.sm} style={{ height: 22 }}>
       <Spin size="small" />
       <Text
         style={{
@@ -70,7 +70,7 @@ function ThinkingIndicator() {
           minWidth: 80,
         }}
       >
-        {displayedText}
+        {displayedText || '\u00A0'}
       </Text>
     </Flex>
   );
