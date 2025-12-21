@@ -47,7 +47,9 @@ const SessionItem = memo(function SessionItem({
         padding: `${spacing.sm}px ${spacing.lg}px`,
         margin: `${spacing.xs}px ${spacing.md}px`,
         cursor: 'pointer',
-        background: isActive ? colors.sessionActiveBg : 'transparent',
+        background: isActive || isHovering
+          ? colors.sessionActiveBg
+          : 'transparent',
         borderLeft: isActive
           ? `3px solid ${colors.brand}`
           : '3px solid transparent',
