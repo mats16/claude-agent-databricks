@@ -167,35 +167,27 @@ const CollapsibleOutput = memo(function CollapsibleOutput({
   content: string;
   toolName?: string;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const lines = content.split('\n');
 
   const MAX_COLLAPSED_LINES = 3;
-  const MAX_COLLAPSED_CHARS = 500;
 
-  // Check if content needs collapsing (Bash with 4+ lines, or any tool with 500+ chars)
-  const needsLineCollapse =
-    toolName === 'Bash' && lines.length > MAX_COLLAPSED_LINES;
-  const needsCharCollapse = content.length > MAX_COLLAPSED_CHARS;
-  const needsCollapse = needsLineCollapse || needsCharCollapse;
+  // MCP tools always collapse, other tools collapse if they have 4+ lines
+  const isMcpTool = toolName?.startsWith('mcp__');
+  const needsCollapse = isMcpTool || lines.length > MAX_COLLAPSED_LINES;
+
+  // MCP tools start collapsed, others start expanded if short
+  const [isExpanded, setIsExpanded] = useState(!needsCollapse);
 
   if (!needsCollapse) {
     return <pre className="tool-output-content">{content}</pre>;
   }
 
-  // Calculate collapsed content
-  let collapsedContent: string;
-  let hiddenInfo: string;
-
-  if (needsLineCollapse) {
-    // Line-based collapse for Bash
-    collapsedContent = lines.slice(0, MAX_COLLAPSED_LINES).join('\n');
-    hiddenInfo = `${lines.length - MAX_COLLAPSED_LINES} more lines`;
-  } else {
-    // Character-based collapse for other tools
-    collapsedContent = content.slice(0, MAX_COLLAPSED_CHARS) + '...';
-    hiddenInfo = `${content.length - MAX_COLLAPSED_CHARS} more characters`;
-  }
+  // Calculate collapsed content (line-based for all tools)
+  // MCP tools show 0 lines when collapsed, others show up to MAX_COLLAPSED_LINES
+  const collapsedLineCount = isMcpTool ? 0 : MAX_COLLAPSED_LINES;
+  const collapsedContent = lines.slice(0, collapsedLineCount).join('\n');
+  const hiddenLines = lines.length - collapsedLineCount;
+  const hiddenInfo = `${hiddenLines} lines`;
 
   const displayContent = isExpanded ? content : collapsedContent;
 
