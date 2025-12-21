@@ -50,9 +50,6 @@ const SessionItem = memo(function SessionItem({
         background: isActive || isHovering
           ? colors.sessionActiveBg
           : 'transparent',
-        borderLeft: isActive
-          ? `3px solid ${colors.brand}`
-          : '3px solid transparent',
         borderRadius: borderRadius.md,
         transition: 'background 0.15s',
         position: 'relative',
