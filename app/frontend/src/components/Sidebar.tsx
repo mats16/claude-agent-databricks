@@ -13,7 +13,7 @@ import {
 import {
   SendOutlined,
   RocketOutlined,
-  PaperClipOutlined,
+  PictureOutlined,
   CloseOutlined,
   FilePdfOutlined,
   CaretDownOutlined,
@@ -512,7 +512,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
             {/* Unified attachment button */}
             <Button
               type="text"
-              icon={<PaperClipOutlined />}
+              icon={<PictureOutlined />}
               onClick={handleAttachClick}
               disabled={
                 isProcessing ||
