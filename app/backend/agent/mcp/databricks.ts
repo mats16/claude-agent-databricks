@@ -76,9 +76,10 @@ function formatQueryResult(
 async function executeQuery(
   sql: string,
   warehouseId: string,
-  maxRows: number
+  maxRows: number,
+  tokenParam?: string
 ): Promise<string> {
-  const token = process.env.DATABRICKS_TOKEN;
+  const token = tokenParam || process.env.DATABRICKS_TOKEN;
   if (!token)
     throw new Error(
       'DATABRICKS_TOKEN not available. User authentication required.'
@@ -119,7 +120,7 @@ export const databricksMcpServer = createSdkMcpServer({
   tools: [
     tool(
       'run_sql',
-      'Execute SQL on Databricks SQL Warehouse. Supports SELECT, DDL (CREATE/DROP/ALTER), and DML (INSERT/UPDATE/DELETE). Results are returned as a markdown table. Use "size" parameter to select warehouse (recommended). Only use "warehouse_id" for advanced cases.',
+      'Execute SQL on Databricks SQL Warehouse. Supports SELECT, DDL (CREATE/DROP/ALTER), and DML (INSERT/UPDATE/DELETE). Results are returned as a table. Use "size" parameter to select warehouse (recommended). Only use "warehouse_id" for advanced cases.',
       {
         query: z.string().describe('SQL statement to execute'),
         size: z
@@ -141,6 +142,11 @@ export const databricksMcpServer = createSdkMcpServer({
           .default(MAX_ROWS_DEFAULT)
           .optional()
           .describe(`Max rows to return (default: ${MAX_ROWS_DEFAULT})`),
+        token: z
+          .string()
+          .describe(
+            'Databricks access token from DATABRICKS_TOKEN environment variable (user token).'
+          ),
       },
       async (args) => {
         try {
@@ -160,7 +166,12 @@ export const databricksMcpServer = createSdkMcpServer({
           const warehouseId =
             args.warehouse_id ?? getWarehouseId(args.size ?? '2xs');
 
-          const result = await executeQuery(args.query, warehouseId, maxRows);
+          const result = await executeQuery(
+            args.query,
+            warehouseId,
+            maxRows,
+            args.token
+          );
           return { content: [{ type: 'text', text: result }] };
         } catch (error: unknown) {
           const message =
@@ -178,14 +189,14 @@ export const databricksMcpServer = createSdkMcpServer({
           .default('2xs')
           .optional()
           .describe('Warehouse size: 2xs (default), xs, or s'),
+        token: z
+          .string()
+          .describe(
+            'Databricks access token from DATABRICKS_TOKEN environment variable (user token).'
+          ),
       },
       async (args) => {
         try {
-          const token = process.env.DATABRICKS_TOKEN;
-          if (!token)
-            throw new Error(
-              'DATABRICKS_TOKEN not available. User authentication required.'
-            );
           if (!databricksHost)
             throw new Error('DATABRICKS_HOST not configured.');
 
@@ -196,7 +207,7 @@ export const databricksMcpServer = createSdkMcpServer({
           const response = await fetch(url, {
             method: 'GET',
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${args.token}`,
               'Content-Type': 'application/json',
             },
           });
@@ -222,15 +233,15 @@ export const databricksMcpServer = createSdkMcpServer({
     tool(
       'list_warehouses',
       'List all Databricks SQL Warehouses available in the workspace.',
-      {},
-      async () => {
+      {
+        token: z
+          .string()
+          .describe(
+            'Databricks access token from DATABRICKS_TOKEN environment variable (user token).'
+          ),
+      },
+      async (args) => {
         try {
-          const token = process.env.DATABRICKS_TOKEN;
-          if (!token)
-            throw new Error(
-              'DATABRICKS_TOKEN not available. User authentication required.'
-            );
-          console.log('env', JSON.stringify(process.env, null, 2));
           if (!databricksHost)
             throw new Error('DATABRICKS_HOST not configured.');
 
@@ -239,7 +250,7 @@ export const databricksMcpServer = createSdkMcpServer({
           const response = await fetch(url, {
             method: 'GET',
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${args.token}`,
               'Content-Type': 'application/json',
             },
           });
