@@ -103,10 +103,11 @@ export default memo(function SqlResultTable({ data }: SqlResultTableProps) {
     if (!searchText.trim()) return dataSource;
     const lowerSearch = searchText.toLowerCase();
     return dataSource.filter((row) =>
-      Object.values(row).some((value) =>
-        value !== null &&
-        value !== undefined &&
-        String(value).toLowerCase().includes(lowerSearch)
+      Object.values(row).some(
+        (value) =>
+          value !== null &&
+          value !== undefined &&
+          String(value).toLowerCase().includes(lowerSearch)
       )
     );
   }, [dataSource, searchText]);

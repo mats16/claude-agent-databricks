@@ -104,7 +104,9 @@ export default function AccountMenu() {
           }}
         >
           {t('accountMenu.language')}
-          <span style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>
+          <span
+            style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}
+          >
             {currentLang.label}
           </span>
         </span>

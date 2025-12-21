@@ -241,16 +241,22 @@ export default function WorkspaceSelectModal({
 
   const getIcon = (objectType: string, isParent: boolean) => {
     if (isParent) {
-      return <FolderOutlined style={{ color: colors.textMuted, fontSize: 16 }} />;
+      return (
+        <FolderOutlined style={{ color: colors.textMuted, fontSize: 16 }} />
+      );
     }
 
     switch (objectType) {
       case 'DIRECTORY':
         return <FolderOutlined style={{ color: colors.brand, fontSize: 16 }} />;
       case 'NOTEBOOK':
-        return <BookOutlined style={{ color: colors.textMuted, fontSize: 16 }} />;
+        return (
+          <BookOutlined style={{ color: colors.textMuted, fontSize: 16 }} />
+        );
       default:
-        return <FileOutlined style={{ color: colors.textMuted, fontSize: 16 }} />;
+        return (
+          <FileOutlined style={{ color: colors.textMuted, fontSize: 16 }} />
+        );
     }
   };
 
@@ -388,7 +394,8 @@ export default function WorkspaceSelectModal({
                   }}
                   onMouseEnter={(e) => {
                     if (isClickable) {
-                      e.currentTarget.style.background = colors.backgroundTertiary;
+                      e.currentTarget.style.background =
+                        colors.backgroundTertiary;
                     }
                   }}
                   onMouseLeave={(e) => {

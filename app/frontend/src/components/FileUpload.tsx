@@ -68,7 +68,9 @@ export default function FileUpload({
         return <LoadingOutlined style={{ fontSize: 12, color: colors.info }} />;
       case 'uploaded':
         return (
-          <CheckCircleOutlined style={{ fontSize: 12, color: colors.success }} />
+          <CheckCircleOutlined
+            style={{ fontSize: 12, color: colors.success }}
+          />
         );
       case 'error':
         return (

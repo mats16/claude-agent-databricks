@@ -464,7 +464,9 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
                     maxWidth: 160,
                   }}
                 >
-                  <FilePdfOutlined style={{ fontSize: 20, color: colors.danger }} />
+                  <FilePdfOutlined
+                    style={{ fontSize: 20, color: colors.danger }}
+                  />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
