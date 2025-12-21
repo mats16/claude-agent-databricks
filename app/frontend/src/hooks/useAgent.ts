@@ -170,17 +170,17 @@ export function useAgent(options: UseAgentOptions = {}) {
             const loadedMessages = convertSDKMessagesToChat(events);
             setMessages(loadedMessages);
 
-            // Check if the last message is an in-progress agent response
-            // (no 'result' message at the end means agent is still processing)
+            // Check if the agent is still processing
+            // If the last event is not 'result', the agent is still processing
             const lastEvent = events[events.length - 1];
-            if (lastEvent.type === 'assistant') {
+            const lastAgentMsg = loadedMessages
+              .filter((m) => m.role === 'agent')
+              .pop();
+            if (lastEvent.type !== 'result' && lastAgentMsg) {
               // Agent is still processing - prepare for continuation
-              const lastAgentMsg = loadedMessages[loadedMessages.length - 1];
-              if (lastAgentMsg && lastAgentMsg.role === 'agent') {
-                currentMessageIdRef.current = lastAgentMsg.id;
-                currentResponseRef.current = lastAgentMsg.content;
-                setIsProcessing(true);
-              }
+              currentMessageIdRef.current = lastAgentMsg.id;
+              currentResponseRef.current = lastAgentMsg.content;
+              setIsProcessing(true);
             }
           }
           loadedSessionIdRef.current = sessionId;
