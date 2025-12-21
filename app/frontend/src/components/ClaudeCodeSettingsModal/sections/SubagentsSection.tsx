@@ -1,26 +1,24 @@
 /**
- * Subagent management modal
- * Container component that orchestrates subagent list, editor, and import
+ * Subagent management section
+ * Extracted from SubagentModal for use in unified Claude Code Settings
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Flex, Typography, message } from 'antd';
-import { TeamOutlined } from '@ant-design/icons';
-import { useSubagents, type Subagent } from '../hooks/useSubagents';
-import SubagentsList from './subagents/SubagentsList';
-import SubagentEditor from './subagents/SubagentEditor';
-import PresetSubagentImportModal from './subagents/PresetSubagentImportModal';
-import { colors, spacing } from '../styles/theme';
+import { Flex, Typography, message } from 'antd';
+import { useSubagents, type Subagent } from '../../../hooks/useSubagents';
+import SubagentsList from '../../subagents/SubagentsList';
+import SubagentEditor from '../../subagents/SubagentEditor';
+import PresetSubagentImportModal from '../../subagents/PresetSubagentImportModal';
+import { spacing } from '../../../styles/theme';
 
 const { Text } = Typography;
 
-interface SubagentModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface SubagentsSectionProps {
+  isVisible: boolean;
 }
 
-export default function SubagentModal({ isOpen, onClose }: SubagentModalProps) {
+export default function SubagentsSection({ isVisible }: SubagentsSectionProps) {
   const { t } = useTranslation();
   const {
     subagents,
@@ -57,12 +55,12 @@ export default function SubagentModal({ isOpen, onClose }: SubagentModalProps) {
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Fetch subagents when modal opens
+  // Fetch subagents when section becomes visible
   useEffect(() => {
-    if (isOpen) {
+    if (isVisible) {
       fetchSubagents();
     }
-  }, [isOpen, fetchSubagents]);
+  }, [isVisible, fetchSubagents]);
 
   // Fetch preset subagents when import modal opens
   useEffect(() => {
@@ -267,19 +265,7 @@ export default function SubagentModal({ isOpen, onClose }: SubagentModalProps) {
     : selectedSubagent && editedContent !== selectedSubagent.content;
 
   return (
-    <Modal
-      title={
-        <Flex align="center" gap={spacing.sm}>
-          <TeamOutlined style={{ color: colors.brand }} />
-          {t('subagentModal.title')}
-        </Flex>
-      }
-      open={isOpen}
-      onCancel={onClose}
-      width={1200}
-      footer={null}
-      styles={{ body: { padding: 0, height: 700 } }}
-    >
+    <>
       {error && (
         <div style={{ padding: spacing.lg }}>
           <Text type="danger">{error}</Text>
@@ -332,6 +318,6 @@ export default function SubagentModal({ isOpen, onClose }: SubagentModalProps) {
         onSelectPreset={setSelectedPreset}
         onImport={handleImportPreset}
       />
-    </Modal>
+    </>
   );
 }

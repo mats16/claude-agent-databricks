@@ -40,6 +40,14 @@
     "databricksApp": "Open Databricks App",
     "language": "Language"
   },
+  "claudeCodeSettings": {
+    "title": "Claude Code Settings",
+    "skills": "Skills",
+    "subagents": "Subagents",
+    "mcp": "MCP",
+    "backupRestore": "Backup",
+    "mcpPlaceholder": "MCP configuration coming soon"
+  },
   "appSettingsModal": {
     "title": "Application Settings",
     "initialTitle": "Workspace Access Permission",
@@ -59,7 +67,7 @@
   "settingsModal": {
     "title": "Claude Code Settings Backup and Restore",
     "autoBackupTitle": "Auto Backup",
-    "autoBackupDescription": "Automatically save Claude configuration (.claude directory) to Databricks Workspace on task completion.",
+    "autoBackupDescription": "Automatically save Claude configuration (.claude directory) to <0>Workspace</0> on task completion.",
     "manualPullButton": "Pull from Workspace",
     "manualPullDescription": "Manually pull Claude configuration from Databricks Workspace.",
     "pullSuccess": "Claude configuration pulled successfully",

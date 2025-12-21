@@ -108,6 +108,46 @@ export async function listWorkspacePathHandler(
   }
 }
 
+// Get workspace object status
+// GET /api/v1/workspace/status?path=users/me/.claude
+export async function getStatusHandler(
+  request: FastifyRequest<{ Querystring: { path: string } }>,
+  reply: FastifyReply
+) {
+  const { path: subpath } = request.query;
+
+  if (!subpath) {
+    return reply.status(400).send({ error: 'Path query parameter is required' });
+  }
+
+  // Get user email for 'me' resolution
+  let userEmail: string | undefined;
+  try {
+    const context = extractRequestContext(request);
+    userEmail = context.userEmail;
+  } catch {
+    // Ignore - userEmail will be undefined
+  }
+
+  // Convert lowercase API path to Databricks workspace path
+  const workspacePath = `/Workspace/${convertToWorkspacePath(subpath, userEmail)}`;
+
+  try {
+    const result = await workspaceService.getStatus(workspacePath);
+    return result;
+  } catch (error: any) {
+    if (error instanceof workspaceService.WorkspaceError) {
+      if (error.code === 'PERMISSION_DENIED') {
+        return reply.status(403).send({ error: 'PERMISSION_DENIED' });
+      }
+      if (error.code === 'NOT_FOUND') {
+        return reply.status(404).send({ error: 'NOT_FOUND' });
+      }
+    }
+    return reply.status(500).send({ error: error.message });
+  }
+}
+
 // Create a directory in workspace
 // POST /api/v1/workspace/*
 // Example: POST /api/v1/workspace/users/me/new-folder

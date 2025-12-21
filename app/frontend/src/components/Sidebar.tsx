@@ -22,7 +22,7 @@ import SessionList from './SessionList';
 import AccountMenu from './AccountMenu';
 import WorkspaceSelectModal from './WorkspaceSelectModal';
 import WorkspacePathSelector from './WorkspacePathSelector';
-import SettingsModal from './SettingsModal';
+import AppSettingsModal from './AppSettingsModal';
 import type { AttachedImage } from './ImageUpload';
 import { useUser } from '../contexts/UserContext';
 import type { MessageContent, DocumentContent } from '@app/shared';
@@ -620,7 +620,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
         initialPath={workspacePath || userInfo?.workspaceHome}
       />
 
-      <SettingsModal
+      <AppSettingsModal
         isOpen={showPermissionModal}
         onClose={() => setShowPermissionModal(false)}
         isInitialSetup={!hasPermission}

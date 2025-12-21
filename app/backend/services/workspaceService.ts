@@ -9,6 +9,13 @@ export interface WorkspaceListResult {
   objects: WorkspaceObject[];
 }
 
+export interface WorkspaceStatus {
+  path: string;
+  object_type: string;
+  object_id: number | null;
+  browse_url: string | null;
+}
+
 export class WorkspaceError extends Error {
   constructor(
     message: string,
@@ -104,4 +111,50 @@ export async function createDirectory(
   }
 
   return { path: workspacePath };
+}
+
+// Get workspace object status (including object_id and browse_url)
+export async function getStatus(
+  workspacePath: string
+): Promise<WorkspaceStatus> {
+  const token = await getAccessToken();
+  const response = await fetch(
+    `${databricksHost}/api/2.0/workspace/get-status?path=${encodeURIComponent(workspacePath)}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  const data = (await response.json()) as {
+    path?: string;
+    object_type?: string;
+    object_id?: number;
+    error_code?: string;
+    message?: string;
+  };
+
+  if (data.error_code === 'PERMISSION_DENIED') {
+    throw new WorkspaceError('Permission denied', 'PERMISSION_DENIED');
+  }
+
+  if (data.error_code === 'RESOURCE_DOES_NOT_EXIST') {
+    throw new WorkspaceError('Resource not found', 'NOT_FOUND');
+  }
+
+  if (data.error_code) {
+    throw new WorkspaceError(data.message || 'API error', 'API_ERROR');
+  }
+
+  // Build browse_url from databricksHost and object_id
+  const browseUrl =
+    data.object_id != null
+      ? `${databricksHost}/browse/folders/${data.object_id}`
+      : null;
+
+  return {
+    path: data.path || workspacePath,
+    object_type: data.object_type || 'UNKNOWN',
+    object_id: data.object_id ?? null,
+    browse_url: browseUrl,
+  };
 }

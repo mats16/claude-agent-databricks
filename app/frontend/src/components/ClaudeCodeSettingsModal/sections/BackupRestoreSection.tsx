@@ -1,28 +1,31 @@
+/**
+ * Backup and Restore section
+ * Extracted from SettingsModal for use in unified Claude Code Settings
+ */
+
 import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Modal, Button, Alert, Typography, Flex, Switch, Divider } from 'antd';
-import {
-  SaveOutlined,
-  SyncOutlined,
-  DownloadOutlined,
-} from '@ant-design/icons';
-import { useUser, UserSettings } from '../contexts/UserContext';
+import { useTranslation, Trans } from 'react-i18next';
+import { Button, Alert, Typography, Flex, Switch, Divider } from 'antd';
+import { SyncOutlined, DownloadOutlined } from '@ant-design/icons';
+import { useUser } from '../../../contexts/UserContext';
+import { colors, spacing } from '../../../styles/theme';
 
-const { Text, Title } = Typography;
+const { Text, Title, Link } = Typography;
 
-export type { UserSettings };
-
-interface SettingsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface BackupRestoreSectionProps {
+  isVisible: boolean;
 }
 
-export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export default function BackupRestoreSection({
+  isVisible,
+}: BackupRestoreSectionProps) {
   const { t } = useTranslation();
   const { userSettings } = useUser();
+
   const [claudeConfigSync, setClaudeConfigSync] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
+  const [workspaceUrl, setWorkspaceUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
     text: string;
@@ -34,6 +37,24 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setClaudeConfigSync(userSettings.claudeConfigSync);
     }
   }, [userSettings]);
+
+  // Clear message and fetch workspace URL when section becomes visible
+  useEffect(() => {
+    if (isVisible) {
+      setMessage(null);
+      // Fetch browse_url for .claude folder
+      fetch('/api/v1/workspace/status?path=users/me/.claude')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.browse_url) {
+            setWorkspaceUrl(data.browse_url);
+          }
+        })
+        .catch(() => {
+          // Ignore errors - link will just not be shown
+        });
+    }
+  }, [isVisible]);
 
   const handleManualPull = async () => {
     setIsPulling(true);
@@ -80,26 +101,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   return (
-    <Modal
-      title={
-        <Flex align="center" gap={8}>
-          <SaveOutlined style={{ color: '#f5a623' }} />
-          {t('settingsModal.title')}
-        </Flex>
-      }
-      open={isOpen}
-      onOk={handleSave}
-      onCancel={onClose}
-      okText={isSaving ? t('common.saving') : t('common.save')}
-      cancelText={t('common.close')}
-      okButtonProps={{ loading: isSaving }}
-      cancelButtonProps={{ disabled: isSaving }}
-      width={500}
-    >
+    <div style={{ padding: spacing.xxl, height: '100%', overflow: 'auto' }}>
       {/* Auto Backup Section */}
-      <div style={{ marginBottom: 16 }}>
-        <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-          <SyncOutlined style={{ color: '#f5a623' }} />
+      <div style={{ marginBottom: spacing.lg }}>
+        <Flex
+          align="center"
+          gap={spacing.sm}
+          style={{ marginBottom: spacing.md }}
+        >
+          <SyncOutlined style={{ color: colors.brand }} />
           <Title level={5} style={{ margin: 0 }}>
             {t('settingsModal.autoBackupTitle')}
           </Title>
@@ -108,11 +118,20 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <Flex
           justify="space-between"
           align="center"
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: spacing.md }}
         >
-          <div style={{ flex: 1, marginRight: 16 }}>
+          <div style={{ flex: 1, marginRight: spacing.lg }}>
             <Text type="secondary">
-              {t('settingsModal.autoBackupDescription')}
+              <Trans
+                i18nKey="settingsModal.autoBackupDescription"
+                components={[
+                  workspaceUrl ? (
+                    <Link href={workspaceUrl} target="_blank" key="workspace" />
+                  ) : (
+                    <span key="workspace" />
+                  ),
+                ]}
+              />
             </Text>
           </div>
           <Switch
@@ -122,17 +141,35 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           />
         </Flex>
 
-        <Divider style={{ margin: '16px 0' }} />
+        <Button
+          type="primary"
+          onClick={handleSave}
+          loading={isSaving}
+          disabled={isPulling}
+        >
+          {isSaving ? t('common.saving') : t('common.save')}
+        </Button>
+      </div>
 
-        {/* Manual Pull Section */}
-        <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-          <DownloadOutlined style={{ color: '#f5a623' }} />
+      <Divider />
+
+      {/* Manual Pull Section */}
+      <div style={{ marginBottom: spacing.lg }}>
+        <Flex
+          align="center"
+          gap={spacing.sm}
+          style={{ marginBottom: spacing.md }}
+        >
+          <DownloadOutlined style={{ color: colors.brand }} />
           <Title level={5} style={{ margin: 0 }}>
             {t('settingsModal.manualPullButton')}
           </Title>
         </Flex>
 
-        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+        <Text
+          type="secondary"
+          style={{ display: 'block', marginBottom: spacing.md }}
+        >
           {t('settingsModal.manualPullDescription')}
         </Text>
 
@@ -151,9 +188,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           type={message.type}
           message={message.text}
           showIcon
-          style={{ marginTop: 16 }}
+          style={{ marginTop: spacing.lg }}
         />
       )}
-    </Modal>
+    </div>
   );
 }

@@ -6,15 +6,10 @@ import {
   SettingOutlined,
   GlobalOutlined,
   CheckOutlined,
-  ThunderboltOutlined,
   RobotOutlined,
-  SaveOutlined,
-  TeamOutlined,
 } from '@ant-design/icons';
 import AppSettingsModal from './AppSettingsModal';
-import SettingsModal from './SettingsModal';
-import SkillsModal from './SkillsModal';
-import SubagentModal from './SubagentModal';
+import ClaudeCodeSettingsModal from './ClaudeCodeSettingsModal';
 import { useUser } from '../contexts/UserContext';
 
 const LANGUAGES = [
@@ -26,9 +21,8 @@ export default function AccountMenu() {
   const { t, i18n } = useTranslation();
   const { userInfo } = useUser();
   const [isAppSettingsModalOpen, setIsAppSettingsModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
-  const [isSubagentModalOpen, setIsSubagentModalOpen] = useState(false);
+  const [isClaudeCodeSettingsOpen, setIsClaudeCodeSettingsOpen] =
+    useState(false);
 
   const handleLanguageChange = (langCode: string) => {
     i18n.changeLanguage(langCode);
@@ -42,28 +36,12 @@ export default function AccountMenu() {
     setIsAppSettingsModalOpen(false);
   };
 
-  const handleOpenSettings = () => {
-    setIsSettingsModalOpen(true);
+  const handleOpenClaudeCodeSettings = () => {
+    setIsClaudeCodeSettingsOpen(true);
   };
 
-  const handleCloseSettings = () => {
-    setIsSettingsModalOpen(false);
-  };
-
-  const handleOpenSkills = () => {
-    setIsSkillsModalOpen(true);
-  };
-
-  const handleCloseSkills = () => {
-    setIsSkillsModalOpen(false);
-  };
-
-  const handleOpenSubagents = () => {
-    setIsSubagentModalOpen(true);
-  };
-
-  const handleCloseSubagents = () => {
-    setIsSubagentModalOpen(false);
+  const handleCloseClaudeCodeSettings = () => {
+    setIsClaudeCodeSettingsOpen(false);
   };
 
   const displayEmail = userInfo?.email || 'User';
@@ -110,26 +88,7 @@ export default function AccountMenu() {
       key: 'claude-code-settings',
       icon: <RobotOutlined />,
       label: t('accountMenu.claudeCodeSettings'),
-      children: [
-        {
-          key: 'skills',
-          icon: <ThunderboltOutlined />,
-          label: t('accountMenu.skills'),
-          onClick: handleOpenSkills,
-        },
-        {
-          key: 'subagents',
-          icon: <TeamOutlined />,
-          label: t('accountMenu.subagents'),
-          onClick: handleOpenSubagents,
-        },
-        {
-          key: 'auto-backup',
-          icon: <SaveOutlined />,
-          label: t('accountMenu.autoBackup'),
-          onClick: handleOpenSettings,
-        },
-      ],
+      onClick: handleOpenClaudeCodeSettings,
     },
     {
       key: 'language',
@@ -170,16 +129,9 @@ export default function AccountMenu() {
         onClose={handleCloseAppSettings}
       />
 
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={handleCloseSettings}
-      />
-
-      <SkillsModal isOpen={isSkillsModalOpen} onClose={handleCloseSkills} />
-
-      <SubagentModal
-        isOpen={isSubagentModalOpen}
-        onClose={handleCloseSubagents}
+      <ClaudeCodeSettingsModal
+        isOpen={isClaudeCodeSettingsOpen}
+        onClose={handleCloseClaudeCodeSettings}
       />
     </>
   );

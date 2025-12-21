@@ -1,26 +1,26 @@
 /**
- * Skills management modal
- * Container component that orchestrates skill list, editor, and import
+ * Skills management section
+ * Extracted from SkillsModal for use in unified Claude Code Settings
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Flex, Typography, message } from 'antd';
-import { ThunderboltOutlined } from '@ant-design/icons';
-import { useSkills, type Skill } from '../hooks/useSkills';
-import SkillsList from './skills/SkillsList';
-import SkillEditor from './skills/SkillEditor';
-import PresetImportModal, { type ImportTab } from './skills/PresetImportModal';
-import { colors, spacing } from '../styles/theme';
+import { Flex, Typography, message } from 'antd';
+import { useSkills, type Skill } from '../../../hooks/useSkills';
+import SkillsList from '../../skills/SkillsList';
+import SkillEditor from '../../skills/SkillEditor';
+import PresetImportModal, {
+  type ImportTab,
+} from '../../skills/PresetImportModal';
+import { spacing } from '../../../styles/theme';
 
 const { Text } = Typography;
 
-interface SkillsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface SkillsSectionProps {
+  isVisible: boolean;
 }
 
-export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
+export default function SkillsSection({ isVisible }: SkillsSectionProps) {
   const { t } = useTranslation();
   const {
     skills,
@@ -62,12 +62,12 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
   const [activeImportTab, setActiveImportTab] = useState<ImportTab>('local');
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Fetch skills when modal opens
+  // Fetch skills when section becomes visible
   useEffect(() => {
-    if (isOpen) {
+    if (isVisible) {
       fetchSkills();
     }
-  }, [isOpen, fetchSkills]);
+  }, [isVisible, fetchSkills]);
 
   // Fetch preset skills when import modal opens (local tab)
   useEffect(() => {
@@ -299,19 +299,7 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
     : selectedSkill && editedContent !== selectedSkill.content;
 
   return (
-    <Modal
-      title={
-        <Flex align="center" gap={spacing.sm}>
-          <ThunderboltOutlined style={{ color: colors.brand }} />
-          {t('skillsModal.title')}
-        </Flex>
-      }
-      open={isOpen}
-      onCancel={onClose}
-      width={1200}
-      footer={null}
-      styles={{ body: { padding: 0, height: 700 } }}
-    >
+    <>
       {error && (
         <div style={{ padding: spacing.lg }}>
           <Text type="danger">{error}</Text>
@@ -371,6 +359,6 @@ export default function SkillsModal({ isOpen, onClose }: SkillsModalProps) {
         onImportGitHubSkill={handleImportGitHubSkill}
         onTabChange={handleTabChange}
       />
-    </Modal>
+    </>
   );
 }
