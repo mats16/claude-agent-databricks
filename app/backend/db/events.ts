@@ -52,12 +52,15 @@ export async function saveMessage(sdkMessage: SDKMessage): Promise<void> {
 // Get all events for a session
 export async function getMessagesBySessionId(
   sessionId: string
-): Promise<SDKMessage[]> {
+): Promise<{ uuid: string; message: SDKMessage }[]> {
   const result = await db
-    .select()
+    .select({ uuid: events.uuid, message: events.message })
     .from(events)
     .where(eq(events.sessionId, sessionId))
     .orderBy(asc(events.seq));
 
-  return result.map((row) => row.message as SDKMessage);
+  return result.map((row) => ({
+    uuid: row.uuid,
+    message: row.message as SDKMessage,
+  }));
 }

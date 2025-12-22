@@ -152,7 +152,7 @@ export function useAgent(options: UseAgentOptions = {}) {
         const response = await fetch(`/api/v1/sessions/${sessionId}/events`);
         if (response.ok) {
           const data = await response.json();
-          const events = data.events as SDKMessage[];
+          const events = data.data as SDKMessage[];
           if (events && events.length > 0) {
             // Track all loaded event UUIDs for deduplication
             const uuids = new Set<string>();

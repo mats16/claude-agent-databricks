@@ -402,6 +402,13 @@ export async function getSessionEventsHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  const messages = await getMessagesBySessionId(sessionId);
-  return { events: messages };
+  const events = await getMessagesBySessionId(sessionId);
+  const messages = events.map((e) => e.message);
+
+  return {
+    data: messages,
+    first_id: events.length > 0 ? events[0].uuid : null,
+    last_id: events.length > 0 ? events[events.length - 1].uuid : null,
+    has_more: false,
+  };
 }
