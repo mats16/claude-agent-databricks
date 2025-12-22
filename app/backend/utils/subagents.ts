@@ -21,6 +21,15 @@ export function parseSubagentContent(fileContent: string): SubagentMetadata {
   };
 }
 
+// Format a YAML value using literal block scalar (|) for safe multiline handling
+function formatYamlValue(value: string): string {
+  const indentedValue = value
+    .split('\n')
+    .map((line) => `  ${line}`)
+    .join('\n');
+  return `|\n${indentedValue}`;
+}
+
 // Format subagent content with YAML frontmatter
 export function formatSubagentContent(
   name: string,
@@ -31,7 +40,7 @@ export function formatSubagentContent(
 ): string {
   let frontmatter = `---
 name: ${name}
-description: ${description}`;
+description: ${formatYamlValue(description)}`;
 
   if (tools) {
     frontmatter += `\ntools: ${tools}`;

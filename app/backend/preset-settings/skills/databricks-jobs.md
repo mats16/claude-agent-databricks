@@ -6,72 +6,119 @@ description: |
 version: 0.0.1
 ---
 
-# Databricks Jobs
+# Databricks Jobs Skill
 
 ## Overview
 
 Skill for Databricks job status monitoring and debugging.
 
-**Real-time operations**: Databricks CLI (`databricks jobs`)
-**Historical analysis**: System Tables (`system.lakeflow.*`) via `mcp__databricks__run_sql`
+- **Real-time operations**: Databricks CLI (`databricks jobs`)
+- **Historical analysis**: System Tables (`system.lakeflow.*`) via SQL
 
-## CLI Reference
+## Extracting IDs from URLs
 
-Common commands are documented below. For advanced options (pagination, filtering, output formats):
-→ [Databricks Jobs CLI Reference](https://docs.databricks.com/aws/en/dev-tools/cli/reference/jobs-commands)
+Databricks Jobs URL formats:
+```
+https://<databricks_host>/jobs/<job_id>
+https://<databricks_host>/jobs/<job_id>/runs/<run_id>
+```
 
-## Authentication
+**Example**: `https://e2-demo-tokyo.cloud.databricks.com/jobs/987402714328091/runs/304618225028273`
+- `job_id`: 987402714328091 (job definition)
+- `run_id`: 304618225028273 (execution instance)
 
-Assumes environment variables `DATABRICKS_HOST` and `DATABRICKS_TOKEN` are set.
+## Investigation Flow (Failed Jobs)
 
-## Databricks CLI
+### Step 1: Check Run Status
 
-### List and Get Jobs
+```bash
+databricks jobs get-run <run_id> -o json
+```
+
+Key fields to check:
+- `state.result_state` - Result (`SUCCESS`, `FAILED`, `TIMED_OUT`, `CANCELED`)
+- `state.state_message` - Error message
+- `tasks[]` - Status of each task
+
+### Step 2: Identify Failed Tasks
+
+```bash
+databricks jobs get-run <run_id> -o json | jq '.tasks[] | select(.state.result_state == "FAILED") | {task_key, state}'
+```
+
+### Step 3: Get Error Details
+
+```bash
+databricks jobs get-run-output <run_id> -o json | jq '.error, .error_trace'
+```
+
+### Step 4: Check Job Definition (if needed)
+
+```bash
+databricks jobs get <job_id> -o json
+```
+
+### Step 5: Repair Run (if needed)
+
+```bash
+databricks jobs repair-run <run_id> --rerun-all-failed-tasks -o json
+```
+
+## CLI Command Reference
+
+### Command Syntax
+
+| Command | Argument Type | Example |
+|---------|---------------|---------|
+| `jobs get` | Positional | `databricks jobs get 123` |
+| `jobs get-run` | Positional | `databricks jobs get-run 456` |
+| `jobs get-run-output` | Positional | `databricks jobs get-run-output 456` |
+| `jobs list-runs` | **Flag required** | `databricks jobs list-runs --job-id 123` |
+| `jobs run-now` | Positional | `databricks jobs run-now 123` |
+| `jobs cancel-run` | Positional | `databricks jobs cancel-run 456` |
+| `jobs repair-run` | Positional | `databricks jobs repair-run 456 --rerun-all-failed-tasks` |
+
+### Common Mistakes
+
+| ❌ Wrong | ✅ Correct |
+|----------|-----------|
+| `databricks jobs get --job-id 123` | `databricks jobs get 123` |
+| `databricks jobs get-run --run-id 456` | `databricks jobs get-run 456` |
+| `databricks jobs list-runs 123` | `databricks jobs list-runs --job-id 123` |
+
+### List and Search Jobs
 
 ```bash
 # List all jobs
 databricks jobs list -o json
 
-# Search jobs by name
-databricks jobs list -o json | jq '.jobs[] | select(.settings.name | contains("<keyword>"))'
+# Search by name
+databricks jobs list -o json | jq '.jobs[] | select(.settings.name | contains("keyword"))'
 
 # Get job details
 databricks jobs get <job_id> -o json
 ```
 
-### Check Run Status
+### Run Operations
 
 ```bash
 # List runs for a specific job
 databricks jobs list-runs --job-id <job_id> -o json
 
-# Get run details (state, start/end time, parameters, etc.)
-databricks jobs get-run <run_id> -o json
-
-# List active runs
+# Active runs only
 databricks jobs list-runs --job-id <job_id> --active-only -o json
 
-# List completed runs (recent)
-databricks jobs list-runs --job-id <job_id> --completed-only -o json
-```
+# Get run details
+databricks jobs get-run <run_id> -o json
 
-### Get Run Output and Logs
-
-```bash
-# Get task output (notebook results, error messages, etc.)
+# Get run output/errors
 databricks jobs get-run-output <run_id> -o json
-
-# Extract error message from output
-databricks jobs get-run-output <run_id> -o json | jq '.error, .error_trace'
-
-# Get notebook output
-databricks jobs get-run-output <run_id> -o json | jq '.notebook_output'
 ```
 
-### Run, Cancel, and Repair Jobs
+### Execute, Cancel, and Repair Jobs
 
 ```bash
-# Run job immediately
+# Run immediately
 databricks jobs run-now <job_id> -o json
 
 # Run with parameters
@@ -80,17 +127,17 @@ databricks jobs run-now <job_id> --notebook-params '{"param1": "value1"}' -o jso
 # Cancel a run
 databricks jobs cancel-run <run_id>
 
-# Repair failed tasks (re-run)
+# Rerun all failed tasks
 databricks jobs repair-run <run_id> --rerun-all-failed-tasks -o json
 
-# Repair specific tasks only
+# Rerun specific tasks only
 databricks jobs repair-run <run_id> --rerun-tasks '["task_key1", "task_key2"]' -o json
 ```
 
-### Multi-task Job Task Inspection
+### Multi-task Job Investigation
 
 ```bash
-# Get task list from job definition
+# List task definitions
 databricks jobs get <job_id> -o json | jq '.settings.tasks[] | {task_key, description}'
 
 # Check task states in a run
@@ -100,70 +147,32 @@ databricks jobs get-run <run_id> -o json | jq '.tasks[] | {task_key, state, star
 databricks jobs get-run <run_id> -o json | jq '.tasks[] | select(.state.result_state == "FAILED")'
 ```
 
+### Check Schedule and Triggers
+
+```bash
+# Schedule settings
+databricks jobs get <job_id> -o json | jq '.settings.schedule'
+
+# Trigger settings
+databricks jobs get <job_id> -o json | jq '.settings.trigger'
+```
+
 ## System Tables (Historical Analysis)
 
-System tables are used for analyzing historical run data. Less real-time than CLI but effective for long-term trend analysis.
+Less real-time than CLI but effective for long-term trend analysis. Data may be delayed by several hours.
 
 ### Table Reference
 
-| Table                                   | Purpose           | Key Columns                                                       |
-| --------------------------------------- | ----------------- | ----------------------------------------------------------------- |
-| `system.lakeflow.jobs`                  | Job definitions   | `job_id`, `name`, `creator_user_name`, `settings`                 |
-| `system.lakeflow.job_run_timeline`      | Run history       | `job_id`, `run_id`, `result_state`, `period_start_time`           |
-| `system.lakeflow.job_task_run_timeline` | Task run details  | `job_id`, `run_id`, `task_key`, `compute_ids`, `termination_code` |
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `system.lakeflow.jobs` | Job definitions | `job_id`, `name`, `creator_user_name` |
+| `system.lakeflow.job_run_timeline` | Run history | `job_id`, `run_id`, `result_state`, `period_start_time` |
+| `system.lakeflow.job_task_run_timeline` | Task run details | `run_id`, `task_key`, `termination_code` |
 
-### Query Job Definitions
-
-```sql
--- List all jobs
-SELECT job_id, name, creator_user_name, run_as_user_name
-FROM system.lakeflow.jobs
-ORDER BY job_id DESC;
-
--- Search jobs by name
-SELECT job_id, name, creator_user_name
-FROM system.lakeflow.jobs
-WHERE name LIKE '%<keyword>%';
-
--- Get specific job details
-SELECT *
-FROM system.lakeflow.jobs
-WHERE job_id = <job_id>;
-```
-
-### Analyze Run History
+### Investigate Failed Runs
 
 ```sql
--- Recent run history (with job name)
-SELECT
-  j.name AS job_name,
-  r.run_id,
-  r.result_state,
-  r.period_start_time,
-  r.period_end_time
-FROM system.lakeflow.job_run_timeline r
-JOIN system.lakeflow.jobs j USING (job_id)
-WHERE r.period_start_time >= CURRENT_DATE - INTERVAL 1 DAY
-ORDER BY r.period_start_time DESC
-LIMIT 50;
-
--- Run history for a specific job
-SELECT
-  run_id,
-  result_state,
-  period_start_time,
-  period_end_time,
-  TIMESTAMPDIFF(MINUTE, period_start_time, period_end_time) AS duration_minutes
-FROM system.lakeflow.job_run_timeline
-WHERE job_id = <job_id>
-ORDER BY period_start_time DESC
-LIMIT 20;
-```
-
-### Investigate Failed Jobs
-
-```sql
--- Failed jobs in the last 24 hours
+-- Failed runs in the last 24 hours
 SELECT
   j.name AS job_name,
   r.job_id,
@@ -176,7 +185,26 @@ JOIN system.lakeflow.jobs j USING (job_id)
 WHERE r.result_state IN ('FAILED', 'TIMED_OUT', 'CANCELED')
   AND r.period_start_time >= CURRENT_DATE - INTERVAL 1 DAY
 ORDER BY r.period_start_time DESC;
+```
 
+### Run History for a Specific Job
+
+```sql
+SELECT
+  run_id,
+  result_state,
+  period_start_time,
+  period_end_time,
+  TIMESTAMPDIFF(MINUTE, period_start_time, period_end_time) AS duration_minutes
+FROM system.lakeflow.job_run_timeline
+WHERE job_id = 
+ORDER BY period_start_time DESC
+LIMIT 20;
+```
+
+### Failure Pattern Analysis
+
+```sql
 -- Failure count by job (last 7 days)
 SELECT
   j.name AS job_name,
@@ -188,12 +216,22 @@ WHERE r.result_state = 'FAILED'
   AND r.period_start_time >= CURRENT_DATE - INTERVAL 7 DAYS
 GROUP BY j.name, r.job_id
 ORDER BY failure_count DESC;
+
+-- Frequently failing tasks
+SELECT
+  task_key,
+  COUNT(*) AS failure_count
+FROM system.lakeflow.job_task_run_timeline
+WHERE job_id = 
+  AND result_state = 'FAILED'
+  AND period_start_time >= CURRENT_DATE - INTERVAL 30 DAYS
+GROUP BY task_key
+ORDER BY failure_count DESC;
 ```
 
-### Task-Level Investigation
+### Task Details
 
 ```sql
--- Task details for a specific run
 SELECT
   task_key,
   result_state,
@@ -202,155 +240,42 @@ SELECT
   period_end_time,
   compute_ids
 FROM system.lakeflow.job_task_run_timeline
-WHERE run_id = <run_id>
+WHERE run_id = 
 ORDER BY period_start_time;
-
--- Failed task details
-SELECT
-  j.name AS job_name,
-  t.run_id,
-  t.task_key,
-  t.termination_code,
-  t.period_start_time
-FROM system.lakeflow.job_task_run_timeline t
-JOIN system.lakeflow.jobs j USING (job_id)
-WHERE t.result_state = 'FAILED'
-  AND t.period_start_time >= CURRENT_DATE - INTERVAL 1 DAY
-ORDER BY t.period_start_time DESC;
 ```
 
 ### Duration Analysis
 
 ```sql
--- Average run duration by job (last 7 days)
+-- Average run duration by job (last 7 days, successful only)
 SELECT
   j.name AS job_name,
-  r.job_id,
   COUNT(DISTINCT r.run_id) AS run_count,
-  AVG(TIMESTAMPDIFF(MINUTE, r.period_start_time, r.period_end_time)) AS avg_duration_minutes,
-  MAX(TIMESTAMPDIFF(MINUTE, r.period_start_time, r.period_end_time)) AS max_duration_minutes
+  AVG(TIMESTAMPDIFF(MINUTE, r.period_start_time, r.period_end_time)) AS avg_minutes,
+  MAX(TIMESTAMPDIFF(MINUTE, r.period_start_time, r.period_end_time)) AS max_minutes
 FROM system.lakeflow.job_run_timeline r
 JOIN system.lakeflow.jobs j USING (job_id)
 WHERE r.result_state = 'SUCCESS'
   AND r.period_start_time >= CURRENT_DATE - INTERVAL 7 DAYS
-GROUP BY j.name, r.job_id
-ORDER BY avg_duration_minutes DESC;
-
--- Identify long-running jobs (over 1 hour)
-SELECT
-  j.name AS job_name,
-  r.run_id,
-  r.period_start_time,
-  TIMESTAMPDIFF(MINUTE, r.period_start_time, r.period_end_time) AS duration_minutes
-FROM system.lakeflow.job_run_timeline r
-JOIN system.lakeflow.jobs j USING (job_id)
-WHERE TIMESTAMPDIFF(MINUTE, r.period_start_time, r.period_end_time) > 60
-  AND r.period_start_time >= CURRENT_DATE - INTERVAL 7 DAYS
-ORDER BY duration_minutes DESC;
-```
-
-### Cost Analysis Integration
-
-```sql
--- DBU consumption by job (join with billing table)
-SELECT
-  j.name AS job_name,
-  u.usage_metadata.job_id,
-  SUM(u.usage_quantity) AS total_dbu
-FROM system.billing.usage u
-JOIN system.lakeflow.jobs j
-  ON u.usage_metadata.job_id = j.job_id
-WHERE u.usage_metadata.job_id IS NOT NULL
-  AND u.usage_date >= CURRENT_DATE - INTERVAL 7 DAYS
-GROUP BY j.name, u.usage_metadata.job_id
-ORDER BY total_dbu DESC;
-```
-
-## Troubleshooting
-
-### 1. Job Failed
-
-```bash
-# 1. Get run details
-databricks runs get <run_id> -o json
-
-# 2. Check error output
-databricks runs get-output <run_id> -o json | jq '.error, .error_trace'
-
-# 3. Identify failed tasks
-databricks runs get <run_id> -o json | jq '.tasks[] | select(.state.result_state == "FAILED") | {task_key, state}'
-
-# 4. Repair if needed
-databricks runs repair <run_id> --rerun-all-failed-tasks -o json
-```
-
-### 2. Job Hanging (Running Too Long)
-
-```bash
-# Check run state
-databricks jobs get-run <run_id> -o json | jq '{state: .state, start_time, run_page_url}'
-
-# Check task states
-databricks jobs get-run <run_id> -o json | jq '.tasks[] | {task_key, state}'
-
-# Cancel if needed
-databricks jobs cancel-run <run_id>
-```
-
-### 3. Analyze Past Failure Patterns
-
-```sql
--- Past failures for the same job
-SELECT
-  run_id,
-  result_state,
-  termination_code,
-  period_start_time
-FROM system.lakeflow.job_run_timeline
-WHERE job_id = <job_id>
-  AND result_state = 'FAILED'
-ORDER BY period_start_time DESC
-LIMIT 10;
-
--- Identify frequently failing tasks
-SELECT
-  task_key,
-  COUNT(*) AS failure_count
-FROM system.lakeflow.job_task_run_timeline
-WHERE job_id = <job_id>
-  AND result_state = 'FAILED'
-  AND period_start_time >= CURRENT_DATE - INTERVAL 30 DAYS
-GROUP BY task_key
-ORDER BY failure_count DESC;
-```
-
-### 4. Check Job Schedule
-
-```bash
-# Check job schedule settings
-databricks jobs get <job_id> -o json | jq '.settings.schedule'
-
-# Check trigger settings
-databricks jobs get <job_id> -o json | jq '.settings.trigger'
+GROUP BY j.name
+ORDER BY avg_minutes DESC;
 ```
 
 ## result_state Reference
 
-| State        | Description                              |
-| ------------ | ---------------------------------------- |
-| `SUCCESS`    | Completed successfully                   |
-| `FAILED`     | Failed                                   |
-| `TIMED_OUT`  | Timed out                                |
-| `CANCELED`   | Canceled by user or system               |
-| `PENDING`    | Waiting to run (resource pending)        |
-| `RUNNING`    | Currently running                        |
-| `TERMINATING`| Terminating                              |
-| `SKIPPED`    | Skipped (e.g., dependent task failed)    |
+| State | Description |
+|-------|-------------|
+| `SUCCESS` | Completed successfully |
+| `FAILED` | Failed |
+| `TIMED_OUT` | Timed out |
+| `CANCELED` | Canceled by user or system |
+| `RUNNING` | Currently running |
+| `PENDING` | Waiting to run |
+| `SKIPPED` | Skipped (e.g., dependent task failed) |
 
 ## Tips
 
-- **Real-time status**: Use CLI (`databricks runs get`)
-- **Historical analysis**: Use system tables (`system.lakeflow.*`)
-- System tables are not real-time; data may be delayed by several hours
-- Long-running jobs are split into multiple rows in `job_run_timeline` (hourly granularity)
+- **Real-time status**: Use CLI (`databricks jobs get-run`)
+- **Historical analysis**: Use System Tables (data may be delayed by several hours)
 - Combine `-o json` with `jq` to extract needed information
+- Long-running jobs are split into multiple rows in `job_run_timeline` (hourly granularity)

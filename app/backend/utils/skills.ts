@@ -18,6 +18,15 @@ export function parseSkillContent(fileContent: string): SkillMetadata {
   };
 }
 
+// Format a YAML value using literal block scalar (|) for safe multiline handling
+function formatYamlValue(value: string): string {
+  const indentedValue = value
+    .split('\n')
+    .map((line) => `  ${line}`)
+    .join('\n');
+  return `|\n${indentedValue}`;
+}
+
 // Format skill content with YAML frontmatter
 export function formatSkillContent(
   name: string,
@@ -27,7 +36,7 @@ export function formatSkillContent(
 ): string {
   return `---
 name: ${name}
-description: ${description}
+description: ${formatYamlValue(description)}
 version: ${version}
 ---
 
