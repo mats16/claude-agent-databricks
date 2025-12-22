@@ -27,10 +27,11 @@ interface PullTask extends BaseTask {
 
 interface PushTask extends BaseTask {
   type: 'push';
+  token: string;
   localPath: string;
   workspacePath: string;
-  token?: string;
-  full?: boolean;
+  flags?: string;
+  replace?: boolean;
 }
 
 interface DeleteTask extends BaseTask {
@@ -104,10 +105,11 @@ async function processTask(task: WorkspaceSyncTask): Promise<void> {
         break;
       case 'push':
         await workspacePush(
+          task.token,
           task.localPath,
           task.workspacePath,
-          task.token,
-          task.full
+          task.flags,
+          task.replace
         );
         break;
       case 'delete':
@@ -212,20 +214,22 @@ export function enqueuePull(params: {
 // Enqueue push task
 export function enqueuePush(params: {
   userId: string;
+  token: string;
   localPath: string;
   workspacePath: string;
-  token?: string;
-  full?: boolean;
+  flags?: string;
+  replace?: boolean;
 }): string {
   ensureQueueInitialized();
   const task: PushTask = {
     id: crypto.randomUUID(),
     type: 'push',
     userId: params.userId,
+    token: params.token,
     localPath: params.localPath,
     workspacePath: params.workspacePath,
-    token: params.token,
-    full: params.full,
+    flags: params.flags,
+    replace: params.replace,
     createdAt: Date.now(),
     retryCount: 0,
   };

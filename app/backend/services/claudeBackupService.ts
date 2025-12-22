@@ -52,6 +52,9 @@ export async function pushClaudeConfig(
   const workspaceClaudeConfigPath = getWorkspaceClaudeConfigPath(userEmail);
 
   const spAccessToken = await getOidcAccessToken();
+  if (!spAccessToken) {
+    throw new Error('Failed to get SP access token for backup push');
+  }
 
   // Ensure workspace directory exists
   await ensureWorkspaceDirectory(workspaceClaudeConfigPath, spAccessToken);
@@ -62,10 +65,10 @@ export async function pushClaudeConfig(
 
   const taskId = enqueuePush({
     userId,
+    token: spAccessToken,
     localPath: localClaudeConfigPath,
     workspacePath: workspaceClaudeConfigPath,
-    token: spAccessToken,
-    full: true, // full sync
+    replace: true,
   });
 
   return taskId;

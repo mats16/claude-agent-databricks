@@ -56,15 +56,19 @@ async function syncSkillsToWorkspace(
 
   // Ensure workspace directory exists
   const spToken = await getOidcAccessToken();
+  if (!spToken) {
+    console.error('[Skills] Workspace sync skipped (no SP token available)');
+    return;
+  }
   await ensureWorkspaceDirectory(workspaceSkillsPath, spToken);
 
   // Enqueue push task (fire-and-forget via queue)
   enqueuePush({
     userId,
+    token: spToken,
     localPath: skillsPath,
     workspacePath: workspaceSkillsPath,
-    token: spToken,
-    full: true,
+    replace: true,
   });
 }
 

@@ -375,17 +375,15 @@ Violating these rules is considered a critical error.
         // Note: workspace pull is now handled in app.ts before starting the agent
         Stop: [
           // Push claudeConfig (local -> workspace) - only if claudeConfigSync is enabled
-          // Uses --full flag for complete sync to ensure skills are properly synced
           {
             hooks: [
               async (_input, _toolUseID, _options) => {
                 if (claudeConfigSync && spAccessToken && userId) {
                   enqueuePush({
                     userId,
+                    token: spAccessToken,
                     localPath: localClaudeConfigPath,
                     workspacePath: workspaceClaudeConfigPath,
-                    token: spAccessToken,
-                    full: true, // full sync for .claude directory
                   });
                 }
                 return { async: true };
@@ -405,9 +403,9 @@ Violating these rules is considered a critical error.
                 ) {
                   enqueuePush({
                     userId,
+                    token: spAccessToken,
                     localPath: localWorkPath,
                     workspacePath,
-                    token: spAccessToken,
                   });
                 }
                 return { async: true };

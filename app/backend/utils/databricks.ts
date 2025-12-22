@@ -36,20 +36,48 @@ export async function workspacePull(
 /**
  * Push from local to workspace (local -> workspace)
  * Uses: databricks sync
- * @param token - Optional SP token to use for authentication
- * @param full - If true, adds --full flag for complete sync (deletes remote files not in local)
+ * @param token - SP token to use for authentication (required)
+ * @param localPath - Local directory path to sync from
+ * @param workspacePath - Databricks workspace destination path
+ * @param flags - Additional flags to pass to databricks sync command
+ * @param replace - If true, deletes workspace directory before sync to propagate deletions
  */
 export async function workspacePush(
+  token: string,
   localPath: string,
   workspacePath: string,
-  token?: string,
-  full?: boolean
+  flags?: string,
+  replace?: boolean
 ): Promise<void> {
-  const cmdParts = ['databricks', 'sync', localPath, workspacePath];
+  const env = {
+    PATH: process.env.PATH,
+    HOME: process.env.HOME,
+    DATABRICKS_HOST: databricksHost,
+    DATABRICKS_TOKEN: token,
+  };
 
-  if (full) {
-    cmdParts.push('--full');
+  // replace が有効な場合、先にWorkspaceディレクトリを削除
+  if (replace) {
+    const deleteCmd = `databricks workspace delete "${workspacePath}" --recursive`;
+    try {
+      await execAsync(deleteCmd, { env });
+      console.log(
+        `[workspacePush] Deleted workspace directory: ${workspacePath}`
+      );
+    } catch (error: any) {
+      // ディレクトリが存在しない場合はエラーを無視
+      if (
+        !error.message.includes('RESOURCE_DOES_NOT_EXIST') &&
+        !error.message.includes('does not exist')
+      ) {
+        console.error(
+          `[workspacePush] Delete error (continuing): ${error.message}`
+        );
+      }
+    }
   }
+
+  const cmdParts = ['databricks', 'sync', localPath, workspacePath];
 
   cmdParts.push(
     '--output',
@@ -80,16 +108,10 @@ export async function workspacePush(
     '".turbo/*"'
   );
 
-  const cmd = cmdParts.join(' ');
+  // 追加フラグを末尾に連結
+  const cmd = cmdParts.join(' ') + (flags ? ` ${flags}` : '');
 
   try {
-    //const env = token ? { ...process.env, DATABRICKS_TOKEN: token } : process.env;
-    const env = {
-      PATH: process.env.PATH,
-      HOME: process.env.HOME,
-      DATABRICKS_HOST: databricksHost,
-      DATABRICKS_TOKEN: token ?? process.env.DATABRICKS_SP_TOKEN,
-    };
     await execAsync(cmd, { env });
   } catch (error: any) {
     console.error(`[workspacePush] Error: ${error.message}`);

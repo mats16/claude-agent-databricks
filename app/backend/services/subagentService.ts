@@ -58,15 +58,19 @@ async function syncAgentsToWorkspace(
 
   // Ensure workspace directory exists
   const spToken = await getOidcAccessToken();
+  if (!spToken) {
+    console.error('[Subagents] Workspace sync skipped (no SP token available)');
+    return;
+  }
   await ensureWorkspaceDirectory(workspaceAgentsPath, spToken);
 
   // Enqueue push task (fire-and-forget via queue)
   enqueuePush({
     userId,
+    token: spToken,
     localPath: agentsPath,
     workspacePath: workspaceAgentsPath,
-    token: spToken,
-    full: true,
+    replace: true,
   });
 }
 
