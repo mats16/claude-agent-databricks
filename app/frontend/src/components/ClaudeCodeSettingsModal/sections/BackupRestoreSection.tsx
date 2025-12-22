@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Button, Alert, Typography, Flex, Switch, Divider } from 'antd';
-import { SyncOutlined, DownloadOutlined } from '@ant-design/icons';
+import { SyncOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { colors, spacing } from '../../../styles/theme';
 
 const { Text, Title, Link } = Typography;
@@ -24,6 +24,7 @@ export default function BackupRestoreSection({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
   const [workspaceUrl, setWorkspaceUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
@@ -81,6 +82,26 @@ export default function BackupRestoreSection({
       setMessage({ type: 'error', text: t('settingsModal.pullFailed') });
     } finally {
       setIsPulling(false);
+    }
+  };
+
+  const handleManualPush = async () => {
+    setIsPushing(true);
+    setMessage(null);
+    try {
+      const response = await fetch('/api/v1/settings/claude-backup/push', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to push claude config');
+      }
+
+      setMessage({ type: 'success', text: t('settingsModal.pushSuccess') });
+    } catch {
+      setMessage({ type: 'error', text: t('settingsModal.pushFailed') });
+    } finally {
+      setIsPushing(false);
     }
   };
 
@@ -143,10 +164,51 @@ export default function BackupRestoreSection({
           <Switch
             checked={claudeConfigSync}
             onChange={handleToggleChange}
-            disabled={isLoading || isSaving || isPulling}
+            disabled={isLoading || isSaving || isPulling || isPushing}
             loading={isLoading || isSaving}
           />
         </Flex>
+      </div>
+
+      <Divider />
+
+      {/* Manual Push Section */}
+      <div style={{ marginBottom: spacing.lg }}>
+        <Flex
+          align="center"
+          gap={spacing.sm}
+          style={{ marginBottom: spacing.md }}
+        >
+          <UploadOutlined style={{ color: colors.brand }} />
+          <Title level={5} style={{ margin: 0 }}>
+            {t('settingsModal.manualPushTitle')}
+          </Title>
+        </Flex>
+
+        <Text
+          type="secondary"
+          style={{ display: 'block', marginBottom: spacing.md }}
+        >
+          <Trans
+            i18nKey="settingsModal.manualPushDescription"
+            components={[
+              workspaceUrl ? (
+                <Link href={workspaceUrl} target="_blank" key="workspace" />
+              ) : (
+                <span key="workspace" />
+              ),
+            ]}
+          />
+        </Text>
+
+        <Button
+          icon={<UploadOutlined />}
+          onClick={handleManualPush}
+          loading={isPushing}
+          disabled={isSaving || isPulling}
+        >
+          {t('settingsModal.manualPushButton')}
+        </Button>
       </div>
 
       <Divider />
@@ -184,7 +246,7 @@ export default function BackupRestoreSection({
           icon={<DownloadOutlined />}
           onClick={handleManualPull}
           loading={isPulling}
-          disabled={isSaving}
+          disabled={isSaving || isPushing}
         >
           {t('settingsModal.manualPullButton')}
         </Button>
