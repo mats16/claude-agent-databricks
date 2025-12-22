@@ -99,6 +99,7 @@ export async function createSubagentHandler(
 
   try {
     const subagent = await subagentService.createSubagent(
+      context.userId,
       context.userEmail,
       name,
       description,
@@ -159,6 +160,7 @@ export async function updateSubagentHandler(
 
   try {
     const subagent = await subagentService.updateSubagent(
+      context.userId,
       context.userEmail,
       subagentName,
       description,
@@ -196,7 +198,11 @@ export async function deleteSubagentHandler(
   }
 
   try {
-    await subagentService.deleteSubagent(context.userEmail, subagentName);
+    await subagentService.deleteSubagent(
+      context.userId,
+      context.userEmail,
+      subagentName
+    );
     return { success: true };
   } catch (error: any) {
     if (error.message === 'Subagent not found') {
@@ -242,6 +248,7 @@ export async function importPresetSubagentHandler(
 
   try {
     const subagent = await subagentService.importPresetSubagent(
+      context.userId,
       context.userEmail,
       presetName
     );

@@ -363,8 +363,8 @@ GitHub skills are fetched directly from the frontend without backend API:
 - `GET /api/v1/workspace/*` - List any workspace path (path converted to Databricks format internally)
 - `POST /api/v1/workspace/*` - Create a directory (body: `{ object_type: "DIRECTORY" }`)
 
-#### Queue
-- `GET /api/v1/queue/status` - Get workspace sync queue status (userPendingCount, userTasks, totalPendingCount, queueStats)
+#### Queues
+- `GET /api/v1/queues/status` - Get workspace sync queue status (userPendingCount, userTasks, totalPendingCount, queueStats)
 
 ### WebSocket
 - `/api/v1/sessions/ws` - Real-time session list updates (notifies on session creation)
@@ -396,7 +396,7 @@ app/backend/
 │       │   └── sp-permission/  # Service principal info
 │       ├── preset-settings/ # Preset skills/agents
 │       ├── workspace/       # Workspace listing
-│       └── queue/           # Workspace sync queue status
+│       └── queues/          # Workspace sync queue status
 ├── services/           # Business logic layer
 │   ├── sessionState.ts # In-memory session queue management
 │   ├── workspaceQueueService.ts # fastq-based workspace sync queue

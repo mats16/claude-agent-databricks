@@ -18,7 +18,7 @@ import agentRoutes from './routes/v1/settings/agents/index.js';
 import spPermissionRoutes from './routes/v1/settings/sp-permission/index.js';
 import presetSettingsRoutes from './routes/v1/preset-settings/index.js';
 import workspaceRoutes from './routes/v1/workspace/index.js';
-import queueRoutes from './routes/v1/queue/index.js';
+import queueRoutes from './routes/v1/queues/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,7 +69,7 @@ export async function buildApp() {
     prefix: '/api/v1/preset-settings',
   });
   await fastify.register(workspaceRoutes, { prefix: '/api/v1/workspace' });
-  await fastify.register(queueRoutes, { prefix: '/api/v1/queue' });
+  await fastify.register(queueRoutes, { prefix: '/api/v1/queues' });
 
   return fastify;
 }

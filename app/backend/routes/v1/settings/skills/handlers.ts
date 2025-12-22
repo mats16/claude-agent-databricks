@@ -88,6 +88,7 @@ export async function createSkillHandler(
 
   try {
     const skill = await skillService.createSkill(
+      context.userId,
       context.userEmail,
       name,
       description,
@@ -135,6 +136,7 @@ export async function updateSkillHandler(
 
   try {
     const skill = await skillService.updateSkill(
+      context.userId,
       context.userEmail,
       skillName,
       description,
@@ -171,7 +173,11 @@ export async function deleteSkillHandler(
   }
 
   try {
-    await skillService.deleteSkill(context.userEmail, skillName);
+    await skillService.deleteSkill(
+      context.userId,
+      context.userEmail,
+      skillName
+    );
     return { success: true };
   } catch (error: any) {
     if (error.message === 'Skill not found') {
@@ -217,6 +223,7 @@ export async function importPresetSkillHandler(
 
   try {
     const skill = await skillService.importPresetSkill(
+      context.userId,
       context.userEmail,
       presetName
     );

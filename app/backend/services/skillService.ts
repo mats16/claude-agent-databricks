@@ -2,15 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getOidcAccessToken } from '../agent/index.js';
-import {
-  workspacePush,
-  ensureWorkspaceDirectory,
-} from '../utils/databricks.js';
+import { ensureWorkspaceDirectory } from '../utils/databricks.js';
 import {
   parseSkillContent,
   formatSkillContent,
   type SkillMetadata,
 } from '../utils/skills.js';
+import { enqueuePush } from './workspaceQueueService.js';
+import { getSettingsDirect } from '../db/settings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,15 +39,33 @@ function getPresetSkillsPath(): string {
   return path.join(__dirname, '../preset-settings/skills');
 }
 
-// Sync skills to workspace (fire-and-forget)
+// Sync skills to workspace via queue (fire-and-forget)
 async function syncSkillsToWorkspace(
+  userId: string,
   userEmail: string,
   skillsPath: string
 ): Promise<void> {
+  // Check if claudeConfigSync is enabled
+  const userSettings = await getSettingsDirect(userId);
+  if (!userSettings?.claudeConfigSync) {
+    console.log('[Skills] Workspace sync skipped (claudeConfigSync disabled)');
+    return;
+  }
+
   const workspaceSkillsPath = `/Workspace/Users/${userEmail}/.claude/skills`;
+
+  // Ensure workspace directory exists
   const spToken = await getOidcAccessToken();
   await ensureWorkspaceDirectory(workspaceSkillsPath, spToken);
-  await workspacePush(skillsPath, workspaceSkillsPath, spToken, true);
+
+  // Enqueue push task (fire-and-forget via queue)
+  enqueuePush({
+    userId,
+    localPath: skillsPath,
+    workspacePath: workspaceSkillsPath,
+    token: spToken,
+    full: true,
+  });
 }
 
 // List all skills for a user
@@ -107,6 +124,7 @@ export async function getSkill(
 
 // Create a new skill
 export async function createSkill(
+  userId: string,
   userEmail: string,
   name: string,
   description: string,
@@ -129,8 +147,8 @@ export async function createSkill(
   const fileContent = formatSkillContent(name, description, version, content);
   fs.writeFileSync(skillPath, fileContent, 'utf-8');
 
-  // Sync to workspace (fire-and-forget)
-  syncSkillsToWorkspace(userEmail, skillsPath).catch((err) => {
+  // Sync to workspace via queue (fire-and-forget)
+  syncSkillsToWorkspace(userId, userEmail, skillsPath).catch((err) => {
     console.error(`[Skills] Failed to sync after create: ${err.message}`);
   });
 
@@ -139,6 +157,7 @@ export async function createSkill(
 
 // Update an existing skill
 export async function updateSkill(
+  userId: string,
   userEmail: string,
   skillName: string,
   description: string,
@@ -163,8 +182,8 @@ export async function updateSkill(
   );
   fs.writeFileSync(skillPath, fileContent, 'utf-8');
 
-  // Sync to workspace (fire-and-forget)
-  syncSkillsToWorkspace(userEmail, skillsPath).catch((err) => {
+  // Sync to workspace via queue (fire-and-forget)
+  syncSkillsToWorkspace(userId, userEmail, skillsPath).catch((err) => {
     console.error(`[Skills] Failed to sync after update: ${err.message}`);
   });
 
@@ -173,6 +192,7 @@ export async function updateSkill(
 
 // Delete a skill
 export async function deleteSkill(
+  userId: string,
   userEmail: string,
   skillName: string
 ): Promise<void> {
@@ -187,8 +207,8 @@ export async function deleteSkill(
   // Delete skill directory recursively
   fs.rmSync(skillDirPath, { recursive: true, force: true });
 
-  // Sync to workspace (fire-and-forget)
-  syncSkillsToWorkspace(userEmail, skillsPath).catch((err) => {
+  // Sync to workspace via queue (fire-and-forget)
+  syncSkillsToWorkspace(userId, userEmail, skillsPath).catch((err) => {
     console.error(`[Skills] Failed to sync after delete: ${err.message}`);
   });
 }
@@ -224,6 +244,7 @@ export async function listPresetSkills(): Promise<PresetListResult> {
 
 // Import a preset skill to user's skills
 export async function importPresetSkill(
+  userId: string,
   userEmail: string,
   presetName: string
 ): Promise<Skill> {
@@ -260,8 +281,8 @@ export async function importPresetSkill(
   );
   fs.writeFileSync(skillPath, fileContent, 'utf-8');
 
-  // Sync to workspace (fire-and-forget)
-  syncSkillsToWorkspace(userEmail, skillsPath).catch((err) => {
+  // Sync to workspace via queue (fire-and-forget)
+  syncSkillsToWorkspace(userId, userEmail, skillsPath).catch((err) => {
     console.error(
       `[Preset Skills] Failed to sync after import: ${err.message}`
     );

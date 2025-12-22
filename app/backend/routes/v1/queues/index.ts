@@ -9,7 +9,7 @@ import {
 
 const queueRoutes: FastifyPluginAsync = async (fastify) => {
   // Get current user's queue status
-  // GET /api/v1/queue/status
+  // GET /api/v1/queues/status
   fastify.get('/status', async (request, reply) => {
     let context;
     try {

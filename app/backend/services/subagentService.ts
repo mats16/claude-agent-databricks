@@ -2,15 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getOidcAccessToken } from '../agent/index.js';
-import {
-  workspacePush,
-  ensureWorkspaceDirectory,
-} from '../utils/databricks.js';
+import { ensureWorkspaceDirectory } from '../utils/databricks.js';
 import {
   parseSubagentContent,
   formatSubagentContent,
   type SubagentMetadata,
 } from '../utils/subagents.js';
+import { enqueuePush } from './workspaceQueueService.js';
+import { getSettingsDirect } from '../db/settings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,15 +39,35 @@ function getPresetAgentsPath(): string {
   return path.join(__dirname, '../preset-settings/agents');
 }
 
-// Sync agents to workspace (fire-and-forget)
+// Sync agents to workspace via queue (fire-and-forget)
 async function syncAgentsToWorkspace(
+  userId: string,
   userEmail: string,
   agentsPath: string
 ): Promise<void> {
+  // Check if claudeConfigSync is enabled
+  const userSettings = await getSettingsDirect(userId);
+  if (!userSettings?.claudeConfigSync) {
+    console.log(
+      '[Subagents] Workspace sync skipped (claudeConfigSync disabled)'
+    );
+    return;
+  }
+
   const workspaceAgentsPath = `/Workspace/Users/${userEmail}/.claude/agents`;
+
+  // Ensure workspace directory exists
   const spToken = await getOidcAccessToken();
   await ensureWorkspaceDirectory(workspaceAgentsPath, spToken);
-  await workspacePush(agentsPath, workspaceAgentsPath, spToken, true);
+
+  // Enqueue push task (fire-and-forget via queue)
+  enqueuePush({
+    userId,
+    localPath: agentsPath,
+    workspacePath: workspaceAgentsPath,
+    token: spToken,
+    full: true,
+  });
 }
 
 // List all subagents for a user
@@ -113,6 +132,7 @@ export async function getSubagent(
 
 // Create a new subagent
 export async function createSubagent(
+  userId: string,
   userEmail: string,
   name: string,
   description: string,
@@ -143,8 +163,8 @@ export async function createSubagent(
   );
   fs.writeFileSync(subagentPath, fileContent, 'utf-8');
 
-  // Sync to workspace (fire-and-forget)
-  syncAgentsToWorkspace(userEmail, agentsPath).catch((err) => {
+  // Sync to workspace via queue (fire-and-forget)
+  syncAgentsToWorkspace(userId, userEmail, agentsPath).catch((err) => {
     console.error(`[Subagents] Failed to sync after create: ${err.message}`);
   });
 
@@ -153,6 +173,7 @@ export async function createSubagent(
 
 // Update an existing subagent
 export async function updateSubagent(
+  userId: string,
   userEmail: string,
   subagentName: string,
   description: string,
@@ -178,8 +199,8 @@ export async function updateSubagent(
   );
   fs.writeFileSync(subagentPath, fileContent, 'utf-8');
 
-  // Sync to workspace (fire-and-forget)
-  syncAgentsToWorkspace(userEmail, agentsPath).catch((err) => {
+  // Sync to workspace via queue (fire-and-forget)
+  syncAgentsToWorkspace(userId, userEmail, agentsPath).catch((err) => {
     console.error(`[Subagents] Failed to sync after update: ${err.message}`);
   });
 
@@ -188,6 +209,7 @@ export async function updateSubagent(
 
 // Delete a subagent
 export async function deleteSubagent(
+  userId: string,
   userEmail: string,
   subagentName: string
 ): Promise<void> {
@@ -202,8 +224,8 @@ export async function deleteSubagent(
   // Delete single file (not recursive like skills)
   fs.unlinkSync(subagentPath);
 
-  // Sync to workspace (fire-and-forget)
-  syncAgentsToWorkspace(userEmail, agentsPath).catch((err) => {
+  // Sync to workspace via queue (fire-and-forget)
+  syncAgentsToWorkspace(userId, userEmail, agentsPath).catch((err) => {
     console.error(`[Subagents] Failed to sync after delete: ${err.message}`);
   });
 }
@@ -242,6 +264,7 @@ export async function listPresetSubagents(): Promise<PresetSubagentListResult> {
 
 // Import a preset subagent to user's subagents
 export async function importPresetSubagent(
+  userId: string,
   userEmail: string,
   presetName: string
 ): Promise<Subagent> {
@@ -280,8 +303,8 @@ export async function importPresetSubagent(
   );
   fs.writeFileSync(subagentPath, fileContent, 'utf-8');
 
-  // Sync to workspace (fire-and-forget)
-  syncAgentsToWorkspace(userEmail, agentsPath).catch((err) => {
+  // Sync to workspace via queue (fire-and-forget)
+  syncAgentsToWorkspace(userId, userEmail, agentsPath).catch((err) => {
     console.error(
       `[Preset Subagents] Failed to sync after import: ${err.message}`
     );
