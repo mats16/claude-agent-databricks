@@ -12,8 +12,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:baseline": "tsx --env-file=../.env db/scripts/mark-baseline.ts",
-    "format": "prettier --write \"**/*.{ts,js,json,md}\" --ignore-path ../.gitignore",
-    "format:check": "prettier --check \"**/*.{ts,js,json,md}\" --ignore-path ../.gitignore"
+    "format": "prettier --write \"**/*.{ts,js,json}\" --ignore-path ../.gitignore",
+    "format:check": "prettier --check \"**/*.{ts,js,json}\" --ignore-path ../.gitignore"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.70",
