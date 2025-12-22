@@ -244,12 +244,12 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               console.error('Failed to send interrupt message:', sendError);
             }
 
-            // Complete the stream to stop the agent
+            // Abort the stream to stop the agent
             const stream = sessionMessageStreams.get(sessionId);
             if (stream) {
-              stream.complete();
+              stream.abort();
               console.log(
-                `[WebSocket] MessageStream completed for session: ${sessionId}`
+                `[WebSocket] MessageStream aborted for session: ${sessionId}`
               );
             }
             return;
@@ -278,10 +278,10 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
           queue.listeners.delete(onEvent);
         }
 
-        // Cleanup MessageStream on disconnect
+        // Cleanup MessageStream on disconnect (abort to stop processing)
         const stream = sessionMessageStreams.get(sessionId);
         if (stream) {
-          stream.complete();
+          stream.abort();
           sessionMessageStreams.delete(sessionId);
         }
 

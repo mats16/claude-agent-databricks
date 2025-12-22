@@ -93,10 +93,23 @@ export class MessageStream {
   private resolvers: Array<() => void> = [];
   private isDone = false;
   private waitForReady?: Promise<void>;
+  private _abortController: AbortController;
 
   constructor(initialMessage: MessageContent[], waitForReady?: Promise<void>) {
     this.queue.push(initialMessage);
     this.waitForReady = waitForReady;
+    this._abortController = new AbortController();
+  }
+
+  // Get the AbortController for SDK query
+  get abortController(): AbortController {
+    return this._abortController;
+  }
+
+  // Abort the stream (stops processing immediately via AbortController)
+  abort(): void {
+    this._abortController.abort();
+    this.complete();
   }
 
   // Add message to queue (called from WebSocket handler)
@@ -312,6 +325,7 @@ Violating these rules is considered a critical error.
   const response = query({
     prompt: buildPrompt(message, stream),
     options: {
+      abortController: stream.abortController,
       resume: sessionId,
       cwd: localWorkPath,
       settingSources: ['user', 'project', 'local'],
