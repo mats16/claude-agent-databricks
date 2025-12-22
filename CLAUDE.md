@@ -351,13 +351,23 @@ Apply the path to `app/frontend/public/favicon.svg`:
 - `GET /api/v1/preset-settings/agents` - List preset subagents
 - `POST /api/v1/preset-settings/agents/:presetName/import` - Import preset subagent
 
-#### GitHub Skills (Frontend Direct Access)
-GitHub skills are fetched directly from the frontend without backend API:
+#### GitHub Skills Import
+- `POST /api/v1/settings/skills/import-github` - Import skill from GitHub repository
+  ```json
+  {
+    "name": "anthropics/skills",
+    "path": "skills/skill-creator",
+    "branch": "main"  // optional, defaults to repository's default branch
+  }
+  ```
+- Uses `git clone --sparse` for efficient partial clone
+- Supports multi-file skills (entire directory is copied)
+
+**Frontend GitHub Skills Discovery**:
 - Source: `https://github.com/anthropics/skills` repository
 - API: `https://api.github.com/repos/anthropics/skills/contents/skills` (directory list)
 - Content: `https://raw.githubusercontent.com/anthropics/skills/main/skills/{name}/SKILL.md`
 - Cache: 15-minute client-side cache in `useSkills.ts`
-- Import: Uses existing `POST /api/v1/settings/skills` to save
 
 #### Sessions
 - `POST /api/v1/sessions` - Create session with initial message (workspacePath is optional)
