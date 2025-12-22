@@ -195,19 +195,33 @@ Sync between local storage and Databricks Workspace uses a fastq-based async que
 - `flags`: Custom `--exclude` flags (e.g., `claudeConfigSyncFlags`, `workspaceSyncFlags`)
 - `replace`: If `true`, deletes workspace directory before sync (propagates deletions)
 
-**Exclusion Flag Constants** (`app/backend/utils/databricks.ts`):
-- `claudeConfigSyncFlags`: For `.claude` directory sync (excludes corrupted files, debug, telemetry, shell-snapshots)
-- `workspaceSyncFlags`: For workspace directory sync (excludes .bundle, *.pyc, __pycache__, node_modules, .turbo)
+**Exclusion Pattern Constants** (`app/backend/utils/workspaceClient.ts`):
+- `claudeConfigExcludePatterns`: For `.claude` directory sync (excludes corrupted files, debug, telemetry, shell-snapshots)
+- `workspaceExcludePatterns`: For workspace directory sync (excludes .bundle, *.pyc, __pycache__, node_modules, .turbo)
+
+#### Skills/Agents Workspace Sync
+
+Skills and agents use direct API operations instead of directory-level sync:
+
+| Operation | Skills | Agents |
+|-----------|--------|--------|
+| Create/Update | `WorkspaceClient.sync()` with `--full` for individual skill directory | `WorkspaceClient.putObject()` for individual agent file |
+| Delete | `WorkspaceClient.deleteObject()` for skill directory | `WorkspaceClient.deleteObject()` for agent file |
+
+- `skillService.ts`: `syncSkillToWorkspace()`, `deleteSkillFromWorkspace()`
+- `subagentService.ts`: `putAgentToWorkspace()`, `deleteAgentFromWorkspace()`
 
 #### Sync Behavior by Use Case
 
-| Use Case | replace | Exclusion Flags | Reason |
-|----------|---------|-----------------|--------|
-| Skills CRUD | `true` | None | Propagate skill deletions to workspace |
-| Agents CRUD | `true` | None | Propagate agent deletions to workspace |
-| Manual backup | `true` | `claudeConfigSyncFlags` + `--full` | Complete backup with cleanup |
-| Task end (claude config) | `false` | `claudeConfigSyncFlags` | Incremental sync, preserve other sessions |
-| Task end (workspace) | `false` | `workspaceSyncFlags` | Incremental sync, preserve existing files |
+| Use Case | Method | Reason |
+|----------|--------|--------|
+| Skill create/update | `sync(localSkillPath, workspaceSkillPath, { full: true })` | Sync individual skill directory |
+| Skill delete | `deleteObject(workspaceSkillPath)` | Direct deletion, no sync |
+| Agent create/update | `putObject(workspaceAgentPath, content, { overwrite: true })` | Upload individual file |
+| Agent delete | `deleteObject(workspaceAgentPath)` | Direct deletion |
+| Manual backup | `enqueuePush({ replace: true, flags: '...--full' })` | Complete backup with cleanup |
+| Task end (claude config) | `enqueuePush({ flags: excludePatterns })` | Incremental sync |
+| Task end (workspace) | `enqueuePush({ flags: excludePatterns })` | Incremental sync |
 
 #### Sync Flags
 Sync behavior is controlled by these flags passed to `processAgentRequest()`:
