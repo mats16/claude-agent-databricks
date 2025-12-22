@@ -70,10 +70,15 @@ export interface WSUserMessage {
   sessionId?: string;
 }
 
+export interface WSStopMessage {
+  type: 'stop';
+}
+
 export type IncomingWSMessage =
   | WSConnectMessage
   | WSResumeMessage
-  | WSUserMessage;
+  | WSUserMessage
+  | WSStopMessage;
 
 // ============================================
 // WebSocket Message Types (Server -> Client)

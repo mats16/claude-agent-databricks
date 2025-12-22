@@ -12,6 +12,7 @@ import {
   CloseOutlined,
   FileTextOutlined,
   FilePdfOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import type { AttachedImage } from './ImageUpload';
 import type { AttachedFile } from '../hooks/useFileUpload';
@@ -56,6 +57,10 @@ interface ChatInputProps {
   isUploading?: boolean;
   /** Callback when submit is triggered */
   onSubmit: () => void;
+  /** Callback when stop is triggered */
+  onStop?: () => void;
+  /** Whether the agent is currently processing */
+  isAgentProcessing?: boolean;
   /** Placeholder text */
   placeholder?: string;
   /** Max images allowed */
@@ -75,6 +80,8 @@ export default function ChatInput({
   isConverting = false,
   isUploading = false,
   onSubmit,
+  onStop,
+  isAgentProcessing = false,
   placeholder,
   maxImages = 5,
   maxFiles = 10,
@@ -215,6 +222,9 @@ export default function ChatInput({
   const hasAttachments = attachedImages.length > 0 || attachedFiles.length > 0;
   const isSubmitDisabled =
     disabled || isProcessing || (!input.trim() && !hasAttachments);
+
+  // Show stop button when: agent is processing AND input is empty AND no attachments
+  const showStopButton = isAgentProcessing && !input.trim() && !hasAttachments;
 
   // Accept types for unified file input
   const acceptTypes = [
@@ -383,14 +393,23 @@ export default function ChatInput({
             }
             title={t('fileUpload.attachFile')}
           />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            disabled={isSubmitDisabled}
-            loading={isProcessing}
-            onClick={onSubmit}
-            style={{ borderRadius: 8 }}
-          />
+          {showStopButton ? (
+            <Button
+              type="default"
+              icon={<StopOutlined />}
+              onClick={onStop}
+              style={{ borderRadius: 8 }}
+            />
+          ) : (
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              disabled={isSubmitDisabled}
+              loading={isProcessing}
+              onClick={onSubmit}
+              style={{ borderRadius: 8 }}
+            />
+          )}
         </Flex>
       </Flex>
     </div>

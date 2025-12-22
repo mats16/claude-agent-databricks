@@ -224,6 +224,36 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               }
             }
           }
+
+          if (message.type === 'stop') {
+            console.log(
+              `[WebSocket] Stop request received for session: ${sessionId}`
+            );
+
+            // Create and save the interrupt message as a user message
+            const interruptContent: MessageContent[] = [
+              { type: 'text', text: '[Request interrupted by user]' },
+            ];
+            const interruptMsg = createUserMessage(sessionId, interruptContent);
+            await saveMessage(interruptMsg);
+
+            // Send the interrupt message to the client
+            try {
+              socket.send(JSON.stringify(interruptMsg));
+            } catch (sendError) {
+              console.error('Failed to send interrupt message:', sendError);
+            }
+
+            // Complete the stream to stop the agent
+            const stream = sessionMessageStreams.get(sessionId);
+            if (stream) {
+              stream.complete();
+              console.log(
+                `[WebSocket] MessageStream completed for session: ${sessionId}`
+              );
+            }
+            return;
+          }
         } catch (error: any) {
           console.error('WebSocket error:', error);
           try {

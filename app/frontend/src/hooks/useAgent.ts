@@ -725,6 +725,30 @@ export function useAgent(options: UseAgentOptions = {}) {
     [selectedModel, sessionId]
   );
 
+  const stopAgent = useCallback(() => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      console.error('WebSocket is not connected');
+      return;
+    }
+
+    // Verify the WebSocket URL matches the current sessionId
+    const currentWsUrl = wsRef.current.url;
+    if (sessionId && !currentWsUrl.includes(`/sessions/${sessionId}/ws`)) {
+      console.error(
+        `WebSocket URL mismatch: expected session ${sessionId}, but connected to ${currentWsUrl}`
+      );
+      return;
+    }
+
+    console.log(`Sending stop request for session: ${sessionId}`);
+    wsRef.current.send(JSON.stringify({ type: 'stop' }));
+
+    // Reset refs - the interrupt message will be received from the backend via WebSocket
+    currentResponseRef.current = '';
+    currentMessageIdRef.current = '';
+    setIsProcessing(false);
+  }, [sessionId]);
+
   return {
     messages,
     isConnected,
@@ -734,6 +758,7 @@ export function useAgent(options: UseAgentOptions = {}) {
     sessionNotFound,
     connectionError,
     sendMessage,
+    stopAgent,
     selectedModel,
     setSelectedModel,
     setMessages,

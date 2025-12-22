@@ -198,6 +198,7 @@ export default function SessionPage() {
     sessionNotFound,
     connectionError,
     sendMessage,
+    stopAgent,
   } = useAgent({
     sessionId,
     initialMessage,
@@ -321,6 +322,10 @@ export default function SessionPage() {
     clearImages,
     clearFiles,
   ]);
+
+  const handleStop = useCallback(() => {
+    stopAgent();
+  }, [stopAgent]);
 
   const getStatusText = () => {
     if (connectionError) return connectionError;
@@ -630,6 +635,8 @@ export default function SessionPage() {
             isConverting={isConverting}
             isUploading={isUploading}
             onSubmit={handleSubmit}
+            onStop={handleStop}
+            isAgentProcessing={isProcessing}
           />
         )}
       </div>
