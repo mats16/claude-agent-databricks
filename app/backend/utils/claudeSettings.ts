@@ -34,15 +34,15 @@ export function generateClaudeSettings(): ClaudeSettings {
               command:
                 '[ -n "$WORKSPACE_DIR" ] && databricks workspace export-dir "$WORKSPACE_DIR" "$CLAUDE_WORKING_DIR"',
             },
-            {
-              type: 'command',
-              command:
-                '[ -d .git ] || (git init -b main && git add -A && git commit -m "Initial commit" --allow-empty)',
-            },
-            {
-              type: 'command',
-              command: 'git switch -c "$GIT_BRANCH"',
-            },
+            //{
+            //  type: 'command',
+            //  command:
+            //    '[ -d .git ] || (git init -b main && git add -A && git commit -m "Initial commit" --allow-empty)',
+            //},
+            //{
+            //  type: 'command',
+            //  command: 'git switch -c "$GIT_BRANCH"',
+            //},
           ],
         },
       ],
