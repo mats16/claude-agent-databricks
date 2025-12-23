@@ -564,7 +564,6 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
                   value: 'haiku',
                   label: t('models.haiku'),
                   description: t('models.haikuDescription'),
-                  disabled: true,
                 },
               ]}
             />

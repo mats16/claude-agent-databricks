@@ -51,4 +51,5 @@ export const agentEnv = {
   ANTHROPIC_BASE_URL: `${databricks.hostUrl}/serving-endpoints/anthropic`,
   ANTHROPIC_DEFAULT_OPUS_MODEL: 'databricks-claude-opus-4-5',
   ANTHROPIC_DEFAULT_SONNET_MODEL: 'databricks-claude-sonnet-4-5',
+  ANTHROPIC_DEFAULT_HAIKU_MODEL: 'databricks-claude-haiku-4-5',
 };
