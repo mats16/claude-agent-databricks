@@ -14,6 +14,18 @@ import {
   isEncryptionAvailable,
 } from '../utils/encryption.js';
 
+// Databricks token info from /api/2.0/token/list
+interface DatabricksTokenInfo {
+  token_id: string;
+  creation_time: number; // Unix timestamp in ms
+  expiry_time: number; // Unix timestamp in ms, -1 if no expiry
+  comment: string;
+}
+
+interface DatabricksTokenListResponse {
+  token_infos?: DatabricksTokenInfo[];
+}
+
 export interface UserInfo {
   userId: string;
   email: string | null;
@@ -149,19 +161,83 @@ export async function getUserPersonalAccessToken(
   }
 }
 
-// Set PAT (encrypts before storing)
+// Fetch token info from Databricks API using the PAT
+// Returns the token with the latest creation time, or null if API call fails
+async function fetchDatabricksTokenInfo(
+  pat: string
+): Promise<DatabricksTokenInfo | null> {
+  try {
+    const response = await fetch(`${databricks.hostUrl}/api/2.0/token/list`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${pat}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(
+        'Failed to fetch token list:',
+        response.status,
+        response.statusText
+      );
+      return null;
+    }
+
+    const data = (await response.json()) as DatabricksTokenListResponse;
+    const tokens = data.token_infos ?? [];
+
+    if (tokens.length === 0) {
+      return null;
+    }
+
+    // Return the most recently created token
+    // This is a best-effort heuristic since we can't match PAT value to token_id
+    const sortedTokens = [...tokens].sort(
+      (a, b) => b.creation_time - a.creation_time
+    );
+    return sortedTokens[0];
+  } catch (error) {
+    console.error('Error fetching token info:', error);
+    return null;
+  }
+}
+
+// Set PAT (encrypts before storing, fetches expiry from Databricks API)
 export async function setDatabricksPat(
   userId: string,
   userEmail: string,
   pat: string
-): Promise<void> {
+): Promise<{ expiresAt: Date | null; comment: string | null }> {
   if (!isEncryptionAvailable()) {
     throw new Error('Encryption not available. Cannot store PAT.');
   }
 
   await ensureUser(userId, userEmail);
+
+  // Fetch token info from Databricks to get expiry time
+  const tokenInfo = await fetchDatabricksTokenInfo(pat);
+
+  let expiresAt: Date | null = null;
+  let comment: string | null = null;
+
+  if (tokenInfo) {
+    comment = tokenInfo.comment || null;
+    // expiry_time is -1 if no expiry, otherwise Unix timestamp in ms
+    if (tokenInfo.expiry_time > 0) {
+      expiresAt = new Date(tokenInfo.expiry_time);
+    }
+    console.log(
+      `Token info fetched - comment: "${comment}", expires: ${expiresAt?.toISOString() ?? 'never'}`
+    );
+  } else {
+    console.log('Could not fetch token info from Databricks API');
+  }
+
   const encrypted = encrypt(pat);
-  await setPatInDb(userId, encrypted);
+  await setPatInDb(userId, encrypted, expiresAt);
+
+  return { expiresAt, comment };
 }
 
 // Clear PAT

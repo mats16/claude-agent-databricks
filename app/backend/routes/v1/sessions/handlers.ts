@@ -17,6 +17,7 @@ import { enqueueDelete } from '../../../services/workspaceQueueService.js';
 import { getUserPersonalAccessToken } from '../../../services/userService.js';
 import { extractRequestContext } from '../../../utils/headers.js';
 import { writeClaudeSettings } from '../../../utils/claudeSettings.js';
+import { generateSessionStub } from '../../../utils/stub.js';
 import {
   sessionMessageStreams,
   notifySessionCreated,
@@ -105,10 +106,12 @@ export async function createSessionHandler(
       ? [{ type: 'text', text: userMessage }]
       : userMessage;
 
-  // Generate unique uuid for workDir and create it before starting agent
-  const workDirUuid = crypto.randomUUID();
-  const localWorkPath = path.join(localBasePath, userEmail, 'w', workDirUuid);
-  console.log(`[New Session] Creating workDir: ${localWorkPath}`);
+  // Generate unique stub for workDir and create it before starting agent
+  const sessionStub = generateSessionStub();
+  const localWorkPath = path.join(localBasePath, userEmail, 's', sessionStub);
+  console.log(
+    `[New Session] Creating workDir with stub: ${sessionStub}, path: ${localWorkPath}`
+  );
   fs.mkdirSync(localWorkPath, { recursive: true });
 
   // Create settings.local.json with workspace sync hooks if workspacePath is provided
@@ -170,6 +173,7 @@ export async function createSessionHandler(
             await createSession(
               {
                 id: sessionId,
+                stub: sessionStub,
                 title: sessionTitle,
                 model,
                 workspacePath,

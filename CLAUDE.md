@@ -108,7 +108,7 @@ Backend always expects these headers and does not use fallback values, ensuring 
 
 Tables defined in `app/backend/db/schema.ts`:
 - `users` - User records (id, email)
-- `sessions` - Chat sessions with foreign key to users (includes `cwd` for working directory, `is_archived` for archive status)
+- `sessions` - Chat sessions with foreign key to users (includes `stub` for 8-char identifier, `cwd` for working directory, `is_archived` for archive status)
 - `events` - Session messages/events (SDKMessage stored as JSONB in `message` column)
 - `settings` - User settings (claudeConfigAutoPush)
 - `oauth_tokens` - Encrypted tokens storage (composite PK: `user_id` + `provider`), used for PAT storage
@@ -120,9 +120,11 @@ await db.execute(sql`SELECT set_config('app.current_user_id', ${userId}, true)`)
 ```
 
 ### Migration Structure
-- Migrations managed by Drizzle Kit in `app/backend/db/drizzle/`
-- RLS policies applied separately via `app/backend/db/custom/rls-policies.sql`
-- Migration runner: `app/backend/db/migrate.ts` (runs Drizzle migrations + RLS)
+- **Idempotent migrations** in `app/backend/db/drizzle/*.sql` (sorted by filename)
+- All SQL uses `IF NOT EXISTS`, `IF EXISTS` patterns for safe re-runs
+- RLS policies included in migration files (not separate)
+- Migration runner: `app/backend/db/migrate.ts` (exports `runMigrations()` for server startup)
+- Future migrations: Add new `0002_*.sql`, `0003_*.sql` files with idempotent SQL
 
 ## Key Concepts
 
@@ -175,7 +177,7 @@ GIT_AUTHOR_NAME: userName ?? userEmail ?? 'Claude Agent',
 GIT_AUTHOR_EMAIL: userEmail ?? 'agent@databricks.com',
 GIT_COMMITTER_NAME: userName ?? userEmail ?? 'Claude Agent',
 GIT_COMMITTER_EMAIL: userEmail ?? 'agent@databricks.com',
-GIT_BRANCH: `claude/session-${sessionUuid}`,
+GIT_BRANCH: `claude/session-${sessionStub}`,
 ```
 
 ### MCP Servers
@@ -228,15 +230,16 @@ Set in `agent/index.ts` env configuration:
 | `GIT_AUTHOR_EMAIL` | `X-Forwarded-Email` header | Git commit author email |
 | `GIT_COMMITTER_NAME` | `X-Forwarded-Preferred-Username` header | Git commit committer name (fallback: email) |
 | `GIT_COMMITTER_EMAIL` | `X-Forwarded-Email` header | Git commit committer email |
-| `GIT_BRANCH` | Computed from `cwd` | Default git branch name (`claude/session-{uuid}`)
+| `GIT_BRANCH` | Computed from `cwd` | Default git branch name (`claude/session-{stub}`)
 
 #### Path Structure
 - Local base: `$HOME/u` (e.g., `/Users/me/u` or `/home/app/u`)
 - Claude config: `/Workspace/Users/{email}/.claude` → Local: `$HOME/u/{email}/.claude`
-- Working directory: Each session gets unique isolated directory at `$HOME/u/{email}/w/{uuid}`
-  - UUID is generated independently (not sessionId) before agent starts
-  - Path stored in `sessions.cwd` column
+- Working directory: Each session gets unique isolated directory at `$HOME/u/{email}/w/{stub}`
+  - `stub` is an 8-character hex identifier (generated via `crypto.randomBytes(4).toString('hex')`)
+  - Stub is stored in `sessions.stub` column, path in `sessions.cwd`
   - Created API-side before processAgentRequest() call
+  - Used for `SESSION_APP_NAME` (`app-by-claude-{stub}`) to fit Databricks Apps 30-char limit
 
 #### Skills/Agents Workspace Sync
 

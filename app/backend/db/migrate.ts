@@ -1,5 +1,11 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
+/**
+ * Database Migration Runner
+ *
+ * Runs idempotent SQL migrations from db/drizzle/*.sql in sorted order.
+ * Each migration file should use IF NOT EXISTS, IF EXISTS patterns
+ * to be safely re-runnable.
+ */
+
 import postgres from 'postgres';
 import fs from 'fs';
 import path from 'path';
@@ -7,47 +13,52 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-async function runMigrations() {
-  const dbUrl = process.env.DB_URL;
+export async function runMigrations(dbUrl?: string) {
+  const connectionUrl = dbUrl ?? process.env.DB_URL;
 
-  if (!dbUrl) {
+  if (!connectionUrl) {
     console.error('Error: DB_URL environment variable is not set');
     process.exit(1);
   }
 
-  // Use separate connection for migrations (recommended)
-  const migrationClient = postgres(dbUrl, { max: 1 });
-  const db = drizzle(migrationClient);
+  const client = postgres(connectionUrl, { max: 1 });
 
   try {
-    console.log('Running Drizzle Kit migrations...');
+    const migrationsDir = path.join(__dirname, 'drizzle');
 
-    // Run Drizzle Kit managed migrations
-    await migrate(db, {
-      migrationsFolder: path.join(__dirname, 'drizzle'),
-    });
+    // Get all SQL files sorted by name
+    const files = fs
+      .readdirSync(migrationsDir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
 
-    console.log('Drizzle migrations completed');
+    if (files.length === 0) {
+      console.log('No migration files found');
+      return;
+    }
 
-    // Run custom RLS policies (idempotent)
-    console.log('Applying RLS policies...');
-    const rlsPath = path.join(__dirname, 'custom', 'rls-policies.sql');
+    console.log(`Found ${files.length} migration file(s)`);
 
-    if (fs.existsSync(rlsPath)) {
-      const rlsSql = fs.readFileSync(rlsPath, 'utf-8');
-      await migrationClient.unsafe(rlsSql);
-      console.log('RLS policies applied');
-    } else {
-      console.warn('RLS policies file not found, skipping');
+    for (const file of files) {
+      const filePath = path.join(migrationsDir, file);
+      const sql = fs.readFileSync(filePath, 'utf-8');
+
+      console.log(`Running migration: ${file}`);
+      await client.unsafe(sql);
+      console.log(`  ✓ ${file} completed`);
     }
 
     console.log('All migrations completed successfully');
   } catch (error) {
     console.error('Migration failed:', error);
-    process.exit(1);
+    throw error;
   } finally {
-    await migrationClient.end();
+    await client.end();
   }
 }
 
-runMigrations();
+// Run if executed directly
+const isMainModule = process.argv[1]?.endsWith('migrate.ts');
+if (isMainModule) {
+  runMigrations().catch(() => process.exit(1));
+}

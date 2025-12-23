@@ -50,12 +50,16 @@ const patRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     try {
-      await userService.setDatabricksPat(
+      const result = await userService.setDatabricksPat(
         context.userId,
         context.userEmail,
         pat.trim()
       );
-      return { success: true };
+      return {
+        success: true,
+        expiresAt: result.expiresAt?.toISOString() ?? null,
+        comment: result.comment,
+      };
     } catch (error: any) {
       console.error('Failed to set PAT:', error);
       return reply.status(500).send({ error: error.message });

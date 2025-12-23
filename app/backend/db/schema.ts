@@ -23,11 +23,12 @@ export type NewUser = typeof users.$inferInsert;
 // Sessions table
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
+  stub: text('stub'), // 8-char alphanumeric unique identifier for directories
   title: text('title'),
   model: text('model').notNull(),
   workspacePath: text('workspace_path'),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  workspaceAutoPush: boolean('auto_workspace_push').default(false).notNull(),
+  workspaceAutoPush: boolean('workspace_auto_push').default(false).notNull(),
   appAutoDeploy: boolean('app_auto_deploy').default(false).notNull(),
   cwd: text('cwd'),
   isArchived: boolean('is_archived').default(false).notNull(),
@@ -66,7 +67,7 @@ export const settings = pgTable('settings', {
   userId: text('user_id')
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
-  claudeConfigAutoPush: boolean('claude_config_sync').default(true).notNull(),
+  claudeConfigAutoPush: boolean('claude_config_auto_push').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -85,6 +86,7 @@ export const oauthTokens = pgTable(
     authType: text('auth_type').notNull(), // 'pat' for personal access token
     provider: text('provider').notNull(), // 'databricks'
     accessToken: text('access_token').notNull(), // Encrypted token value
+    expiresAt: timestamp('expires_at'), // Token expiration time (null = no expiry)
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

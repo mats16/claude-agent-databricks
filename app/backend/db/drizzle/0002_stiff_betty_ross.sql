@@ -1,1 +1,0 @@
-ALTER TABLE "sessions" ADD COLUMN "session_app_name" text;

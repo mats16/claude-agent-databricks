@@ -74,7 +74,8 @@ export async function upsertToken(
   userId: string,
   provider: string,
   authType: string,
-  encryptedToken: string
+  encryptedToken: string,
+  expiresAt?: Date | null
 ): Promise<void> {
   return withUserContext(userId, async () => {
     const existing = await db
@@ -92,6 +93,7 @@ export async function upsertToken(
         .set({
           authType,
           accessToken: encryptedToken,
+          expiresAt: expiresAt ?? null,
           updatedAt: new Date(),
         })
         .where(
@@ -107,6 +109,7 @@ export async function upsertToken(
         provider,
         authType,
         accessToken: encryptedToken,
+        expiresAt: expiresAt ?? null,
       };
       await db.insert(oauthTokens).values(newToken);
     }
@@ -145,9 +148,16 @@ export async function hasDatabricksPat(userId: string): Promise<boolean> {
 // Set Databricks PAT (with RLS)
 export async function setDatabricksPat(
   userId: string,
-  encryptedPat: string
+  encryptedPat: string,
+  expiresAt?: Date | null
 ): Promise<void> {
-  return upsertToken(userId, PROVIDER_DATABRICKS, AUTH_TYPE_PAT, encryptedPat);
+  return upsertToken(
+    userId,
+    PROVIDER_DATABRICKS,
+    AUTH_TYPE_PAT,
+    encryptedPat,
+    expiresAt
+  );
 }
 
 // Delete Databricks PAT (with RLS)
