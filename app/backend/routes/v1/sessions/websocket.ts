@@ -323,18 +323,15 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
           queue.listeners.delete(onEvent);
         }
 
-        // Cleanup MessageStream on disconnect (abort to stop processing)
-        const stream = sessionMessageStreams.get(sessionId);
-        if (stream) {
-          stream.abort();
-          sessionMessageStreams.delete(sessionId);
-        }
-
         // Remove this socket from the active connections set
+        // Note: Do NOT abort the MessageStream here - disconnection just means
+        // this client stopped watching. The agent should continue running for:
+        // 1. Other clients viewing the same session (multiple tabs)
+        // 2. React Strict Mode reconnections in development
+        // Agent should only be aborted via explicit interrupt request (stop button).
         const sockets = sessionWebSockets.get(sessionId);
         if (sockets) {
           sockets.delete(socket);
-          // Clean up empty sets
           if (sockets.size === 0) {
             sessionWebSockets.delete(sessionId);
           }
