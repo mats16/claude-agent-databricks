@@ -67,7 +67,9 @@ export const settings = pgTable('settings', {
   userId: text('user_id')
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
-  claudeConfigAutoPush: boolean('claude_config_auto_push').default(true).notNull(),
+  claudeConfigAutoPush: boolean('claude_config_auto_push')
+    .default(true)
+    .notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

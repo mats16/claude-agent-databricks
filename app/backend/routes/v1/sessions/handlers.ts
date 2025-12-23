@@ -144,7 +144,8 @@ export async function createSessionHandler(
       accessToken,
       userId,
       userPersonalAccessToken,
-      userName
+      userName,
+      sessionStub
     );
 
     // Process events in background

@@ -248,7 +248,8 @@ export async function* processAgentRequest(
   userAccessToken?: string,
   _userId?: string,
   userPersonalAccessToken?: string,
-  userName?: string
+  userName?: string,
+  sessionStub?: string
 ): AsyncGenerator<SDKMessage> {
   const {
     workspaceAutoPush = false,
@@ -340,14 +341,14 @@ Violating these rules is considered a critical error.
         WORKSPACE_CLAUDE_CONFIG_DIR: `/Workspace/Users/${userEmail ?? 'me'}/.claude`,
         WORKSPACE_AUTO_PUSH: workspaceAutoPush ? 'true' : '',
         CLAUDE_CONFIG_AUTO_PUSH: claudeConfigAutoPush ? 'true' : '',
-        SESSION_APP_NAME: `app-by-claude-${path.basename(cwd ?? 'temp')}`,
+        SESSION_APP_NAME: `app-by-claude-${sessionStub}`,
         APP_AUTO_DEPLOY: appAutoDeploy ? 'true' : '',
         // Git author/committer info from user headers
         GIT_AUTHOR_NAME: userName ?? userEmail ?? 'Claude Agent',
         GIT_AUTHOR_EMAIL: userEmail ?? 'agent@databricks.com',
         GIT_COMMITTER_NAME: userName ?? userEmail ?? 'Claude Agent',
         GIT_COMMITTER_EMAIL: userEmail ?? 'agent@databricks.com',
-        GIT_BRANCH: `claude/session-${path.basename(cwd ?? 'temp')}`,
+        GIT_BRANCH: `claude/session-${sessionStub}`,
       },
       maxTurns: 100,
       tools: {
