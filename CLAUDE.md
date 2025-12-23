@@ -110,10 +110,11 @@ Tables defined in `app/backend/db/schema.ts`:
 - `users` - User records (id, email)
 - `sessions` - Chat sessions with foreign key to users (includes `cwd` for working directory, `is_archived` for archive status)
 - `events` - Session messages/events (SDKMessage stored as JSONB in `message` column)
-- `settings` - User settings (config sync, encrypted PAT for Databricks CLI)
+- `settings` - User settings (claudeConfigAutoPush)
+- `oauth_tokens` - Encrypted tokens storage (composite PK: `user_id` + `provider`), used for PAT storage
 
 ### Row Level Security (RLS)
-`sessions` and `settings` tables have RLS enabled. Queries use `withUserContext()` helper to set `app.current_user_id`:
+`sessions`, `settings`, and `oauth_tokens` tables have RLS enabled. Queries use `withUserContext()` helper to set `app.current_user_id`:
 ```typescript
 await db.execute(sql`SELECT set_config('app.current_user_id', ${userId}, true)`);
 ```
@@ -159,6 +160,17 @@ The `result` event is essential for the frontend to correctly determine session 
 Configured in `app/backend/agent/index.ts`:
 - **Built-in**: Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 - **MCP (Databricks)**: run_sql, get_warehouse_info, list_warehouses
+
+### Agent Authentication
+The agent uses different authentication methods based on user configuration:
+- **Default (oauth-m2m)**: Uses Service Principal credentials (`DATABRICKS_CLIENT_ID`/`DATABRICKS_CLIENT_SECRET`)
+- **PAT mode**: When user sets a Personal Access Token, `DATABRICKS_TOKEN` and `DATABRICKS_AUTH_TYPE=pat` are set
+
+Environment variables set in `processAgentRequest()`:
+```typescript
+DATABRICKS_TOKEN: userPersonalAccessToken,  // undefined if not set
+DATABRICKS_AUTH_TYPE: userPersonalAccessToken ? 'pat' : 'oauth-m2m',
+```
 
 ### MCP Servers
 MCP (Model Context Protocol) servers provide additional tools. Configured in `app/backend/agent/mcp/`.
