@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from './index.js';
-import { users, type User, type NewUser } from './schema.js';
+import { users, settings, type User, type NewUser, type NewSettings } from './schema.js';
 
 // Create or update a user (upsert)
 export async function upsertUser(id: string, email: string): Promise<User> {
@@ -28,6 +28,14 @@ export async function upsertUser(id: string, email: string): Promise<User> {
     email,
   };
   await db.insert(users).values(newUser);
+
+  // Create default settings for new user (requires RLS context)
+  await db.execute(sql`SELECT set_config('app.current_user_id', ${id}, true)`);
+  const newSettings: NewSettings = {
+    userId: id,
+    claudeConfigAutoPush: true,
+  };
+  await db.insert(settings).values(newSettings);
 
   const created = await db
     .select()
