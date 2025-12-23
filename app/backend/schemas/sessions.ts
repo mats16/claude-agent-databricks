@@ -34,7 +34,7 @@ export const createSessionBodySchema = z.object({
   session_context: z.object({
     model: z.string().min(1),
     workspacePath: z.string().optional(),
-    autoWorkspacePush: z.boolean().optional(),
+    workspaceAutoPush: z.boolean().optional(),
   }),
 });
 
@@ -42,17 +42,17 @@ export const createSessionBodySchema = z.object({
 export const updateSessionBodySchema = z
   .object({
     title: z.string().min(1).max(200).optional(),
-    autoWorkspacePush: z.boolean().optional(),
+    workspaceAutoPush: z.boolean().optional(),
     workspacePath: z.string().nullable().optional(),
   })
   .refine(
     (data) =>
       data.title !== undefined ||
-      data.autoWorkspacePush !== undefined ||
+      data.workspaceAutoPush !== undefined ||
       data.workspacePath !== undefined,
     {
       message:
-        'At least one field (title, autoWorkspacePush, or workspacePath) is required',
+        'At least one field (title, workspaceAutoPush, or workspacePath) is required',
     }
   );
 
@@ -62,7 +62,7 @@ export const sessionResponseSchema = z.object({
   title: z.string(),
   model: z.string().optional(),
   workspacePath: z.string().nullable(),
-  autoWorkspacePush: z.boolean(),
+  workspaceAutoPush: z.boolean(),
   updatedAt: z.string().datetime(),
   cwd: z.string().optional(),
   isArchived: z.boolean(),

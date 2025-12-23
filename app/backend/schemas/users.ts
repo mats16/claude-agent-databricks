@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // User settings body schema
 export const updateSettingsBodySchema = z.object({
-  claudeConfigSync: z.boolean(),
+  claudeConfigAutoPush: z.boolean(),
 });
 
 // User info response schema
@@ -17,12 +17,12 @@ export const userInfoResponseSchema = z.object({
 // User settings response schema
 export const userSettingsResponseSchema = z.object({
   userId: z.string(),
-  claudeConfigSync: z.boolean(),
+  claudeConfigAutoPush: z.boolean(),
 });
 
 // Claude backup settings response schema
 export const claudeBackupSettingsResponseSchema = z.object({
-  claudeConfigSync: z.boolean(),
+  claudeConfigAutoPush: z.boolean(),
 });
 
 // Update settings success response
@@ -33,7 +33,7 @@ export const updateSettingsSuccessResponseSchema = z.object({
 // Update backup settings success response
 export const updateBackupSettingsSuccessResponseSchema = z.object({
   success: z.literal(true),
-  claudeConfigSync: z.boolean(),
+  claudeConfigAutoPush: z.boolean(),
 });
 
 // Type exports

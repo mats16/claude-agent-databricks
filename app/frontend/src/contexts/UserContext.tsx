@@ -17,7 +17,7 @@ export interface UserInfo {
 
 export interface UserSettings {
   userId: string;
-  claudeConfigSync: boolean;
+  claudeConfigAutoPush: boolean;
 }
 
 interface UserContextType {

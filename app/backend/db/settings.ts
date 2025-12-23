@@ -45,7 +45,7 @@ export async function getSettingsDirect(
 // Upsert settings (create or update) with RLS
 export async function upsertSettings(
   userId: string,
-  updates: { claudeConfigSync?: boolean }
+  updates: { claudeConfigAutoPush?: boolean }
 ): Promise<void> {
   return withUserContext(userId, async () => {
     const existing = await db
@@ -67,7 +67,7 @@ export async function upsertSettings(
       // Create new settings
       const newSettings: NewSettings = {
         userId,
-        claudeConfigSync: updates.claudeConfigSync ?? true,
+        claudeConfigAutoPush: updates.claudeConfigAutoPush ?? true,
       };
       await db.insert(settings).values(newSettings);
     }

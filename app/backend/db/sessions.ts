@@ -97,12 +97,12 @@ export async function updateSessionTitle(
   });
 }
 
-// Update session settings (title, autoWorkspacePush, workspacePath) with RLS
+// Update session settings (title, workspaceAutoPush, workspacePath) with RLS
 export async function updateSession(
   id: string,
   updates: {
     title?: string;
-    autoWorkspacePush?: boolean;
+    workspaceAutoPush?: boolean;
     workspacePath?: string | null;
   },
   userId: string

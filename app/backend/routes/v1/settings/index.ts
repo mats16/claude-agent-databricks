@@ -24,7 +24,7 @@ const settingsRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Update current user settings
   // PATCH /api/v1/settings
-  fastify.patch<{ Body: { claudeConfigSync?: boolean } }>(
+  fastify.patch<{ Body: { claudeConfigAutoPush?: boolean } }>(
     '/',
     async (request, reply) => {
       let context;
@@ -34,19 +34,19 @@ const settingsRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: error.message });
       }
 
-      const { claudeConfigSync } = request.body;
+      const { claudeConfigAutoPush } = request.body;
 
-      if (claudeConfigSync === undefined) {
+      if (claudeConfigAutoPush === undefined) {
         return reply
           .status(400)
-          .send({ error: 'claudeConfigSync is required' });
+          .send({ error: 'claudeConfigAutoPush is required' });
       }
 
       try {
         await userService.updateUserSettings(
           context.userId,
           context.userEmail,
-          { claudeConfigSync }
+          { claudeConfigAutoPush }
         );
         return { success: true };
       } catch (error: any) {

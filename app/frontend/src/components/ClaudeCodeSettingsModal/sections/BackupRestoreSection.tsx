@@ -24,7 +24,7 @@ export default function BackupRestoreSection({
 }: BackupRestoreSectionProps) {
   const { t } = useTranslation();
 
-  const [claudeConfigSync, setClaudeConfigSync] = useState(true);
+  const [claudeConfigAutoPush, setClaudeConfigSync] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
@@ -45,7 +45,7 @@ export default function BackupRestoreSection({
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data) {
-            setClaudeConfigSync(data.claudeConfigSync);
+            setClaudeConfigSync(data.claudeConfigAutoPush);
           }
         })
         .catch(() => {
@@ -118,7 +118,7 @@ export default function BackupRestoreSection({
       const response = await fetch('/api/v1/settings/claude-backup', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ claudeConfigSync: checked }),
+        body: JSON.stringify({ claudeConfigAutoPush: checked }),
       });
 
       if (!response.ok) {
@@ -166,7 +166,7 @@ export default function BackupRestoreSection({
             </Text>
           </div>
           <Switch
-            checked={claudeConfigSync}
+            checked={claudeConfigAutoPush}
             onChange={handleToggleChange}
             disabled={isLoading || isSaving || isPulling || isPushing}
             loading={isLoading || isSaving}

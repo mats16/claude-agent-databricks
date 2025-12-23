@@ -15,7 +15,7 @@ export interface Session {
   model: string;
   workspacePath: string | null;
   userEmail: string | null;
-  autoWorkspacePush: boolean;
+  workspaceAutoPush: boolean;
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -108,7 +108,7 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
               createdAt: data.session.updatedAt, // New sessions have same createdAt/updatedAt
               model: '',
               userEmail: null,
-              autoWorkspacePush: data.session.autoWorkspacePush ?? false,
+              workspaceAutoPush: data.session.workspaceAutoPush ?? false,
               isArchived: false, // New sessions are always active
             };
             setSessions((prev) => [newSession, ...prev]);

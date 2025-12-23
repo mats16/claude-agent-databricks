@@ -167,10 +167,10 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
                 `[WebSocket] Starting agent for session: ${sessionId}`
               );
 
-              // Fetch session to get workspacePath, autoWorkspacePush, cwd, and model for resume
+              // Fetch session to get workspacePath, workspaceAutoPush, cwd, and model for resume
               const session = await getSessionById(sessionId, userId);
               const workspacePath = session?.workspacePath ?? undefined;
-              const autoWorkspacePush = session?.autoWorkspacePush ?? false;
+              const workspaceAutoPush = session?.workspaceAutoPush ?? false;
               const sessionCwd = session?.cwd;
               // Use session's saved model on resume (prioritize over WebSocket message)
               const sessionModel = session?.model ?? model;
@@ -182,9 +182,10 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
                 );
               }
 
-              // Get user settings for claudeConfigSync
+              // Get user settings for claudeConfigAutoPush
               const userSettings = await getSettingsDirect(userId);
-              const claudeConfigSync = userSettings?.claudeConfigSync ?? true;
+              const claudeConfigAutoPush =
+                userSettings?.claudeConfigAutoPush ?? true;
 
               // Create MessageStream for this session
               const stream = new MessageStream(userMessageContent);
@@ -202,7 +203,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
                   sessionId,
                   userEmail,
                   workspacePath,
-                  { autoWorkspacePush, claudeConfigSync, cwd: sessionCwd },
+                  { workspaceAutoPush, claudeConfigAutoPush, cwd: sessionCwd },
                   stream,
                   accessToken
                 )) {

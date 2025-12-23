@@ -1,4 +1,5 @@
-import { getAccessToken, databricksHost } from '../agent/index.js';
+import { getAccessToken } from '../agent/index.js';
+import { databricks } from '../config/index.js';
 
 export interface WorkspaceObject {
   path: string;
@@ -42,7 +43,7 @@ export async function listWorkspace(
 ): Promise<WorkspaceListResult> {
   const token = await getAccessToken();
   const response = await fetch(
-    `${databricksHost}/api/2.0/workspace/list?path=${encodeURIComponent(workspacePath)}`,
+    `${databricks.hostUrl}/api/2.0/workspace/list?path=${encodeURIComponent(workspacePath)}`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -88,14 +89,17 @@ export async function createDirectory(
   workspacePath: string
 ): Promise<{ path: string }> {
   const token = await getAccessToken();
-  const response = await fetch(`${databricksHost}/api/2.0/workspace/mkdirs`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ path: workspacePath }),
-  });
+  const response = await fetch(
+    `${databricks.hostUrl}/api/2.0/workspace/mkdirs`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ path: workspacePath }),
+    }
+  );
 
   const data = (await response.json()) as {
     error_code?: string;
@@ -119,7 +123,7 @@ export async function getStatus(
 ): Promise<WorkspaceStatus> {
   const token = await getAccessToken();
   const response = await fetch(
-    `${databricksHost}/api/2.0/workspace/get-status?path=${encodeURIComponent(workspacePath)}`,
+    `${databricks.hostUrl}/api/2.0/workspace/get-status?path=${encodeURIComponent(workspacePath)}`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -145,10 +149,10 @@ export async function getStatus(
     throw new WorkspaceError(data.message || 'API error', 'API_ERROR');
   }
 
-  // Build browse_url from databricksHost and object_id
+  // Build browse_url from databricks.hostUrl and object_id
   const browseUrl =
     data.object_id != null
-      ? `${databricksHost}/browse/folders/${data.object_id}`
+      ? `${databricks.hostUrl}/browse/folders/${data.object_id}`
       : null;
 
   return {

@@ -16,7 +16,7 @@ interface WorkspacePathSelectorProps {
   /** Callback when path changes */
   onPathChange: (path: string) => void;
   /** Whether auto workspace push is enabled */
-  autoWorkspacePush: boolean;
+  workspaceAutoPush: boolean;
   /** Callback when auto push toggle changes */
   onAutoWorkspacePushChange: (enabled: boolean) => void;
   /** Callback to open workspace selection modal */
@@ -30,7 +30,7 @@ interface WorkspacePathSelectorProps {
 export default function WorkspacePathSelector({
   workspacePath,
   onPathChange,
-  autoWorkspacePush,
+  workspaceAutoPush,
   onAutoWorkspacePushChange,
   onOpenModal,
   disabled = false,
@@ -99,7 +99,7 @@ export default function WorkspacePathSelector({
           overlayStyle={{ maxWidth: 'none', whiteSpace: 'nowrap' }}
         >
           <Checkbox
-            checked={autoWorkspacePush}
+            checked={workspaceAutoPush}
             onChange={(e) => onAutoWorkspacePushChange(e.target.checked)}
             disabled={disabled}
           >

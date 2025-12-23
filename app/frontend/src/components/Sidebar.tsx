@@ -71,7 +71,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const [workspacePath, setWorkspacePath] = useState('');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [autoWorkspacePush, setAutoWorkspacePush] = useState(false);
+  const [workspaceAutoPush, setAutoWorkspacePush] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -277,7 +277,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
           session_context: {
             model: selectedModel,
             workspacePath: workspacePath.trim() || undefined,
-            autoWorkspacePush,
+            workspaceAutoPush,
           },
         }),
       });
@@ -580,7 +580,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
           <WorkspacePathSelector
             workspacePath={workspacePath}
             onPathChange={handleWorkspacePathChange}
-            autoWorkspacePush={autoWorkspacePush}
+            workspaceAutoPush={workspaceAutoPush}
             onAutoWorkspacePushChange={setAutoWorkspacePush}
             onOpenModal={() => setIsWorkspaceModalOpen(true)}
             disabled={isSubmitting}

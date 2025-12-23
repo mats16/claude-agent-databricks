@@ -16,7 +16,7 @@ const claudeBackupRoutes: FastifyPluginAsync = async (fastify) => {
 
     try {
       const settings = await userService.getUserSettings(context.userId);
-      return { claudeConfigSync: settings.claudeConfigSync };
+      return { claudeConfigAutoPush: settings.claudeConfigAutoPush };
     } catch (error: any) {
       console.error('Failed to get backup settings:', error);
       return reply.status(500).send({ error: error.message });
@@ -25,7 +25,7 @@ const claudeBackupRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Update Claude backup settings
   // PATCH /api/v1/settings/claude-backup
-  fastify.patch<{ Body: { claudeConfigSync: boolean } }>(
+  fastify.patch<{ Body: { claudeConfigAutoPush: boolean } }>(
     '/',
     async (request, reply) => {
       let context;
@@ -35,21 +35,21 @@ const claudeBackupRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: error.message });
       }
 
-      const { claudeConfigSync } = request.body;
+      const { claudeConfigAutoPush } = request.body;
 
-      if (claudeConfigSync === undefined) {
+      if (claudeConfigAutoPush === undefined) {
         return reply
           .status(400)
-          .send({ error: 'claudeConfigSync is required' });
+          .send({ error: 'claudeConfigAutoPush is required' });
       }
 
       try {
         await userService.updateUserSettings(
           context.userId,
           context.userEmail,
-          { claudeConfigSync }
+          { claudeConfigAutoPush }
         );
-        return { success: true, claudeConfigSync };
+        return { success: true, claudeConfigAutoPush };
       } catch (error: any) {
         console.error('Failed to update backup settings:', error);
         return reply.status(500).send({ error: error.message });

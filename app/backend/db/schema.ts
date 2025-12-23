@@ -26,7 +26,7 @@ export const sessions = pgTable('sessions', {
   model: text('model').notNull(),
   workspacePath: text('workspace_path'),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  autoWorkspacePush: boolean('auto_workspace_push').default(false).notNull(),
+  workspaceAutoPush: boolean('auto_workspace_push').default(false).notNull(),
   cwd: text('cwd'),
   isArchived: boolean('is_archived').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -64,7 +64,7 @@ export const settings = pgTable('settings', {
   userId: text('user_id')
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
-  claudeConfigSync: boolean('claude_config_sync').default(true).notNull(),
+  claudeConfigAutoPush: boolean('claude_config_sync').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

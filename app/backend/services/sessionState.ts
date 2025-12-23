@@ -23,7 +23,7 @@ export function notifySessionCreated(
     id: string;
     title: string;
     workspacePath: string | null;
-    autoWorkspacePush: boolean;
+    workspaceAutoPush: boolean;
     updatedAt: string;
   }
 ) {

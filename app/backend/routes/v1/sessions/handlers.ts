@@ -2,11 +2,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import path from 'path';
 import fs from 'fs';
 import type { MessageContent } from '@app/shared';
-import {
-  processAgentRequest,
-  getOidcAccessToken,
-  MessageStream,
-} from '../../../agent/index.js';
+import { processAgentRequest, MessageStream } from '../../../agent/index.js';
 import { saveMessage, getMessagesBySessionId } from '../../../db/events.js';
 import {
   createSession,
@@ -18,8 +14,8 @@ import {
 import { getSettingsDirect } from '../../../db/settings.js';
 import { upsertUser } from '../../../db/users.js';
 import { enqueueDelete } from '../../../services/workspaceQueueService.js';
-import { WorkspaceClient } from '../../../utils/workspaceClient.js';
 import { extractRequestContext } from '../../../utils/headers.js';
+import { writeClaudeSettings } from '../../../utils/claudeSettings.js';
 import {
   sessionMessageStreams,
   notifySessionCreated,
@@ -40,7 +36,7 @@ interface CreateSessionBody {
   session_context: {
     model: string;
     workspacePath?: string;
-    autoWorkspacePush?: boolean;
+    workspaceAutoPush?: boolean;
   };
 }
 
@@ -70,15 +66,15 @@ export async function createSessionHandler(
   const userMessage = userEvent.message.content;
   const model = session_context.model;
   const workspacePath = session_context.workspacePath;
-  // Force autoWorkspacePush to false if workspacePath is not specified
-  const autoWorkspacePush =
+  // Force workspaceAutoPush to false if workspacePath is not specified
+  const workspaceAutoPush =
     workspacePath && workspacePath.trim()
-      ? (session_context.autoWorkspacePush ?? false)
+      ? (session_context.workspaceAutoPush ?? false)
       : false;
 
-  // Get user settings for claudeConfigSync (still needed for agent hook)
+  // Get user settings for claudeConfigAutoPush (still needed for agent hook)
   const userSettings = await getSettingsDirect(userId);
-  const claudeConfigSync = userSettings?.claudeConfigSync ?? true;
+  const claudeConfigAutoPush = userSettings?.claudeConfigAutoPush ?? true;
 
   // Compute paths (same logic as in agent/index.ts)
   const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
@@ -112,30 +108,15 @@ export async function createSessionHandler(
   console.log(`[New Session] Creating workDir: ${localWorkPath}`);
   fs.mkdirSync(localWorkPath, { recursive: true });
 
-  // Pull workspace directory if workspacePath is provided
-  // Start pull immediately but don't await - agent will wait via MessageStream
-  let pullCompleted: Promise<void> | undefined;
-  if (workspacePath) {
-    console.log(
-      `[New Session] Starting workspace pull from ${workspacePath}...`
-    );
-    const spToken = await getOidcAccessToken();
-    // Start pull immediately, agent will wait for completion before processing
-    const client = new WorkspaceClient({
-      host: process.env.DATABRICKS_HOST!,
-      getToken: async () => spToken!,
-    });
-    pullCompleted = client
-      .sync(workspacePath, localWorkPath, {
-        overwrite: true,
-      })
-      .then(() => undefined);
+  // Create settings.local.json with workspace sync hooks if workspacePath is provided
+  if (workspacePath && workspacePath.trim()) {
+    writeClaudeSettings(localWorkPath);
   }
 
   const startAgentProcessing = () => {
     // Create MessageStream for this session
-    // Pass pullCompleted promise so agent waits for workspace sync before processing
-    const stream = new MessageStream(messageContent, pullCompleted);
+    // Note: workspace sync is now handled by settings.local.json hooks
+    const stream = new MessageStream(messageContent);
 
     // Start processing in background
     const agentIterator = processAgentRequest(
@@ -144,7 +125,7 @@ export async function createSessionHandler(
       undefined,
       userEmail,
       workspacePath,
-      { autoWorkspacePush, claudeConfigSync, cwd: localWorkPath },
+      { workspaceAutoPush, claudeConfigAutoPush, cwd: localWorkPath },
       stream,
       accessToken,
       userId
@@ -180,7 +161,7 @@ export async function createSessionHandler(
                 model,
                 workspacePath,
                 userId,
-                autoWorkspacePush,
+                workspaceAutoPush,
                 cwd: localWorkPath,
               },
               userId
@@ -191,7 +172,7 @@ export async function createSessionHandler(
               id: sessionId,
               title: sessionTitle,
               workspacePath: workspacePath ?? null,
-              autoWorkspacePush,
+              workspaceAutoPush,
               updatedAt: new Date().toISOString(),
             });
 
@@ -293,14 +274,14 @@ export async function updateSessionHandler(
     Params: { sessionId: string };
     Body: {
       title?: string;
-      autoWorkspacePush?: boolean;
+      workspaceAutoPush?: boolean;
       workspacePath?: string | null;
     };
   }>,
   reply: FastifyReply
 ) {
   const { sessionId } = request.params;
-  const { title, autoWorkspacePush, workspacePath } = request.body;
+  const { title, workspaceAutoPush, workspacePath } = request.body;
 
   let context;
   try {
@@ -314,36 +295,36 @@ export async function updateSessionHandler(
   // At least one field must be provided
   if (
     title === undefined &&
-    autoWorkspacePush === undefined &&
+    workspaceAutoPush === undefined &&
     workspacePath === undefined
   ) {
     return reply.status(400).send({
-      error: 'title, autoWorkspacePush, or workspacePath is required',
+      error: 'title, workspaceAutoPush, or workspacePath is required',
     });
   }
 
   const updates: {
     title?: string;
-    autoWorkspacePush?: boolean;
+    workspaceAutoPush?: boolean;
     workspacePath?: string | null;
   } = {};
   if (title !== undefined) updates.title = title;
   if (workspacePath !== undefined) {
     updates.workspacePath = workspacePath || null;
-    // Force autoWorkspacePush to false when workspacePath is cleared
+    // Force workspaceAutoPush to false when workspacePath is cleared
     if (!workspacePath || !workspacePath.trim()) {
-      updates.autoWorkspacePush = false;
+      updates.workspaceAutoPush = false;
     }
   }
-  if (autoWorkspacePush !== undefined) {
-    // Only apply autoWorkspacePush if workspacePath is set
+  if (workspaceAutoPush !== undefined) {
+    // Only apply workspaceAutoPush if workspacePath is set
     // (either from current update or existing session)
     const session = await getSessionById(sessionId, userId);
     const finalWorkspacePath = updates.workspacePath ?? session?.workspacePath;
     if (finalWorkspacePath && finalWorkspacePath.trim()) {
-      updates.autoWorkspacePush = autoWorkspacePush;
+      updates.workspaceAutoPush = workspaceAutoPush;
     } else {
-      updates.autoWorkspacePush = false;
+      updates.workspaceAutoPush = false;
     }
   }
 

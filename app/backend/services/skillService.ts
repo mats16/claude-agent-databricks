@@ -61,10 +61,12 @@ async function syncSkillToWorkspace(
   userEmail: string,
   skillName: string
 ): Promise<void> {
-  // Check if claudeConfigSync is enabled
+  // Check if claudeConfigAutoPush is enabled
   const userSettings = await getSettingsDirect(userId);
-  if (!userSettings?.claudeConfigSync) {
-    console.log('[Skills] Workspace sync skipped (claudeConfigSync disabled)');
+  if (!userSettings?.claudeConfigAutoPush) {
+    console.log(
+      '[Skills] Workspace sync skipped (claudeConfigAutoPush disabled)'
+    );
     return;
   }
 
@@ -101,11 +103,11 @@ async function deleteSkillFromWorkspace(
   userEmail: string,
   skillName: string
 ): Promise<void> {
-  // Check if claudeConfigSync is enabled
+  // Check if claudeConfigAutoPush is enabled
   const userSettings = await getSettingsDirect(userId);
-  if (!userSettings?.claudeConfigSync) {
+  if (!userSettings?.claudeConfigAutoPush) {
     console.log(
-      '[Skills] Workspace delete skipped (claudeConfigSync disabled)'
+      '[Skills] Workspace delete skipped (claudeConfigAutoPush disabled)'
     );
     return;
   }

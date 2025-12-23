@@ -120,13 +120,13 @@ export default function SessionPage() {
   const session = sessionId ? getSession(sessionId) : undefined;
   const isArchived = session?.isArchived ?? false;
   const sessionTitle = session?.title ?? null;
-  const sessionAutoWorkspacePush = session?.autoWorkspacePush ?? false;
+  const sessionAutoWorkspacePush = session?.workspaceAutoPush ?? false;
   const sessionWorkspacePath = session?.workspacePath ?? null;
 
   const handleSaveSettings = useCallback(
     async (
       newTitle: string,
-      autoWorkspacePush: boolean,
+      workspaceAutoPush: boolean,
       workspacePath: string | null
     ) => {
       if (!sessionId) return;
@@ -136,7 +136,7 @@ export default function SessionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: newTitle,
-          autoWorkspacePush,
+          workspaceAutoPush,
           workspacePath,
         }),
       });
@@ -144,7 +144,7 @@ export default function SessionPage() {
       if (response.ok) {
         updateSessionLocally(sessionId, {
           title: newTitle,
-          autoWorkspacePush,
+          workspaceAutoPush,
           workspacePath,
         });
       } else {

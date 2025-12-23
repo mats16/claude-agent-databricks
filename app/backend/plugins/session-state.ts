@@ -22,7 +22,7 @@ declare module 'fastify' {
         id: string;
         title: string;
         workspacePath: string | null;
-        autoWorkspacePush: boolean;
+        workspaceAutoPush: boolean;
         updatedAt: string;
       }
     ) => void;
@@ -54,7 +54,7 @@ export default fp(
         id: string;
         title: string;
         workspacePath: string | null;
-        autoWorkspacePush: boolean;
+        workspaceAutoPush: boolean;
         updatedAt: string;
       }
     ) => {

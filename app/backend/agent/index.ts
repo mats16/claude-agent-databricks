@@ -6,19 +6,10 @@ import type {
 import { createDatabricksMcpServer } from './mcp/databricks.js';
 import fs from 'fs';
 import path from 'path';
-import { enqueueSync } from '../services/workspaceQueueService.js';
-import {
-  claudeConfigExcludePatterns,
-  workspaceExcludePatterns,
-} from '../utils/workspaceClient.js';
 import type { MessageContent } from '@app/shared';
+import { databricks, warehouseIds, agentEnv } from '../config/index.js';
 
 export type { SDKMessage };
-
-export const databricksHost =
-  `https://${process.env.DATABRICKS_HOST}` as string;
-const clientId = process.env.DATABRICKS_CLIENT_ID;
-const clientSecret = process.env.DATABRICKS_CLIENT_SECRET;
 
 // Token cache for service principal
 let cachedToken: { token: string; expiresAt: number } | null = null;
@@ -30,12 +21,12 @@ export async function getOidcAccessToken(): Promise<string | undefined> {
     return cachedToken.token;
   }
 
-  if (!clientId || !clientSecret) {
+  if (!databricks.clientId || !databricks.clientSecret) {
     return undefined;
   }
 
   // Request token from Databricks OAuth2 endpoint
-  const tokenUrl = `${databricksHost}/oidc/v1/token`;
+  const tokenUrl = `https://${databricks.host}/oidc/v1/token`;
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
@@ -43,8 +34,8 @@ export async function getOidcAccessToken(): Promise<string | undefined> {
     },
     body: new URLSearchParams({
       grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: databricks.clientId,
+      client_secret: databricks.clientSecret,
       scope: 'all-apis',
     }),
   });
@@ -84,8 +75,8 @@ export async function getAccessToken(): Promise<string> {
 
 // Options for processAgentRequest
 export interface ProcessAgentRequestOptions {
-  autoWorkspacePush?: boolean; // workspace pushを実行
-  claudeConfigSync?: boolean; // claude config pull/push
+  workspaceAutoPush?: boolean; // workspace pushを実行
+  claudeConfigAutoPush?: boolean; // claude config pull/push
   cwd?: string; // working directory path (created before agent starts)
   waitForReady?: Promise<void>; // Promise to wait for before processing first message (e.g., workspace pull)
 }
@@ -254,21 +245,17 @@ export async function* processAgentRequest(
   options: ProcessAgentRequestOptions = {},
   messageStream?: MessageStream,
   userAccessToken?: string,
-  userId?: string
+  _userId?: string
 ): AsyncGenerator<SDKMessage> {
   const {
-    autoWorkspacePush = false,
-    claudeConfigSync = true,
+    workspaceAutoPush = false,
+    claudeConfigAutoPush = true,
     cwd,
     waitForReady,
   } = options;
   // Determine base directory based on environment
   // Local development: $HOME/u, Production: /home/app/u
-  const localBasePath = path.join(process.env.HOME ?? '/tmp', 'u');
-
-  // Workspace home directory
-  const workspaceHomePath = path.join('/Workspace/Users', userEmail ?? 'me');
-  const workspaceClaudeConfigPath = path.join(workspaceHomePath, '.claude');
+  const localBasePath = agentEnv.LOCAL_BASE_PATH;
 
   // Local Claude config directory: $HOME/u/{email}/.claude
   const localClaudeConfigPath = path.join(
@@ -289,13 +276,9 @@ export async function* processAgentRequest(
   // Create Databricks MCP server with injected configuration
   // This allows per-request values (like user token) to be passed at creation time
   const databricksMcpServer = createDatabricksMcpServer({
-    databricksHost: databricksHost.replace(/^https?:\/\//, ''),
+    databricksHost: databricks.host,
     databricksToken: userAccessToken ?? '',
-    warehouseIds: {
-      '2xs': process.env.WAREHOUSE_ID_2XS,
-      xs: process.env.WAREHOUSE_ID_XS,
-      s: process.env.WAREHOUSE_ID_S,
-    },
+    warehouseIds,
   });
 
   const additionalSystemPrompt = `
@@ -335,17 +318,19 @@ Violating these rules is considered a critical error.
       settingSources: ['user', 'project', 'local'],
       model,
       env: {
-        PATH: `${process.env.PATH}:${process.env.HOME}/.bin`,
-        HOME: process.env.HOME,
-        WORKDIR: localWorkPath,
+        ...agentEnv,
         CLAUDE_CONFIG_DIR: localClaudeConfigPath,
-        ANTHROPIC_BASE_URL: `${databricksHost}/serving-endpoints/anthropic`,
         ANTHROPIC_AUTH_TOKEN: spAccessToken,
-        ANTHROPIC_DEFAULT_OPUS_MODEL: 'databricks-claude-opus-4-5',
-        ANTHROPIC_DEFAULT_SONNET_MODEL: 'databricks-claude-sonnet-4-5',
         // DATABRICKS_HOST is still needed for databricks CLI commands in Bash tool
-        DATABRICKS_HOST: databricksHost,
-        DATABRICKS_TOKEN: userAccessToken,
+        //DATABRICKS_HOST: databricks.hostUrl,
+        //DATABRICKS_TOKEN: userAccessToken,
+        //DATABRICKS_CLIENT_ID: databricks.clientId,
+        //DATABRICKS_CLIENT_SECRET: databricks.clientSecret,
+        // Used by hooks in settings.local.json
+        WORKSPACE_DIR: workspacePath,
+        WORKSPACE_CLAUDE_CONFIG_DIR: `/Workspace/Users/${userEmail ?? 'me'}/.claude`,
+        WORKSPACE_AUTO_PUSH: workspaceAutoPush ? 'true' : '',
+        CLAUDE_CONFIG_AUTO_PUSH: claudeConfigAutoPush ? 'true' : '',
       },
       maxTurns: 100,
       tools: {
@@ -375,51 +360,7 @@ Violating these rules is considered a critical error.
         preset: 'claude_code',
         append: additionalSystemPrompt,
       },
-      hooks: {
-        // Note: workspace pull is now handled in app.ts before starting the agent
-        Stop: [
-          // Push claudeConfig (local -> workspace) - only if claudeConfigSync is enabled
-          {
-            hooks: [
-              async (_input, _toolUseID, _options) => {
-                if (claudeConfigSync && spAccessToken && userId) {
-                  enqueueSync({
-                    userId,
-                    token: spAccessToken,
-                    src: localClaudeConfigPath,
-                    dest: workspaceClaudeConfigPath,
-                    options: { exclude: claudeConfigExcludePatterns },
-                  });
-                }
-                return { async: true };
-              },
-            ],
-          },
-          // Push workDir (local -> workspace) - only if autoWorkspacePush is enabled and workspacePath is specified
-          {
-            hooks: [
-              async (_input, _toolUseID, _options) => {
-                if (
-                  autoWorkspacePush &&
-                  workspacePath &&
-                  workspacePath.trim() &&
-                  spAccessToken &&
-                  userId
-                ) {
-                  enqueueSync({
-                    userId,
-                    token: spAccessToken,
-                    src: localWorkPath,
-                    dest: workspacePath,
-                    options: { exclude: workspaceExcludePatterns },
-                  });
-                }
-                return { async: true };
-              },
-            ],
-          },
-        ],
-      },
+      // Note: workspace sync is now handled by settings.local.json hooks
     },
   });
 

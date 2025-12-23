@@ -1,4 +1,5 @@
-import { getAccessToken, databricksHost } from '../agent/index.js';
+import { getAccessToken } from '../agent/index.js';
+import { databricks } from '../config/index.js';
 import { getSettings, upsertSettings } from '../db/settings.js';
 import { upsertUser } from '../db/users.js';
 
@@ -12,7 +13,7 @@ export interface UserInfo {
 
 export interface UserSettings {
   userId: string;
-  claudeConfigSync: boolean;
+  claudeConfigAutoPush: boolean;
 }
 
 // Ensure user exists in database
@@ -32,14 +33,17 @@ export async function checkWorkspacePermission(
 
   try {
     const token = await getAccessToken();
-    const response = await fetch(`${databricksHost}/api/2.0/workspace/mkdirs`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ path: claudeConfigPath }),
-    });
+    const response = await fetch(
+      `${databricks.hostUrl}/api/2.0/workspace/mkdirs`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ path: claudeConfigPath }),
+      }
+    );
 
     const data = (await response.json()) as {
       error_code?: string;
@@ -71,10 +75,9 @@ export async function getUserInfo(
   }
 
   // Build Databricks app URL
-  const databricksAppName = process.env.DATABRICKS_APP_NAME;
   const databricksAppUrl =
-    databricksAppName && process.env.DATABRICKS_HOST
-      ? `https://${process.env.DATABRICKS_HOST}/apps/${databricksAppName}`
+    databricks.appName && databricks.host
+      ? `https://${databricks.host}/apps/${databricks.appName}`
       : null;
 
   return {
@@ -91,12 +94,12 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
   const userSettings = await getSettings(userId);
 
   if (!userSettings) {
-    return { userId, claudeConfigSync: true };
+    return { userId, claudeConfigAutoPush: true };
   }
 
   return {
     userId: userSettings.userId,
-    claudeConfigSync: userSettings.claudeConfigSync,
+    claudeConfigAutoPush: userSettings.claudeConfigAutoPush,
   };
 }
 
@@ -104,7 +107,7 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
 export async function updateUserSettings(
   userId: string,
   userEmail: string,
-  settings: { claudeConfigSync?: boolean }
+  settings: { claudeConfigAutoPush?: boolean }
 ): Promise<void> {
   await ensureUser(userId, userEmail);
   await upsertSettings(userId, settings);

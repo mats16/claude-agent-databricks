@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { getAccessToken, databricksHost } from '../../../../agent/index.js';
+import { getAccessToken } from '../../../../agent/index.js';
+import { databricks } from '../../../../config/index.js';
 
 const spPermissionRoutes: FastifyPluginAsync = async (fastify) => {
   // Get service principal info
@@ -10,7 +11,7 @@ const spPermissionRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Fetch SP info from Databricks SCIM API
       const response = await fetch(
-        `${databricksHost}/api/2.0/preview/scim/v2/Me`,
+        `${databricks.hostUrl}/api/2.0/preview/scim/v2/Me`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -33,7 +34,7 @@ const spPermissionRoutes: FastifyPluginAsync = async (fastify) => {
       return {
         displayName: data.displayName ?? data.userName ?? 'Service Principal',
         applicationId: data.applicationId ?? data.id ?? null,
-        databricksHost: process.env.DATABRICKS_HOST ?? null,
+        databricksHost: databricks.host ?? null,
       };
     } catch (error: any) {
       return reply.status(500).send({ error: error.message });

@@ -187,7 +187,7 @@ Sync between local storage and Databricks Workspace uses a fastq-based async que
 
 **Push (local → workspace)**: Handled by Stop hooks in `app/backend/agent/index.ts` via `enqueuePush()`:
 - Uses `databricks sync` command with configurable exclusions
-- Only runs when `autoWorkspacePush` or `claudeConfigSync` flags are enabled
+- Only runs when `workspaceAutoPush` or `claudeConfigAutoPush` flags are enabled
 - Skills/Agents CRUD operations use `replace: true` to propagate deletions to workspace
 
 #### Sync Parameters
@@ -228,13 +228,13 @@ Sync behavior is controlled by these flags passed to `processAgentRequest()`:
 
 | Flag | Pull (new session) | Push (session end) |
 |------|-------------------|---------------------|
-| `autoWorkspacePush` | - | Enables workspace directory push (requires `workspacePath`) |
-| `claudeConfigSync` | Enables claude config pull | Enables claude config push |
+| `workspaceAutoPush` | - | Enables workspace directory push (requires `workspacePath`) |
+| `claudeConfigAutoPush` | Enables claude config pull | Enables claude config push |
 
-- `autoWorkspacePush`: Session-level setting (stored in `sessions.auto_workspace_push`)
+- `workspaceAutoPush`: Session-level setting (stored in `sessions.auto_workspace_push`)
   - Automatically set to `false` when `workspacePath` is not specified (enforced in API and hooks)
   - Frontend default: `false`, automatically set to `true` when workspace path is selected
-- `claudeConfigSync`: User-level setting (stored in `settings.claude_config_sync`)
+- `claudeConfigAutoPush`: User-level setting (stored in `settings.claude_config_sync`)
 - Workspace pull always uses `overwrite=true` since each session has isolated directory
 
 #### Path Structure
@@ -277,8 +277,8 @@ Sessions can be archived to hide them from the active session list without perma
 Manual backup/restore operations for Claude configuration (`.claude` directory) separate from automatic sync.
 
 **API Endpoints**:
-- `GET /api/v1/settings/claude-backup` - Get `claudeConfigSync` setting
-- `PATCH /api/v1/settings/claude-backup` - Update `claudeConfigSync` setting
+- `GET /api/v1/settings/claude-backup` - Get `claudeConfigAutoPush` setting
+- `PATCH /api/v1/settings/claude-backup` - Update `claudeConfigAutoPush` setting
 - `POST /api/v1/settings/claude-backup/pull` - Manual restore from workspace to local
 - `POST /api/v1/settings/claude-backup/push` - Manual backup from local to workspace
 
@@ -337,8 +337,8 @@ Apply the path to `app/frontend/public/favicon.svg`:
 
 #### User & Settings
 - `GET /api/v1/me` - Get user info (userId, email, workspaceHome, hasWorkspacePermission)
-- `GET /api/v1/settings` - Get user settings (claudeConfigSync)
-- `PATCH /api/v1/settings` - Update user settings (claudeConfigSync)
+- `GET /api/v1/settings` - Get user settings (claudeConfigAutoPush)
+- `PATCH /api/v1/settings` - Update user settings (claudeConfigAutoPush)
 - `GET /api/v1/settings/claude-backup` - Get Claude backup settings
 - `PATCH /api/v1/settings/claude-backup` - Update Claude backup settings
 - `POST /api/v1/settings/claude-backup/pull` - Pull (restore) Claude config from workspace
@@ -395,7 +395,7 @@ Apply the path to `app/frontend/public/favicon.svg`:
     "has_more": false
   }
   ```
-- `PATCH /api/v1/sessions/:id` - Update session (title, autoWorkspacePush, workspacePath)
+- `PATCH /api/v1/sessions/:id` - Update session (title, workspaceAutoPush, workspacePath)
 - `PATCH /api/v1/sessions/:id/archive` - Archive session (sets `is_archived=true`, deletes working directory)
 
 #### Workspace

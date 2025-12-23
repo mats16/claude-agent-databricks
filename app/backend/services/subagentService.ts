@@ -45,11 +45,11 @@ async function putAgentToWorkspace(
   agentName: string,
   content: string
 ): Promise<void> {
-  // Check if claudeConfigSync is enabled
+  // Check if claudeConfigAutoPush is enabled
   const userSettings = await getSettingsDirect(userId);
-  if (!userSettings?.claudeConfigSync) {
+  if (!userSettings?.claudeConfigAutoPush) {
     console.log(
-      '[Subagents] Workspace sync skipped (claudeConfigSync disabled)'
+      '[Subagents] Workspace sync skipped (claudeConfigAutoPush disabled)'
     );
     return;
   }
@@ -77,11 +77,11 @@ async function deleteAgentFromWorkspace(
   userEmail: string,
   agentName: string
 ): Promise<void> {
-  // Check if claudeConfigSync is enabled
+  // Check if claudeConfigAutoPush is enabled
   const userSettings = await getSettingsDirect(userId);
-  if (!userSettings?.claudeConfigSync) {
+  if (!userSettings?.claudeConfigAutoPush) {
     console.log(
-      '[Subagents] Workspace delete skipped (claudeConfigSync disabled)'
+      '[Subagents] Workspace delete skipped (claudeConfigAutoPush disabled)'
     );
     return;
   }

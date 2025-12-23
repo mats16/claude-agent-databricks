@@ -14,7 +14,7 @@ interface TitleEditModalProps {
   currentWorkspacePath: string | null;
   onSave: (
     newTitle: string,
-    autoWorkspacePush: boolean,
+    workspaceAutoPush: boolean,
     workspacePath: string | null
   ) => void;
   onClose: () => void;
@@ -31,7 +31,7 @@ export default function TitleEditModal({
   const { t } = useTranslation();
   const { userInfo } = useUser();
   const [title, setTitle] = useState(currentTitle);
-  const [autoWorkspacePush, setAutoWorkspacePush] = useState(
+  const [workspaceAutoPush, setAutoWorkspacePush] = useState(
     currentAutoWorkspacePush
   );
   const [workspacePath, setWorkspacePath] = useState<string | null>(
@@ -53,7 +53,7 @@ export default function TitleEditModal({
 
     setIsSaving(true);
     try {
-      await onSave(title.trim(), autoWorkspacePush, workspacePath);
+      await onSave(title.trim(), workspaceAutoPush, workspacePath);
       onClose();
     } finally {
       setIsSaving(false);
@@ -131,7 +131,7 @@ export default function TitleEditModal({
       <div>
         <Flex align="center" gap={8}>
           <Switch
-            checked={autoWorkspacePush}
+            checked={workspaceAutoPush}
             onChange={setAutoWorkspacePush}
             disabled={isSaving}
             size="small"
