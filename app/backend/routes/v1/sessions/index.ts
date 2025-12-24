@@ -5,6 +5,7 @@ import {
   updateSessionHandler,
   archiveSessionHandler,
   getSessionEventsHandler,
+  getAppLiveStatusHandler,
 } from './handlers.js';
 
 const sessionRoutes: FastifyPluginAsync = async (fastify) => {
@@ -22,6 +23,9 @@ const sessionRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Get session events
   fastify.get('/:sessionId/events', getSessionEventsHandler);
+
+  // Get app live status
+  fastify.get('/:sessionId/app/live-status', getAppLiveStatusHandler);
 };
 
 export default sessionRoutes;

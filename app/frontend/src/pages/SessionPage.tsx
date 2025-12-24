@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons';
 import { flagsToSyncMode } from '../components/WorkspacePathSelector';
 import { useAgent } from '../hooks/useAgent';
+import { useAppLiveStatus } from '../hooks/useAppLiveStatus';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { useSessions } from '../contexts/SessionsContext';
@@ -127,6 +128,12 @@ export default function SessionPage() {
   const sessionAppAutoDeploy = session?.appAutoDeploy ?? false;
   const sessionSyncMode = flagsToSyncMode(
     sessionAutoWorkspacePush,
+    sessionAppAutoDeploy
+  );
+
+  // App live status polling (only when appAutoDeploy is enabled)
+  const { isDeploying, isUnavailable } = useAppLiveStatus(
+    sessionId,
     sessionAppAutoDeploy
   );
 
@@ -405,12 +412,20 @@ export default function SessionPage() {
               sessionSyncMode === 'manual'
                 ? t('sessionPage.autoSyncDisabled')
                 : sessionSyncMode === 'auto_deploy'
-                  ? t('syncMode.autoDeploy')
+                  ? isDeploying
+                    ? t('sessionPage.deploying')
+                    : t('syncMode.autoDeploy')
                   : t('syncMode.autoPush')
             }
           >
             {sessionSyncMode === 'auto_deploy' ? (
-              <RocketOutlined style={{ fontSize: 22, color: colors.success }} />
+              <RocketOutlined
+                spin={isDeploying || isUnavailable}
+                style={{
+                  fontSize: 22,
+                  color: isUnavailable ? colors.error : colors.success,
+                }}
+              />
             ) : sessionSyncMode === 'auto_push' ? (
               <CloudSyncOutlined
                 style={{ fontSize: 22, color: colors.success }}

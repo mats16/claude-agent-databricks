@@ -253,6 +253,7 @@
     "typeMessage": "Type your message...",
     "openInDatabricks": "Open in Databricks",
     "autoSyncDisabled": "Auto sync disabled",
+    "deploying": "Deploying...",
     "notFound": "Session not found",
     "notFoundDescription": "The session you are looking for does not exist or has been deleted.",
     "loading": "Loading...",

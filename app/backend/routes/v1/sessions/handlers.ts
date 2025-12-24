@@ -2,7 +2,12 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import path from 'path';
 import fs from 'fs';
 import type { MessageContent } from '@app/shared';
-import { processAgentRequest, MessageStream } from '../../../agent/index.js';
+import {
+  processAgentRequest,
+  MessageStream,
+  getAccessToken,
+} from '../../../agent/index.js';
+import { databricks } from '../../../config/index.js';
 import { saveMessage, getMessagesBySessionId } from '../../../db/events.js';
 import {
   createSession,
@@ -466,4 +471,120 @@ export async function getSessionEventsHandler(
     last_id: events.length > 0 ? events[events.length - 1].uuid : null,
     has_more: false,
   };
+}
+
+// Databricks App response type
+interface DatabricksAppResponse {
+  name: string;
+  active_deployment?: {
+    deployment_id: string;
+    status: {
+      state: string;
+      message?: string;
+    };
+  };
+  pending_deployment?: {
+    deployment_id: string;
+    status: {
+      state: string;
+      message?: string;
+    };
+  };
+  app_status?: {
+    state: string;
+    message?: string;
+  };
+  compute_status?: {
+    state: string;
+    message?: string;
+  };
+  error_code?: string;
+  message?: string;
+}
+
+// Get app live status handler
+export async function getAppLiveStatusHandler(
+  request: FastifyRequest<{ Params: { sessionId: string } }>,
+  reply: FastifyReply
+) {
+  const { sessionId } = request.params;
+
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
+  }
+
+  const { userId } = context;
+
+  // Check if session exists and belongs to user
+  const session = await getSessionById(sessionId, userId);
+  if (!session) {
+    return reply.status(404).send({ error: 'Session not found' });
+  }
+
+  // Construct app name from session stub
+  const appName = `app-by-claude-${session.stub}`;
+
+  // Get access token (User PAT first, then fallback to Service Principal)
+  let accessToken: string;
+  try {
+    const userPat = await getUserPersonalAccessToken(userId);
+    accessToken = userPat ?? (await getAccessToken());
+  } catch (error: any) {
+    console.error('Failed to get access token:', error);
+    return reply.status(500).send({ error: 'Failed to get access token' });
+  }
+
+  // Call Databricks Apps API
+  try {
+    const response = await fetch(
+      `${databricks.hostUrl}/api/2.0/apps/${encodeURIComponent(appName)}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const data = (await response.json()) as DatabricksAppResponse;
+
+    // Handle 404 - App not found
+    if (response.status === 404 || data.error_code === 'RESOURCE_DOES_NOT_EXIST') {
+      return reply.status(404).send({ error: 'App not found' });
+    }
+
+    // Handle other errors
+    if (!response.ok || data.error_code) {
+      console.error('Databricks API error:', data);
+      return reply
+        .status(500)
+        .send({ error: data.message || 'Failed to get app status' });
+    }
+
+    // Format response
+    // Use pending_deployment if active_deployment is not available
+    const deployment = data.pending_deployment ?? data.active_deployment;
+    return {
+      app_status: data.app_status
+        ? {
+            state: data.app_status.state,
+            message: data.app_status.message || '',
+          }
+        : null,
+      deployment_status: deployment
+        ? {
+            deployment_id: deployment.deployment_id,
+            state: deployment.status.state,
+            message: deployment.status.message || '',
+          }
+        : null,
+    };
+  } catch (error: any) {
+    console.error('Failed to fetch app status:', error);
+    return reply.status(500).send({ error: 'Failed to fetch app status' });
+  }
 }
