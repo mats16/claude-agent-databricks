@@ -79,7 +79,7 @@ export function generateClaudeSettings(): ClaudeSettings {
         },
         {
           hooks: [
-             // Push claudeConfig (local -> workspace)
+            // Push claudeConfig (local -> workspace)
             {
               type: 'command',
               command:

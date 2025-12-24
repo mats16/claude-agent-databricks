@@ -14,6 +14,7 @@ export interface Session {
   title: string | null;
   model: string;
   workspacePath: string | null;
+  workspaceUrl?: string | null; // Fetched from GET /api/v1/sessions/:id
   userEmail: string | null;
   workspaceAutoPush: boolean;
   appAutoDeploy: boolean;

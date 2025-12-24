@@ -8,6 +8,7 @@ import {
   getAccessToken,
 } from '../../../agent/index.js';
 import { databricks } from '../../../config/index.js';
+import * as workspaceService from '../../../services/workspaceService.js';
 import { saveMessage, getMessagesBySessionId } from '../../../db/events.js';
 import {
   createSession,
@@ -141,7 +142,7 @@ export async function createSessionHandler(
       {
         workspaceAutoPush,
         claudeConfigAutoPush,
-        cwd: localWorkPath,
+        agentLocalPath: localWorkPath,
         appAutoDeploy,
         sessionStub,
       },
@@ -188,7 +189,7 @@ export async function createSessionHandler(
                 userId,
                 workspaceAutoPush,
                 appAutoDeploy,
-                cwd: localWorkPath,
+                agentLocalPath: localWorkPath,
               },
               userId
             );
@@ -234,7 +235,10 @@ export async function createSessionHandler(
                   }
                 | undefined;
 
-              if (structuredOutput?.session_title || structuredOutput?.summary) {
+              if (
+                structuredOutput?.session_title ||
+                structuredOutput?.summary
+              ) {
                 try {
                   // Update session: title only if null, summary always overwritten
                   const titleUpdated = await updateSessionFromStructuredOutput(
@@ -419,7 +423,7 @@ export async function archiveSessionHandler(
 
   const { userId } = context;
 
-  // Get session to retrieve cwd before archiving
+  // Get session to retrieve agentLocalPath before archiving
   const session = await getSessionById(sessionId, userId);
   if (!session) {
     return reply.status(404).send({ error: 'Session not found' });
@@ -429,11 +433,11 @@ export async function archiveSessionHandler(
   await archiveSession(sessionId, userId);
 
   // Delete working directory in background if it exists
-  if (session.cwd) {
-    console.log(`[Archive] Enqueueing deletion of: ${session.cwd}`);
+  if (session.agentLocalPath) {
+    console.log(`[Archive] Enqueueing deletion of: ${session.agentLocalPath}`);
     enqueueDelete({
       userId,
-      localPath: session.cwd,
+      localPath: session.agentLocalPath,
     });
   }
 
@@ -579,7 +583,10 @@ export async function getAppLiveStatusHandler(
     const data = (await response.json()) as DatabricksAppResponse;
 
     // Handle 404 - App not found
-    if (response.status === 404 || data.error_code === 'RESOURCE_DOES_NOT_EXIST') {
+    if (
+      response.status === 404 ||
+      data.error_code === 'RESOURCE_DOES_NOT_EXIST'
+    ) {
       return reply.status(404).send({ error: 'App not found' });
     }
 
@@ -613,4 +620,64 @@ export async function getAppLiveStatusHandler(
     console.error('Failed to fetch app status:', error);
     return reply.status(500).send({ error: 'Failed to fetch app status' });
   }
+}
+
+// Get session handler
+export async function getSessionHandler(
+  request: FastifyRequest<{ Params: { sessionId: string } }>,
+  reply: FastifyReply
+) {
+  const { sessionId } = request.params;
+
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
+  }
+
+  const { userId } = context;
+
+  // Get session from database
+  const session = await getSessionById(sessionId, userId);
+  if (!session) {
+    return reply.status(404).send({ error: 'Session not found' });
+  }
+
+  // Get workspace_url if workspacePath is set
+  let workspaceUrl: string | null = null;
+  if (session.workspacePath) {
+    try {
+      const status = await workspaceService.getStatus(session.workspacePath);
+      workspaceUrl = status.browse_url;
+    } catch (error) {
+      // Log error but don't fail the request
+      console.error('Failed to get workspace status:', error);
+    }
+  }
+
+  // Build response in snake_case format
+  const response: Record<string, unknown> = {
+    id: session.id,
+    stub: session.stub,
+    title: session.title,
+    summary: session.summary,
+    model: session.model,
+    workspace_path: session.workspacePath,
+    workspace_url: workspaceUrl,
+    user_id: session.userId,
+    workspace_auto_push: session.workspaceAutoPush,
+    app_auto_deploy: session.appAutoDeploy,
+    local_path: session.agentLocalPath,
+    is_archived: session.isArchived,
+    created_at: session.createdAt.toISOString(),
+    updated_at: session.updatedAt.toISOString(),
+  };
+
+  // Only include app_name when app_auto_deploy is true
+  if (session.appAutoDeploy) {
+    response.app_name = `app-by-claude-${session.stub}`;
+  }
+
+  return response;
 }

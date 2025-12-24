@@ -3,7 +3,10 @@ import type { MessageContent, IncomingWSMessage } from '@app/shared';
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { processAgentRequest, MessageStream } from '../../../agent/index.js';
 import { saveMessage } from '../../../db/events.js';
-import { getSessionById, updateSessionFromStructuredOutput } from '../../../db/sessions.js';
+import {
+  getSessionById,
+  updateSessionFromStructuredOutput,
+} from '../../../db/sessions.js';
 import { getSettingsDirect } from '../../../db/settings.js';
 import { getUserPersonalAccessToken } from '../../../services/userService.js';
 import { extractRequestContextFromHeaders } from '../../../utils/headers.js';
@@ -168,7 +171,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
                 `[WebSocket] Starting agent for session: ${sessionId}`
               );
 
-              // Fetch session to get workspacePath, workspaceAutoPush, cwd, appAutoDeploy, stub, and model for resume
+              // Fetch session to get workspacePath, workspaceAutoPush, agentLocalPath, appAutoDeploy, stub, and model for resume
               const session = await getSessionById(sessionId, userId);
               if (!session) {
                 throw new Error('Session not found. Cannot resume session.');
@@ -176,7 +179,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               const workspacePath = session.workspacePath ?? undefined;
               const workspaceAutoPush = session.workspaceAutoPush;
               const appAutoDeploy = session.appAutoDeploy;
-              const sessionCwd = session.cwd;
+              const sessionAgentLocalPath = session.agentLocalPath;
               const sessionStub = session.stub;
               // Use session's saved model on resume (prioritize over WebSocket message)
               const sessionModel = session.model;
@@ -206,7 +209,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
                   {
                     workspaceAutoPush,
                     claudeConfigAutoPush,
-                    cwd: sessionCwd,
+                    agentLocalPath: sessionAgentLocalPath,
                     appAutoDeploy,
                     sessionStub,
                   },
@@ -247,17 +250,21 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
                         }
                       | undefined;
 
-                    if (structuredOutput?.session_title || structuredOutput?.summary) {
+                    if (
+                      structuredOutput?.session_title ||
+                      structuredOutput?.summary
+                    ) {
                       try {
                         // Update session: title only if null, summary always overwritten
-                        const titleUpdated = await updateSessionFromStructuredOutput(
-                          sessionId,
-                          {
-                            title: structuredOutput.session_title,
-                            summary: structuredOutput.summary,
-                          },
-                          userId
-                        );
+                        const titleUpdated =
+                          await updateSessionFromStructuredOutput(
+                            sessionId,
+                            {
+                              title: structuredOutput.session_title,
+                              summary: structuredOutput.summary,
+                            },
+                            userId
+                          );
                         if (titleUpdated) {
                           notifySessionUpdated(userId, {
                             id: sessionId,

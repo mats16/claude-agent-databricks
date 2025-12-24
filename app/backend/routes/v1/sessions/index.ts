@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import {
   createSessionHandler,
   listSessionsHandler,
+  getSessionHandler,
   updateSessionHandler,
   archiveSessionHandler,
   getSessionEventsHandler,
@@ -14,6 +15,9 @@ const sessionRoutes: FastifyPluginAsync = async (fastify) => {
 
   // List sessions
   fastify.get('/', listSessionsHandler);
+
+  // Get session
+  fastify.get('/:sessionId', getSessionHandler);
 
   // Update session
   fastify.patch('/:sessionId', updateSessionHandler);

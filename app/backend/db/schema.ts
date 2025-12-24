@@ -33,7 +33,7 @@ export const sessions = pgTable('sessions', {
     .references(() => users.id, { onDelete: 'cascade' }),
   workspaceAutoPush: boolean('workspace_auto_push').default(false).notNull(),
   appAutoDeploy: boolean('app_auto_deploy').default(false).notNull(),
-  cwd: text('cwd').notNull(), // working directory path
+  agentLocalPath: text('agentLocalPath').notNull(), // agent working directory path
   isArchived: boolean('is_archived').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

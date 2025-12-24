@@ -78,7 +78,7 @@ export async function getAccessToken(): Promise<string> {
 export interface ProcessAgentRequestOptions {
   workspaceAutoPush?: boolean; // workspace pushを実行
   claudeConfigAutoPush?: boolean; // claude config pull/push
-  cwd?: string; // working directory path (created before agent starts)
+  agentLocalPath?: string; // agent working directory path (created before agent starts)
   waitForReady?: Promise<void>; // Promise to wait for before processing first message (e.g., workspace pull)
   appAutoDeploy?: boolean; // Flag to enable auto-deploy to Databricks Apps via hooks
   sessionStub: string; // 8-char hex session identifier (required for SESSION_APP_NAME, GIT_BRANCH)
@@ -255,7 +255,7 @@ export async function* processAgentRequest(
   const {
     workspaceAutoPush = false,
     claudeConfigAutoPush = true,
-    cwd,
+    agentLocalPath,
     waitForReady,
     appAutoDeploy = false,
     sessionStub,
@@ -272,10 +272,10 @@ export async function* processAgentRequest(
   );
   fs.mkdirSync(localClaudeConfigPath, { recursive: true });
 
-  // Local working directory: use cwd if provided (created by caller), otherwise fallback
+  // Local working directory: use agentLocalPath if provided (created by caller), otherwise fallback
   // workDir should be created by the caller (app.ts) before calling this function
   const localWorkPath =
-    cwd ??
+    agentLocalPath ??
     path.join(localBasePath, userEmail ?? 'me', 'w', sessionId ?? 'temp');
 
   const spAccessToken = await getOidcAccessToken();

@@ -124,11 +124,42 @@ export default function SessionPage() {
   const sessionTitle = session?.title ?? null;
   const sessionAutoWorkspacePush = session?.workspaceAutoPush ?? false;
   const sessionWorkspacePath = session?.workspacePath ?? null;
+  const sessionWorkspaceUrl = session?.workspaceUrl ?? null;
   const sessionAppAutoDeploy = session?.appAutoDeploy ?? false;
   const sessionSyncMode = flagsToSyncMode(
     sessionAutoWorkspacePush,
     sessionAppAutoDeploy
   );
+
+  // Fetch session details (including workspace_url) when session page loads
+  useEffect(() => {
+    if (!sessionId || !sessionWorkspacePath) return;
+    // Skip if we already have the workspace URL
+    if (sessionWorkspaceUrl) return;
+
+    const fetchSessionDetails = async () => {
+      try {
+        const response = await fetch(`/api/v1/sessions/${sessionId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.workspace_url) {
+            updateSessionLocally(sessionId, {
+              workspaceUrl: data.workspace_url,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch session details:', error);
+      }
+    };
+
+    fetchSessionDetails();
+  }, [
+    sessionId,
+    sessionWorkspacePath,
+    sessionWorkspaceUrl,
+    updateSessionLocally,
+  ]);
 
   // App live status polling (only when appAutoDeploy is enabled)
   const { isDeploying, isUnavailable } = useAppLiveStatus(
@@ -170,24 +201,10 @@ export default function SessionPage() {
     [sessionId, updateSessionLocally]
   );
 
-  const handleWorkspacePathClick = useCallback(async () => {
-    if (!sessionWorkspacePath) return;
-
-    try {
-      const response = await fetch(`/api/v1${sessionWorkspacePath}`);
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.browse_url) {
-          window.open(data.browse_url, '_blank');
-        }
-      } else {
-        console.error('Failed to get workspace status');
-      }
-    } catch (error) {
-      console.error('Error fetching workspace status:', error);
-    }
-  }, [sessionWorkspacePath]);
+  const handleWorkspacePathClick = useCallback(() => {
+    if (!sessionWorkspaceUrl) return;
+    window.open(sessionWorkspaceUrl, '_blank');
+  }, [sessionWorkspaceUrl]);
 
   const locationState = isLocationState(location.state) ? location.state : null;
   const initialMessage = !initialMessageConsumedRef.current
@@ -461,13 +478,13 @@ export default function SessionPage() {
             />
           </Button>
         </Flex>
-        {sessionWorkspacePath && (
+        {sessionWorkspaceUrl && (
           <Button
             type="text"
             size="small"
             icon={<FolderOutlined />}
             onClick={handleWorkspacePathClick}
-            title={sessionWorkspacePath}
+            title={sessionWorkspacePath ?? undefined}
             style={{
               marginRight: spacing.sm,
               color: colors.textSecondary,

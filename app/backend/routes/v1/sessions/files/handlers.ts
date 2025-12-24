@@ -30,13 +30,13 @@ export async function uploadFileHandler(
 
   const { userId } = context;
 
-  // Verify session ownership and get cwd
+  // Verify session ownership and get agentLocalPath
   const session = await getSessionById(sessionId, userId);
   if (!session) {
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  if (!session.cwd) {
+  if (!session.agentLocalPath) {
     return reply
       .status(400)
       .send({ error: 'Session working directory not available' });
@@ -65,15 +65,15 @@ export async function uploadFileHandler(
   // Check for filename collision and add suffix if needed
   let finalName = sanitizedName;
   let counter = 1;
-  while (fsSync.existsSync(path.join(session.cwd, finalName))) {
+  while (fsSync.existsSync(path.join(session.agentLocalPath, finalName))) {
     const ext = path.extname(sanitizedName);
     const base = path.basename(sanitizedName, ext);
     finalName = `${base}_${counter}${ext}`;
     counter++;
   }
 
-  // Save file to session cwd
-  const filePath = path.join(session.cwd, finalName);
+  // Save file to session agentLocalPath
+  const filePath = path.join(session.agentLocalPath, finalName);
   await fs.writeFile(filePath, buffer);
 
   console.log(`[File Upload] Saved file: ${filePath} (${buffer.length} bytes)`);
@@ -103,13 +103,13 @@ export async function listFilesHandler(
 
   const { userId } = context;
 
-  // Verify session ownership and get cwd
+  // Verify session ownership and get agentLocalPath
   const session = await getSessionById(sessionId, userId);
   if (!session) {
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  if (!session.cwd) {
+  if (!session.agentLocalPath) {
     return reply
       .status(400)
       .send({ error: 'Session working directory not available' });
@@ -117,18 +117,20 @@ export async function listFilesHandler(
 
   // Check if directory exists
   try {
-    await fs.access(session.cwd);
+    await fs.access(session.agentLocalPath);
   } catch {
     return { files: [] };
   }
 
   // Read directory contents
-  const entries = await fs.readdir(session.cwd, { withFileTypes: true });
+  const entries = await fs.readdir(session.agentLocalPath, {
+    withFileTypes: true,
+  });
   const files: FileAttachment[] = [];
 
   for (const entry of entries) {
     if (entry.isFile()) {
-      const filePath = path.join(session.cwd, entry.name);
+      const filePath = path.join(session.agentLocalPath, entry.name);
       const stat = await fs.stat(filePath);
 
       // Detect mime type based on extension
@@ -175,13 +177,13 @@ export async function downloadFileHandler(
 
   const { userId } = context;
 
-  // Verify session ownership and get cwd
+  // Verify session ownership and get agentLocalPath
   const session = await getSessionById(sessionId, userId);
   if (!session) {
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  if (!session.cwd) {
+  if (!session.agentLocalPath) {
     return reply
       .status(400)
       .send({ error: 'Session working directory not available' });
@@ -200,14 +202,14 @@ export async function downloadFileHandler(
     return reply.status(400).send({ error: 'Invalid file path' });
   }
 
-  const fullPath = path.join(session.cwd, normalizedPath);
+  const fullPath = path.join(session.agentLocalPath, normalizedPath);
 
-  // Verify the file is within the session cwd
+  // Verify the file is within the session agentLocalPath
   const resolvedPath = path.resolve(fullPath);
-  const resolvedCwd = path.resolve(session.cwd);
+  const resolvedAgentLocalPath = path.resolve(session.agentLocalPath);
   if (
-    !resolvedPath.startsWith(resolvedCwd + path.sep) &&
-    resolvedPath !== resolvedCwd
+    !resolvedPath.startsWith(resolvedAgentLocalPath + path.sep) &&
+    resolvedPath !== resolvedAgentLocalPath
   ) {
     return reply.status(400).send({ error: 'Invalid file path' });
   }
