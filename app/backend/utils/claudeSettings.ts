@@ -15,6 +15,7 @@ interface HookEntry {
 interface ClaudeSettings {
   hooks: {
     SessionStart?: HookEntry[];
+    PostToolUse?: HookEntry[];
     Stop?: HookEntry[];
   };
 }
@@ -56,6 +57,19 @@ export function generateClaudeSettings(): ClaudeSettings {
               type: 'command',
               command:
                 '[ "$APP_AUTO_DEPLOY" = "true" ] && databricks apps create "$SESSION_APP_NAME" --no-wait',
+            },
+          ],
+        },
+      ],
+      PostToolUse: [
+        {
+          matcher: "Write|Edit|MultiEdit",
+          hooks: [
+            // Push workspace directory (local -> workspace)
+            {
+              type: 'command',
+              command:
+                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_WORKING_DIR" "$WORKSPACE_DIR" --exclude ".claude/settings.local.json" --exclude "node_modules" --include ".git"',
             },
           ],
         },
