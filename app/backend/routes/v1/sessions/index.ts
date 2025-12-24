@@ -7,6 +7,9 @@ import {
   archiveSessionHandler,
   getSessionEventsHandler,
   getAppLiveStatusHandler,
+  getAppHandler,
+  listAppDeploymentsHandler,
+  createAppDeploymentHandler,
 } from './handlers.js';
 
 const sessionRoutes: FastifyPluginAsync = async (fastify) => {
@@ -30,6 +33,15 @@ const sessionRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Get app live status
   fastify.get('/:sessionId/app/live-status', getAppLiveStatusHandler);
+
+  // Get app (proxy to Databricks Apps API)
+  fastify.get('/:sessionId/app', getAppHandler);
+
+  // List app deployments (proxy to Databricks Apps API)
+  fastify.get('/:sessionId/app/deployments', listAppDeploymentsHandler);
+
+  // Create app deployment (proxy to Databricks Apps API)
+  fastify.post('/:sessionId/app/deployments', createAppDeploymentHandler);
 };
 
 export default sessionRoutes;

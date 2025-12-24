@@ -226,7 +226,10 @@ export async function getWorkspaceObjectHandler(
   if (!rawPath) {
     return reply
       .status(400)
-      .send({ error_code: 'INVALID_PARAMETER_VALUE', message: 'Path query parameter is required' });
+      .send({
+        error_code: 'INVALID_PARAMETER_VALUE',
+        message: 'Path query parameter is required',
+      });
   }
 
   // Decode path if URL-encoded
@@ -236,7 +239,10 @@ export async function getWorkspaceObjectHandler(
   if (workspacePath.includes('/me')) {
     try {
       const context = extractRequestContext(request);
-      workspacePath = workspacePath.replace(/\/Users\/me(\/|$)/, `/Users/${context.userEmail}$1`);
+      workspacePath = workspacePath.replace(
+        /\/Users\/me(\/|$)/,
+        `/Users/${context.userEmail}$1`
+      );
     } catch {
       // Ignore - keep original path
     }
@@ -258,7 +264,10 @@ export async function listWorkspaceHandler(
   if (!rawPath) {
     return reply
       .status(400)
-      .send({ error_code: 'INVALID_PARAMETER_VALUE', message: 'Path query parameter is required' });
+      .send({
+        error_code: 'INVALID_PARAMETER_VALUE',
+        message: 'Path query parameter is required',
+      });
   }
 
   // Decode path if URL-encoded (Fastify should auto-decode but ensure it)
@@ -268,7 +277,10 @@ export async function listWorkspaceHandler(
   if (workspacePath.includes('/me')) {
     try {
       const context = extractRequestContext(request);
-      workspacePath = workspacePath.replace(/\/Users\/me(\/|$)/, `/Users/${context.userEmail}$1`);
+      workspacePath = workspacePath.replace(
+        /\/Users\/me(\/|$)/,
+        `/Users/${context.userEmail}$1`
+      );
     } catch {
       // Ignore - keep original path
     }
@@ -291,7 +303,10 @@ export async function mkdirsHandler(
   if (!rawPath) {
     return reply
       .status(400)
-      .send({ error_code: 'INVALID_PARAMETER_VALUE', message: 'Path is required in body' });
+      .send({
+        error_code: 'INVALID_PARAMETER_VALUE',
+        message: 'Path is required in body',
+      });
   }
 
   // Resolve 'me' in path to actual user email
@@ -299,7 +314,10 @@ export async function mkdirsHandler(
   if (workspacePath.includes('/me')) {
     try {
       const context = extractRequestContext(request);
-      workspacePath = workspacePath.replace(/\/Users\/me(\/|$)/, `/Users/${context.userEmail}$1`);
+      workspacePath = workspacePath.replace(
+        /\/Users\/me(\/|$)/,
+        `/Users/${context.userEmail}$1`
+      );
     } catch {
       // Ignore - keep original path
     }

@@ -626,6 +626,163 @@ export async function getAppLiveStatusHandler(
   }
 }
 
+// Get app handler (proxy to Databricks Apps API)
+export async function getAppHandler(
+  request: FastifyRequest<{ Params: { sessionId: string } }>,
+  reply: FastifyReply
+) {
+  const { sessionId } = request.params;
+
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
+  }
+
+  const { userId } = context;
+
+  const session = await getSessionById(sessionId, userId);
+  if (!session) {
+    return reply.status(404).send({ error: 'Session not found' });
+  }
+
+  const appName = `app-by-claude-${session.stub}`;
+
+  let accessToken: string;
+  try {
+    const userPat = await getUserPersonalAccessToken(userId);
+    accessToken = userPat ?? (await getAccessToken());
+  } catch (error: any) {
+    console.error('Failed to get access token:', error);
+    return reply.status(500).send({ error: 'Failed to get access token' });
+  }
+
+  try {
+    const response = await fetch(
+      `${databricks.hostUrl}/api/2.0/apps/${encodeURIComponent(appName)}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const body = await response.json();
+    return reply.status(response.status).send(body);
+  } catch (error: any) {
+    console.error('Failed to fetch app:', error);
+    return reply.status(500).send({ error: 'Failed to fetch app' });
+  }
+}
+
+// List app deployments handler (proxy to Databricks Apps API)
+export async function listAppDeploymentsHandler(
+  request: FastifyRequest<{ Params: { sessionId: string } }>,
+  reply: FastifyReply
+) {
+  const { sessionId } = request.params;
+
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
+  }
+
+  const { userId } = context;
+
+  const session = await getSessionById(sessionId, userId);
+  if (!session) {
+    return reply.status(404).send({ error: 'Session not found' });
+  }
+
+  const appName = `app-by-claude-${session.stub}`;
+
+  let accessToken: string;
+  try {
+    const userPat = await getUserPersonalAccessToken(userId);
+    accessToken = userPat ?? (await getAccessToken());
+  } catch (error: any) {
+    console.error('Failed to get access token:', error);
+    return reply.status(500).send({ error: 'Failed to get access token' });
+  }
+
+  try {
+    const response = await fetch(
+      `${databricks.hostUrl}/api/2.0/apps/${encodeURIComponent(appName)}/deployments`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const body = await response.json();
+    return reply.status(response.status).send(body);
+  } catch (error: any) {
+    console.error('Failed to list app deployments:', error);
+    return reply.status(500).send({ error: 'Failed to list app deployments' });
+  }
+}
+
+// Create app deployment handler (proxy to Databricks Apps API)
+export async function createAppDeploymentHandler(
+  request: FastifyRequest<{ Params: { sessionId: string } }>,
+  reply: FastifyReply
+) {
+  const { sessionId } = request.params;
+
+  let context;
+  try {
+    context = extractRequestContext(request);
+  } catch (error: any) {
+    return reply.status(400).send({ error: error.message });
+  }
+
+  const { userId } = context;
+
+  const session = await getSessionById(sessionId, userId);
+  if (!session) {
+    return reply.status(404).send({ error: 'Session not found' });
+  }
+
+  const appName = `app-by-claude-${session.stub}`;
+
+  let accessToken: string;
+  try {
+    const userPat = await getUserPersonalAccessToken(userId);
+    accessToken = userPat ?? (await getAccessToken());
+  } catch (error: any) {
+    console.error('Failed to get access token:', error);
+    return reply.status(500).send({ error: 'Failed to get access token' });
+  }
+
+  try {
+    const response = await fetch(
+      `${databricks.hostUrl}/api/2.0/apps/${encodeURIComponent(appName)}/deployments`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      }
+    );
+
+    const body = await response.json();
+    return reply.status(response.status).send(body);
+  } catch (error: any) {
+    console.error('Failed to create app deployment:', error);
+    return reply.status(500).send({ error: 'Failed to create app deployment' });
+  }
+}
+
 // Get session handler
 export async function getSessionHandler(
   request: FastifyRequest<{ Params: { sessionId: string } }>,

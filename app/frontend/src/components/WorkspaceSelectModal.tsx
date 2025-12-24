@@ -127,7 +127,9 @@ export default function WorkspaceSelectModal({
     setError(null);
 
     try {
-      const res = await fetch('/api/v1/workspace/list?path=/Workspace/Users/me');
+      const res = await fetch(
+        '/api/v1/workspace/list?path=/Workspace/Users/me'
+      );
 
       if (res.status === 403) {
         setError(t('workspaceModal.noPermission'));

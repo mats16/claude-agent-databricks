@@ -5,7 +5,7 @@
 
 import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Input, Flex, message } from 'antd';
+import { Button, Input, Flex, message, Select } from 'antd';
 import {
   SendOutlined,
   PaperClipOutlined,
@@ -13,6 +13,7 @@ import {
   FileTextOutlined,
   FilePdfOutlined,
   StopOutlined,
+  CaretDownOutlined,
 } from '@ant-design/icons';
 import type { AttachedImage } from './ImageUpload';
 import type { AttachedFile } from '../hooks/useFileUpload';
@@ -67,6 +68,10 @@ interface ChatInputProps {
   maxImages?: number;
   /** Max files allowed */
   maxFiles?: number;
+  /** Currently selected model */
+  selectedModel?: string;
+  /** Callback when model changes */
+  onModelChange?: (model: string) => void;
 }
 
 export default function ChatInput({
@@ -85,6 +90,8 @@ export default function ChatInput({
   placeholder,
   maxImages = 5,
   maxFiles = 10,
+  selectedModel,
+  onModelChange,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -378,7 +385,7 @@ export default function ChatInput({
           style={{ padding: 0 }}
         />
 
-        {/* Action row - Attachment button left, Send button right */}
+        {/* Action row - Attachment button left, Model selector center, Send button right */}
         <Flex justify="space-between" align="center">
           {/* Unified attachment button */}
           <Button
@@ -393,6 +400,46 @@ export default function ChatInput({
             }
             title={t('fileUpload.attachFile')}
           />
+          <div style={{ flex: 1 }} />
+          {/* Model selector */}
+          {selectedModel && onModelChange && (
+            <Select
+              value={selectedModel}
+              onChange={onModelChange}
+              disabled={isAgentProcessing}
+              style={{ width: 'auto', minWidth: 100 }}
+              size="small"
+              variant="borderless"
+              popupMatchSelectWidth={240}
+              placement="topLeft"
+              suffixIcon={<CaretDownOutlined />}
+              optionRender={(option) => (
+                <div>
+                  <div style={{ fontWeight: 500 }}>{option.label}</div>
+                  <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                    {option.data.description}
+                  </div>
+                </div>
+              )}
+              options={[
+                {
+                  value: 'opus',
+                  label: t('models.opus'),
+                  description: t('models.opusDescription'),
+                },
+                {
+                  value: 'sonnet',
+                  label: t('models.sonnet'),
+                  description: t('models.sonnetDescription'),
+                },
+                {
+                  value: 'haiku',
+                  label: t('models.haiku'),
+                  description: t('models.haikuDescription'),
+                },
+              ]}
+            />
+          )}
           {showStopButton ? (
             <Button
               type="default"

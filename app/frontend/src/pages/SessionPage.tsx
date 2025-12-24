@@ -228,6 +228,8 @@ export default function SessionPage() {
     connectionError,
     sendMessage,
     stopAgent,
+    selectedModel,
+    setSelectedModel,
   } = useAgent({
     sessionId,
     initialMessage,
@@ -666,6 +668,8 @@ export default function SessionPage() {
             onSubmit={handleSubmit}
             onStop={handleStop}
             isAgentProcessing={isProcessing}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
           />
         )}
       </div>
