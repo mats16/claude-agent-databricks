@@ -181,9 +181,9 @@ export default function SessionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: newTitle,
-          workspaceAutoPush,
-          workspacePath,
-          appAutoDeploy,
+          workspace_auto_push: workspaceAutoPush,
+          workspace_path: workspacePath,
+          app_auto_deploy: appAutoDeploy,
         }),
       });
 

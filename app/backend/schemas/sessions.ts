@@ -39,23 +39,23 @@ export const createSessionBodySchema = z.object({
   }),
 });
 
-// Update session body schema
+// Update session body schema (snake_case)
 export const updateSessionBodySchema = z
   .object({
     title: z.string().min(1).max(200).optional(),
-    workspaceAutoPush: z.boolean().optional(),
-    workspacePath: z.string().nullable().optional(),
-    appAutoDeploy: z.boolean().optional(),
+    workspace_auto_push: z.boolean().optional(),
+    workspace_path: z.string().nullable().optional(),
+    app_auto_deploy: z.boolean().optional(),
   })
   .refine(
     (data) =>
       data.title !== undefined ||
-      data.workspaceAutoPush !== undefined ||
-      data.workspacePath !== undefined ||
-      data.appAutoDeploy !== undefined,
+      data.workspace_auto_push !== undefined ||
+      data.workspace_path !== undefined ||
+      data.app_auto_deploy !== undefined,
     {
       message:
-        'At least one field (title, workspaceAutoPush, workspacePath, or appAutoDeploy) is required',
+        'At least one field (title, workspace_auto_push, workspace_path, or app_auto_deploy) is required',
     }
   );
 

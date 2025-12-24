@@ -343,16 +343,20 @@ export async function updateSessionHandler(
     Params: { sessionId: string };
     Body: {
       title?: string;
-      workspaceAutoPush?: boolean;
-      workspacePath?: string | null;
-      appAutoDeploy?: boolean;
+      workspace_auto_push?: boolean;
+      workspace_path?: string | null;
+      app_auto_deploy?: boolean;
     };
   }>,
   reply: FastifyReply
 ) {
   const { sessionId } = request.params;
-  const { title, workspaceAutoPush, workspacePath, appAutoDeploy } =
-    request.body;
+  const {
+    title,
+    workspace_auto_push: workspaceAutoPush,
+    workspace_path: workspacePath,
+    app_auto_deploy: appAutoDeploy,
+  } = request.body;
 
   let context;
   try {
@@ -372,7 +376,7 @@ export async function updateSessionHandler(
   ) {
     return reply.status(400).send({
       error:
-        'title, workspaceAutoPush, workspacePath, or appAutoDeploy is required',
+        'title, workspace_auto_push, workspace_path, or app_auto_deploy is required',
     });
   }
 
