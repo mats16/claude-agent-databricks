@@ -82,9 +82,9 @@ export default function WorkspaceSelectModal({
     setError(null);
 
     try {
-      // Remove /Workspace prefix and use /api/v1/Workspace
-      const apiPath = path.replace(/^\/Workspace/, '');
-      const res = await fetch(`/api/v1/Workspace${apiPath}`);
+      const res = await fetch(
+        `/api/v1/workspace/list?path=${encodeURIComponent(path)}`
+      );
 
       if (res.status === 403) {
         setError(t('workspaceModal.noPermission'));
@@ -127,7 +127,7 @@ export default function WorkspaceSelectModal({
     setError(null);
 
     try {
-      const res = await fetch('/api/v1/Workspace/Users/me');
+      const res = await fetch('/api/v1/workspace/list?path=/Workspace/Users/me');
 
       if (res.status === 403) {
         setError(t('workspaceModal.noPermission'));

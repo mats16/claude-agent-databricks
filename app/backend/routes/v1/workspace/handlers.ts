@@ -213,3 +213,109 @@ export async function createDirectoryHandler(
     return reply.status(500).send({ error: error.message });
   }
 }
+
+// Get workspace object status (wrapper for /api/2.0/workspace/get-status)
+// GET /api/v1/workspace/get?path=/Workspace/Users/me/.claude
+// Returns the original Databricks API response and status code
+export async function getWorkspaceObjectHandler(
+  request: FastifyRequest<{ Querystring: { path: string } }>,
+  reply: FastifyReply
+) {
+  const { path: rawPath } = request.query;
+
+  if (!rawPath) {
+    return reply
+      .status(400)
+      .send({ error_code: 'INVALID_PARAMETER_VALUE', message: 'Path query parameter is required' });
+  }
+
+  // Decode path if URL-encoded
+  let workspacePath = decodeURIComponent(rawPath);
+
+  // Resolve 'me' in path to actual user email
+  if (workspacePath.includes('/me')) {
+    try {
+      const context = extractRequestContext(request);
+      workspacePath = workspacePath.replace(/\/Users\/me(\/|$)/, `/Users/${context.userEmail}$1`);
+    } catch {
+      // Ignore - keep original path
+    }
+  }
+
+  const result = await workspaceService.getStatusRaw(workspacePath);
+  return reply.status(result.status).send(result.body);
+}
+
+// List workspace directory contents (wrapper for /api/2.0/workspace/list)
+// GET /api/v1/workspace/list?path=/Workspace/Users/me/.claude
+// Returns the original Databricks API response and status code
+export async function listWorkspaceHandler(
+  request: FastifyRequest<{ Querystring: { path: string } }>,
+  reply: FastifyReply
+) {
+  const { path: rawPath } = request.query;
+
+  console.log('[listWorkspaceHandler] rawPath:', rawPath);
+
+  if (!rawPath) {
+    return reply
+      .status(400)
+      .send({ error_code: 'INVALID_PARAMETER_VALUE', message: 'Path query parameter is required' });
+  }
+
+  // Decode path if URL-encoded (Fastify should auto-decode but ensure it)
+  let workspacePath = decodeURIComponent(rawPath);
+
+  console.log('[listWorkspaceHandler] decoded workspacePath:', workspacePath);
+
+  // Resolve 'me' in path to actual user email
+  if (workspacePath.includes('/me')) {
+    try {
+      const context = extractRequestContext(request);
+      workspacePath = workspacePath.replace(/\/Users\/me(\/|$)/, `/Users/${context.userEmail}$1`);
+      console.log('[listWorkspaceHandler] resolved workspacePath:', workspacePath);
+    } catch {
+      // Ignore - keep original path
+    }
+  }
+
+  console.log('[listWorkspaceHandler] final workspacePath:', workspacePath);
+
+  const result = await workspaceService.listWorkspaceRaw(workspacePath);
+
+  console.log('[listWorkspaceHandler] result status:', result.status);
+  console.log('[listWorkspaceHandler] result body:', JSON.stringify(result.body));
+
+  return reply.status(result.status).send(result.body);
+}
+
+// Create directory in workspace (wrapper for /api/2.0/workspace/mkdirs)
+// POST /api/v1/workspace/mkdirs
+// Body: { path: "/Workspace/Users/me/new-folder" }
+// Returns the original Databricks API response and status code
+export async function mkdirsHandler(
+  request: FastifyRequest<{ Body: { path: string } }>,
+  reply: FastifyReply
+) {
+  const { path: rawPath } = request.body || {};
+
+  if (!rawPath) {
+    return reply
+      .status(400)
+      .send({ error_code: 'INVALID_PARAMETER_VALUE', message: 'Path is required in body' });
+  }
+
+  // Resolve 'me' in path to actual user email
+  let workspacePath = rawPath;
+  if (workspacePath.includes('/me')) {
+    try {
+      const context = extractRequestContext(request);
+      workspacePath = workspacePath.replace(/\/Users\/me(\/|$)/, `/Users/${context.userEmail}$1`);
+    } catch {
+      // Ignore - keep original path
+    }
+  }
+
+  const result = await workspaceService.mkdirsRaw(workspacePath);
+  return reply.status(result.status).send(result.body);
+}

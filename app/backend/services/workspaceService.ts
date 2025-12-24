@@ -163,3 +163,65 @@ export async function getStatus(
     browse_url: browseUrl,
   };
 }
+
+// Raw API response interface
+export interface RawApiResponse {
+  status: number;
+  body: unknown;
+}
+
+// Raw wrapper for /api/2.0/workspace/get-status
+// Returns the original response status and body from Databricks API
+export async function getStatusRaw(
+  workspacePath: string
+): Promise<RawApiResponse> {
+  const token = await getAccessToken();
+  const response = await fetch(
+    `${databricks.hostUrl}/api/2.0/workspace/get-status?path=${encodeURIComponent(workspacePath)}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  const body = await response.json();
+  return { status: response.status, body };
+}
+
+// Raw wrapper for /api/2.0/workspace/list
+// Returns the original response status and body from Databricks API
+export async function listWorkspaceRaw(
+  workspacePath: string
+): Promise<RawApiResponse> {
+  const token = await getAccessToken();
+  const response = await fetch(
+    `${databricks.hostUrl}/api/2.0/workspace/list?path=${encodeURIComponent(workspacePath)}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  const body = await response.json();
+  return { status: response.status, body };
+}
+
+// Raw wrapper for /api/2.0/workspace/mkdirs
+// Returns the original response status and body from Databricks API
+export async function mkdirsRaw(
+  workspacePath: string
+): Promise<RawApiResponse> {
+  const token = await getAccessToken();
+  const response = await fetch(
+    `${databricks.hostUrl}/api/2.0/workspace/mkdirs`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ path: workspacePath }),
+    }
+  );
+
+  const body = await response.json();
+  return { status: response.status, body };
+}
