@@ -266,7 +266,12 @@
     "confirmDeploy": "デプロイを実行しますか？",
     "deployStarted": "デプロイを開始しました",
     "deployFailed": "デプロイの開始に失敗しました",
-    "initialDeployStarted": "初回デプロイを開始しました"
+    "initialDeployStarted": "初回デプロイを開始しました",
+    "appStatus": {
+      "title": "ステータス",
+      "app": "アプリ",
+      "deployment": "デプロイ"
+    }
   },
   "welcome": {
     "exploreTitle": "ワークスペースファイルを探索",

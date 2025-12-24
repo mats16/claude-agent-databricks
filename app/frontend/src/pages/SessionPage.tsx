@@ -10,6 +10,7 @@ import {
   Dropdown,
   Modal,
   message,
+  Tag,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -90,6 +91,46 @@ function ThinkingIndicator() {
       </Text>
     </Flex>
   );
+}
+
+// Helper to get Tag color based on app state
+function getAppStateTagColor(
+  state: string | undefined
+): 'success' | 'processing' | 'error' | 'warning' | 'default' {
+  if (!state) return 'default';
+  switch (state) {
+    case 'RUNNING':
+      return 'success';
+    case 'STARTING':
+    case 'PENDING':
+    case 'DEPLOYING':
+      return 'processing';
+    case 'CRASHED':
+    case 'ERROR':
+      return 'error';
+    case 'UNAVAILABLE':
+      return 'warning';
+    default:
+      return 'default';
+  }
+}
+
+// Helper to get Tag color based on deployment state
+function getDeploymentStateTagColor(
+  state: string | undefined
+): 'success' | 'processing' | 'error' | 'default' {
+  if (!state) return 'default';
+  switch (state) {
+    case 'SUCCEEDED':
+      return 'success';
+    case 'PENDING':
+    case 'IN_PROGRESS':
+      return 'processing';
+    case 'FAILED':
+      return 'error';
+    default:
+      return 'default';
+  }
 }
 
 interface LocationState {
@@ -603,6 +644,50 @@ export default function SessionPage() {
           <Dropdown
             menu={{
               items: [
+                // Status section
+                {
+                  key: 'status-section',
+                  type: 'group',
+                  label: t('sessionPage.appStatus.title'),
+                  children: [
+                    {
+                      key: 'app-status',
+                      label: (
+                        <Flex justify="space-between" align="center" gap={8}>
+                          <span>{t('sessionPage.appStatus.app')}</span>
+                          <Tag
+                            color={getAppStateTagColor(
+                              appStatus?.app_status?.state
+                            )}
+                            style={{ margin: 0 }}
+                          >
+                            {appStatus?.app_status?.state ?? 'Loading...'}
+                          </Tag>
+                        </Flex>
+                      ),
+                      disabled: true,
+                    },
+                    {
+                      key: 'deployment-status',
+                      label: (
+                        <Flex justify="space-between" align="center" gap={8}>
+                          <span>{t('sessionPage.appStatus.deployment')}</span>
+                          <Tag
+                            color={getDeploymentStateTagColor(
+                              appStatus?.deployment_status?.state
+                            )}
+                            style={{ margin: 0 }}
+                          >
+                            {appStatus?.deployment_status?.state ?? '-'}
+                          </Tag>
+                        </Flex>
+                      ),
+                      disabled: true,
+                    },
+                  ],
+                },
+                { type: 'divider' },
+                // Action items
                 {
                   key: 'open-app',
                   icon: <LinkOutlined />,
@@ -636,14 +721,11 @@ export default function SessionPage() {
             }}
             trigger={['click']}
           >
-            <Button
-              type="text"
-              size="small"
-              icon={
-                <Tooltip
-                  title={appStatus?.app_status?.state ?? 'Loading...'}
-                  placement="bottom"
-                >
+            <Flex align="center" gap={spacing.xs}>
+              <Button
+                type="text"
+                size="small"
+                icon={
                   <RocketOutlined
                     spin={appIsDeploying}
                     style={{
@@ -654,16 +736,22 @@ export default function SessionPage() {
                           : colors.success,
                     }}
                   />
-                </Tooltip>
-              }
-              style={{
-                marginRight: spacing.sm,
-                color: colors.textSecondary,
-                fontSize: typography.fontSizeSmall,
-              }}
-            >
-              App: {sessionAppName} <DownOutlined style={{ fontSize: 10 }} />
-            </Button>
+                }
+                style={{
+                  marginRight: 0,
+                  color: colors.textSecondary,
+                  fontSize: typography.fontSizeSmall,
+                }}
+              >
+                {sessionAppName} <DownOutlined style={{ fontSize: 10 }} />
+              </Button>
+              <Tag
+                color={getAppStateTagColor(appStatus?.app_status?.state)}
+                style={{ marginRight: spacing.sm }}
+              >
+                {appStatus?.app_status?.state ?? '...'}
+              </Tag>
+            </Flex>
           </Dropdown>
         )}
         {sessionWorkspaceUrl && (

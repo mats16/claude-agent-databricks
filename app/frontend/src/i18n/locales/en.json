@@ -266,7 +266,12 @@
     "confirmDeploy": "Are you sure you want to deploy?",
     "deployStarted": "Deployment started",
     "deployFailed": "Failed to start deployment",
-    "initialDeployStarted": "Initial deployment started"
+    "initialDeployStarted": "Initial deployment started",
+    "appStatus": {
+      "title": "Status",
+      "app": "App",
+      "deployment": "Deploy"
+    }
   },
   "welcome": {
     "exploreTitle": "Explore workspace files",
