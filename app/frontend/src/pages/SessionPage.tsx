@@ -27,6 +27,7 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons';
 import { useAgent } from '../hooks/useAgent';
+import { useAppLiveStatus } from '../hooks/useAppLiveStatus';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { useSessions } from '../contexts/SessionsContext';
@@ -144,6 +145,13 @@ export default function SessionPage() {
   const sessionAppAutoDeploy = session?.appAutoDeploy ?? false;
   const sessionAppName = session?.appName ?? null;
   const sessionConsoleUrl = session?.consoleUrl ?? null;
+
+  // Poll app live status when appAutoDeploy is enabled
+  const {
+    status: appStatus,
+    isDeploying: appIsDeploying,
+    isUnavailable: appIsUnavailable,
+  } = useAppLiveStatus(sessionId, sessionAppAutoDeploy);
 
   // Fetch session details (including workspace_url, app_name, console_url) when session page loads
   useEffect(() => {
@@ -584,7 +592,23 @@ export default function SessionPage() {
             <Button
               type="text"
               size="small"
-              icon={<RocketOutlined />}
+              icon={
+                <Tooltip
+                  title={appStatus?.app_status?.state ?? 'Loading...'}
+                  placement="bottom"
+                >
+                  <RocketOutlined
+                    spin={appIsDeploying}
+                    style={{
+                      color: appIsUnavailable
+                        ? colors.error
+                        : appIsDeploying
+                          ? colors.brand
+                          : colors.success,
+                    }}
+                  />
+                </Tooltip>
+              }
               style={{
                 marginRight: spacing.sm,
                 color: colors.textSecondary,
