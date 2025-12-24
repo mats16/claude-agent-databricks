@@ -762,6 +762,12 @@ export async function createAppDeploymentHandler(
     return reply.status(500).send({ error: 'Failed to get access token' });
   }
 
+  // Build deployment request body
+  const deploymentBody: Record<string, unknown> = {};
+  if (session.workspacePath) {
+    deploymentBody.source_code_path = session.workspacePath;
+  }
+
   try {
     const response = await fetch(
       `${databricks.hostUrl}/api/2.0/apps/${encodeURIComponent(appName)}/deployments`,
@@ -771,7 +777,7 @@ export async function createAppDeploymentHandler(
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify(deploymentBody),
       }
     );
 
@@ -834,9 +840,11 @@ export async function getSessionHandler(
     updated_at: session.updatedAt.toISOString(),
   };
 
-  // Only include app_name when app_auto_deploy is true
+  // Only include app_name and console_url when app_auto_deploy is true
   if (session.appAutoDeploy) {
-    response.app_name = `app-by-claude-${session.stub}`;
+    const appName = `app-by-claude-${session.stub}`;
+    response.app_name = appName;
+    response.console_url = `https://${databricks.host}/apps/${appName}`;
   }
 
   return response;

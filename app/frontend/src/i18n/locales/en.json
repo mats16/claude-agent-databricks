@@ -258,7 +258,14 @@
     "notFound": "Session not found",
     "notFoundDescription": "The session you are looking for does not exist or has been deleted.",
     "loading": "Loading...",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "openApp": "Open app",
+    "openLogs": "Open logs",
+    "deploy": "Deploy",
+    "openDatabricksConsole": "Open Databricks Console",
+    "confirmDeploy": "Are you sure you want to deploy?",
+    "deployStarted": "Deployment started",
+    "deployFailed": "Failed to start deployment"
   },
   "welcome": {
     "exploreTitle": "Explore workspace files",

@@ -186,15 +186,12 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               const sessionStub = session.stub;
               // Use model from WebSocket message (frontend always sends the selected model)
               // Fallback to 'databricks-claude-sonnet-4-5' for edge cases (should not happen with current frontend)
-              const sessionModel = messageModel || 'databricks-claude-sonnet-4-5';
+              const sessionModel =
+                messageModel || 'databricks-claude-sonnet-4-5';
 
               // Update session model in DB if different from saved model
               if (messageModel && messageModel !== session.model) {
-                await updateSession(
-                  sessionId,
-                  { model: messageModel },
-                  userId
-                );
+                await updateSession(sessionId, { model: messageModel }, userId);
               }
 
               // Get user settings for claudeConfigAutoPush

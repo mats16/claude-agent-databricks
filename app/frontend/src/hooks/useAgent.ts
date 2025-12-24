@@ -36,7 +36,9 @@ export function useAgent(options: UseAgentOptions = {}) {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [sessionNotFound, setSessionNotFound] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModelState] = useState(model || 'databricks-claude-sonnet-4-5');
+  const [selectedModel, setSelectedModelState] = useState(
+    model || 'databricks-claude-sonnet-4-5'
+  );
   // Track if model was explicitly set by user (not from props)
   const modelSetByUserRef = useRef(false);
 

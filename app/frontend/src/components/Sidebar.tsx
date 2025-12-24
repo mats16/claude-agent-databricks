@@ -69,7 +69,9 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const { userInfo, isLoading } = useUser();
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('selectedModel') || 'databricks-claude-sonnet-4-5';
+    return (
+      localStorage.getItem('selectedModel') || 'databricks-claude-sonnet-4-5'
+    );
   });
   const [workspacePath, setWorkspacePath] = useState('');
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);

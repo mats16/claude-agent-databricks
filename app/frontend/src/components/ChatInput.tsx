@@ -414,7 +414,11 @@ export default function ChatInput({
                 value={selectedModel}
                 onChange={onModelChange}
                 disabled={modelDisabled || isAgentProcessing}
-                style={{ width: 'auto', minWidth: 100, background: 'transparent' }}
+                style={{
+                  width: 'auto',
+                  minWidth: 100,
+                  background: 'transparent',
+                }}
                 size="small"
                 variant="borderless"
                 popupMatchSelectWidth={240}

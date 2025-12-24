@@ -224,12 +224,10 @@ export async function getWorkspaceObjectHandler(
   const { path: rawPath } = request.query;
 
   if (!rawPath) {
-    return reply
-      .status(400)
-      .send({
-        error_code: 'INVALID_PARAMETER_VALUE',
-        message: 'Path query parameter is required',
-      });
+    return reply.status(400).send({
+      error_code: 'INVALID_PARAMETER_VALUE',
+      message: 'Path query parameter is required',
+    });
   }
 
   // Decode path if URL-encoded
@@ -262,12 +260,10 @@ export async function listWorkspaceHandler(
   const { path: rawPath } = request.query;
 
   if (!rawPath) {
-    return reply
-      .status(400)
-      .send({
-        error_code: 'INVALID_PARAMETER_VALUE',
-        message: 'Path query parameter is required',
-      });
+    return reply.status(400).send({
+      error_code: 'INVALID_PARAMETER_VALUE',
+      message: 'Path query parameter is required',
+    });
   }
 
   // Decode path if URL-encoded (Fastify should auto-decode but ensure it)
@@ -301,12 +297,10 @@ export async function mkdirsHandler(
   const { path: rawPath } = request.body || {};
 
   if (!rawPath) {
-    return reply
-      .status(400)
-      .send({
-        error_code: 'INVALID_PARAMETER_VALUE',
-        message: 'Path is required in body',
-      });
+    return reply.status(400).send({
+      error_code: 'INVALID_PARAMETER_VALUE',
+      message: 'Path is required in body',
+    });
   }
 
   // Resolve 'me' in path to actual user email

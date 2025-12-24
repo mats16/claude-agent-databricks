@@ -18,6 +18,8 @@ export interface Session {
   userEmail: string | null;
   workspaceAutoPush: boolean;
   appAutoDeploy: boolean;
+  appName?: string | null; // app-by-claude-{stub}, only when appAutoDeploy=true
+  consoleUrl?: string | null; // https://{host}/apps/{app_name}, only when appAutoDeploy=true
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;

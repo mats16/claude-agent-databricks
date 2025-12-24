@@ -258,7 +258,14 @@
     "notFound": "セッションが見つかりません",
     "notFoundDescription": "お探しのセッションは存在しないか、削除されています。",
     "loading": "読み込み中...",
-    "untitled": "無題"
+    "untitled": "無題",
+    "openApp": "アプリを開く",
+    "openLogs": "ログを開く",
+    "deploy": "デプロイする",
+    "openDatabricksConsole": "Databricks Console を開く",
+    "confirmDeploy": "デプロイを実行しますか？",
+    "deployStarted": "デプロイを開始しました",
+    "deployFailed": "デプロイの開始に失敗しました"
   },
   "welcome": {
     "exploreTitle": "ワークスペースファイルを探索",
