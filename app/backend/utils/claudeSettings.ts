@@ -63,7 +63,7 @@ export function generateClaudeSettings(): ClaudeSettings {
       ],
       PostToolUse: [
         {
-          matcher: "Write|Edit|MultiEdit",
+          matcher: 'Write|Edit|MultiEdit',
           hooks: [
             // Push workspace directory (local -> workspace)
             {
