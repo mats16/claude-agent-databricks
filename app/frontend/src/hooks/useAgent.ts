@@ -238,7 +238,7 @@ export function useAgent(options: UseAgentOptions = {}) {
                       continue;
                     }
                     const toolInput = block.input
-                      ? formatToolInput(block.input)
+                      ? formatToolInput(block.input, block.name)
                       : '';
                     const toolId = block.id || `tool-${Date.now()}`;
                     const marker = `[Tool: ${block.name} id=${toolId}] ${toolInput}`;
@@ -451,7 +451,7 @@ export function useAgent(options: UseAgentOptions = {}) {
               if (block.name === 'StructuredOutput') {
                 continue;
               }
-              const toolInput = block.input ? formatToolInput(block.input) : '';
+              const toolInput = block.input ? formatToolInput(block.input, block.name) : '';
               const toolId = block.id || `tool-${Date.now()}`;
               // Add tool use with ID marker for later result insertion
               const marker = `[Tool: ${block.name} id=${toolId}] ${toolInput}`;
@@ -581,6 +581,9 @@ export function useAgent(options: UseAgentOptions = {}) {
                         todoResultBlock +
                         '\n' +
                         currentResponseRef.current.slice(insertPos);
+                    } else {
+                      // Fallback: append at the end if marker not found
+                      currentResponseRef.current += '\n' + todoResultBlock;
                     }
                     // Remove from pending and continue to next block
                     pendingToolUsesRef.current =
