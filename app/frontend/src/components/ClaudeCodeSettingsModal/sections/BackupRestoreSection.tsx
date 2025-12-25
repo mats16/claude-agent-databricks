@@ -119,7 +119,7 @@ export default function BackupRestoreSection({
       const response = await fetch('/api/v1/settings/claude-backup', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ claude_config_auto_push: checked }),
+        body: JSON.stringify({ claudeConfigAutoPush: checked }),
       });
 
       if (!response.ok) {

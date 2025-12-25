@@ -112,7 +112,7 @@ export interface CreateSessionRequest {
   }>;
   session_context: {
     model: string;
-    workspace_path?: string;
+    workspacePath?: string;
   };
 }
 

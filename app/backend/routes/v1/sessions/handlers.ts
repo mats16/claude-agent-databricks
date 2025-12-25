@@ -45,9 +45,9 @@ interface CreateSessionBody {
   }>;
   session_context: {
     model: string;
-    workspace_path?: string;
-    workspace_auto_push?: boolean;
-    app_auto_deploy?: boolean;
+    workspacePath?: string;
+    workspaceAutoPush?: boolean;
+    appAutoDeploy?: boolean;
   };
 }
 
@@ -77,13 +77,13 @@ export async function createSessionHandler(
 
   const userMessage = userEvent.message.content;
   const model = session_context.model;
-  const workspacePath = session_context.workspace_path;
+  const workspacePath = session_context.workspacePath;
   // Force workspaceAutoPush to false if workspacePath is not specified
   const workspaceAutoPush =
     workspacePath && workspacePath.trim()
-      ? (session_context.workspace_auto_push ?? false)
+      ? (session_context.workspaceAutoPush ?? false)
       : false;
-  const appAutoDeploy = session_context.app_auto_deploy ?? false;
+  const appAutoDeploy = session_context.appAutoDeploy ?? false;
 
   // Get user settings for claudeConfigAutoPush (still needed for agent hook)
   const userSettings = await getSettingsDirect(userId);

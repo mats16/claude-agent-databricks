@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // User settings body schema
 export const updateSettingsBodySchema = z.object({
-  claude_config_auto_push: z.boolean(),
+  claudeConfigAutoPush: z.boolean(),
 });
 
 // User info response schema

@@ -33,9 +33,9 @@ export const createSessionBodySchema = z.object({
   ),
   session_context: z.object({
     model: z.string().min(1),
-    workspace_path: z.string().optional(),
-    workspace_auto_push: z.boolean().optional(),
-    app_auto_deploy: z.boolean().optional(),
+    workspacePath: z.string().optional(),
+    workspaceAutoPush: z.boolean().optional(),
+    appAutoDeploy: z.boolean().optional(),
   }),
 });
 
