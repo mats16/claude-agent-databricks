@@ -11,6 +11,10 @@ export interface AppLiveStatus {
     state: string;
     message: string;
   } | null;
+  compute_status: {
+    state: string;
+    message: string;
+  } | null;
 }
 
 // Deploying states for app and deployment
@@ -18,6 +22,8 @@ const DEPLOYING_APP_STATES = ['STARTING', 'PENDING', 'DEPLOYING'];
 const DEPLOYING_DEPLOYMENT_STATES = ['PENDING', 'IN_PROGRESS'];
 // Unavailable/Error states
 const UNAVAILABLE_APP_STATES = ['UNAVAILABLE', 'ERROR', 'CRASHED'];
+// Message indicating app is starting (not truly unavailable)
+const APP_STARTING_MESSAGE = 'App status is unavailable.';
 
 export interface UseAppLiveStatusResult {
   status: AppLiveStatus | null;
@@ -26,6 +32,8 @@ export interface UseAppLiveStatusResult {
   isDeploying: boolean;
   isUnavailable: boolean;
   isReadyForInitialDeploy: boolean;
+  /** Display state for UI - returns 'STARTING' when app is in UNAVAILABLE state but actually starting */
+  displayAppState: string | null;
 }
 
 export function useAppLiveStatus(
@@ -38,19 +46,31 @@ export function useAppLiveStatus(
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMountedRef = useRef(true);
 
-  // Calculate isDeploying from status
+  // Check if app is in starting state (UNAVAILABLE with specific message)
+  const isAppStarting =
+    status?.app_status?.state === 'UNAVAILABLE' &&
+    status?.app_status?.message === APP_STARTING_MESSAGE;
+
+  // Calculate displayAppState - shows STARTING instead of UNAVAILABLE when app is starting
+  const displayAppState = isAppStarting
+    ? 'STARTING'
+    : (status?.app_status?.state ?? null);
+
+  // Calculate isDeploying from status (includes starting state)
   const isDeploying =
+    isAppStarting ||
     (status?.app_status?.state &&
       DEPLOYING_APP_STATES.includes(status.app_status.state)) ||
     (status?.deployment_status?.state &&
       DEPLOYING_DEPLOYMENT_STATES.includes(status.deployment_status.state)) ||
     false;
 
-  // Calculate isUnavailable from status
+  // Calculate isUnavailable from status (excludes starting state)
   const isUnavailable =
-    (status?.app_status?.state &&
+    !isAppStarting &&
+    ((status?.app_status?.state &&
       UNAVAILABLE_APP_STATES.includes(status.app_status.state)) ||
-    false;
+      false);
 
   // Calculate isReadyForInitialDeploy: App is created but not yet deployed
   // Detects when app_status.message contains "deployed" (case-insensitive)
@@ -135,5 +155,6 @@ export function useAppLiveStatus(
     isDeploying,
     isUnavailable,
     isReadyForInitialDeploy,
+    displayAppState,
   };
 }

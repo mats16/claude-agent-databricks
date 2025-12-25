@@ -37,6 +37,8 @@ interface AppStatusPanelProps {
   isExpanded: boolean;
   onToggle: () => void;
   onDeploy: () => void;
+  /** Display state for badge - may differ from actual state (e.g., STARTING instead of UNAVAILABLE) */
+  displayAppState: string | null;
 }
 
 // Status color mapping
@@ -151,6 +153,7 @@ export function AppStatusPanel({
   isExpanded,
   onToggle,
   onDeploy,
+  displayAppState,
 }: AppStatusPanelProps) {
   const { t, i18n } = useTranslation();
 
@@ -160,6 +163,7 @@ export function AppStatusPanel({
     isExpanded
   );
 
+  // Use actual state for logic, displayAppState for badge
   const appState = status?.app_status?.state;
   const currentLocale = i18n.language;
 
@@ -255,15 +259,15 @@ export function AppStatusPanel({
           <Text style={{ fontWeight: typography.fontWeightMedium }}>
             {appName}
           </Text>
-          {appState && (
+          {displayAppState && (
             <Tag
-              color={getStatusColor(appState)}
+              color={getStatusColor(displayAppState)}
               style={{
-                background: getStatusBgColor(appState),
+                background: getStatusBgColor(displayAppState),
                 border: 'none',
               }}
             >
-              {appState}
+              {displayAppState}
             </Tag>
           )}
         </Flex>

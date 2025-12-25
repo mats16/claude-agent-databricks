@@ -138,6 +138,7 @@ export default function SessionPage() {
     isDeploying: appIsDeploying,
     isUnavailable: appIsUnavailable,
     isReadyForInitialDeploy,
+    displayAppState,
   } = useAppLiveStatus(sessionId, sessionAppAutoDeploy);
 
   // Track if initial deploy has been attempted for this session
@@ -785,6 +786,7 @@ export default function SessionPage() {
           isExpanded={isAppPanelExpanded}
           onToggle={() => setIsAppPanelExpanded(!isAppPanelExpanded)}
           onDeploy={() => setIsDeployModalOpen(true)}
+          displayAppState={displayAppState}
         />
       )}
 
