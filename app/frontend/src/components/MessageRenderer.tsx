@@ -8,7 +8,10 @@ import {
   UpOutlined,
   FilePdfOutlined,
   FileTextOutlined,
+  CopyOutlined,
 } from '@ant-design/icons';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { ImageContent } from '@app/shared';
 import type { TodoItem } from '../types/extend-claude-agent-sdk';
 import FilePreviewModal from './FilePreviewModal';
@@ -548,35 +551,35 @@ const SqlQueryModal = memo(function SqlQueryModal({
         <div
           style={{
             position: 'relative',
-            background: colors.backgroundTertiary,
             borderRadius: 8,
-            border: `1px solid ${colors.borderDark}`,
+            overflow: 'hidden',
           }}
         >
-          <div style={{ position: 'absolute', top: 8, right: 8 }}>
+          <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
             <Text
               copyable={{
                 text: query,
                 tooltips: [t('sqlQuery.copy'), t('sqlQuery.copied')],
+                icon: <CopyOutlined style={{ color: '#fff' }} />,
               }}
             />
           </div>
-          <pre
-            style={{
-              maxHeight: 400,
-              overflow: 'auto',
+          <SyntaxHighlighter
+            language="sql"
+            style={oneDark}
+            customStyle={{
+              margin: 0,
               padding: 16,
               paddingRight: 40,
-              margin: 0,
+              maxHeight: 400,
               fontSize: 13,
               lineHeight: 1.5,
-              fontFamily: 'monospace',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all',
+              borderRadius: 8,
             }}
+            wrapLongLines
           >
             {query}
-          </pre>
+          </SyntaxHighlighter>
         </div>
       </div>
     </Modal>
