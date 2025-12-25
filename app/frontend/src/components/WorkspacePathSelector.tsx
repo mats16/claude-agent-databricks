@@ -164,7 +164,7 @@ export default function WorkspacePathSelector({
           value={syncMode}
           onChange={onSyncModeChange}
           disabled={disabled}
-          style={{ minWidth: 200 }}
+          style={{ minWidth: 120 }}
           popupMatchSelectWidth={false}
           options={syncModeOptions}
           labelRender={({ value }) => {
