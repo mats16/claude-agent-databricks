@@ -451,7 +451,9 @@ export function useAgent(options: UseAgentOptions = {}) {
               if (block.name === 'StructuredOutput') {
                 continue;
               }
-              const toolInput = block.input ? formatToolInput(block.input, block.name) : '';
+              const toolInput = block.input
+                ? formatToolInput(block.input, block.name)
+                : '';
               const toolId = block.id || `tool-${Date.now()}`;
               // Add tool use with ID marker for later result insertion
               const marker = `[Tool: ${block.name} id=${toolId}] ${toolInput}`;
