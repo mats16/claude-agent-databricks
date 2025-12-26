@@ -32,6 +32,10 @@ interface ClaudeSettingsJSON {
   hooks: {
     [key in HookEvent]?: HookEntry[];
   };
+  /**
+   * Instructions displayed to Claude when starting a session.
+   * Automatically populated when appAutoDeploy is enabled.
+   */
   instructions?: string;
 }
 
@@ -41,6 +45,9 @@ export interface ClaudeSettingsOptions {
   appAutoDeploy?: boolean;
   claudeConfigAutoPush?: boolean;
 }
+
+const DATABRICKS_APPS_INSTRUCTIONS =
+  '**REQUIRED**: When working on Databricks Apps development, you MUST load the /databricks-apps skill before starting any work.';
 
 /**
  * Claude settings model for workspace sync hooks
@@ -145,8 +152,7 @@ export class ClaudeSettings {
 
     // Add instructions when appAutoDeploy is enabled
     if (this.appAutoDeploy) {
-      settingsJson.instructions =
-        '**REQUIRED**: When working on Databricks Apps development, you MUST load the /databricks-apps skill before starting any work.';
+      settingsJson.instructions = DATABRICKS_APPS_INSTRUCTIONS;
     }
 
     return settingsJson;
