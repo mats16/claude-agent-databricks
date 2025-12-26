@@ -640,20 +640,18 @@ export default function SessionPage() {
         {t('sessionPage.confirmDeploy')}
       </Modal>
 
-      {/* Messages - Drop Zone */}
+      {/* Drop Zone - Covers everything below header */}
       <div
-        ref={scrollContainerRef}
-        onScroll={handleScrollContainer}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         style={{
           flex: 1,
-          overflow: 'auto',
-          background: isDragging ? colors.brandLight : colors.background,
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
+          overflow: 'hidden',
+          background: isDragging ? colors.brandLight : colors.background,
           ...getDropZoneStyle(isDragging),
         }}
       >
@@ -670,6 +668,18 @@ export default function SessionPage() {
             </span>
           </div>
         )}
+
+        {/* Messages - Scrollable area */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScrollContainer}
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
         <div
           style={{
             flex: 1,
@@ -771,45 +781,46 @@ export default function SessionPage() {
 
           <div ref={messagesEndRef} />
         </div>
+        </div>
+
+        {/* App Status Panel - Fixed above input */}
+        {sessionAppAutoDeploy && sessionAppName && (
+          <AppStatusPanel
+            sessionId={sessionId!}
+            appName={sessionAppName}
+            appUrl={appUrl}
+            consoleUrl={sessionConsoleUrl}
+            status={appStatus}
+            isDeploying={appIsDeploying}
+            isUnavailable={appIsUnavailable}
+            isExpanded={isAppPanelExpanded}
+            onToggle={() => setIsAppPanelExpanded(!isAppPanelExpanded)}
+            onDeploy={() => setIsDeployModalOpen(true)}
+            displayAppState={displayAppState}
+          />
+        )}
+
+        {/* Input Form - Hidden for archived sessions */}
+        {!isArchived && (
+          <ChatInput
+            input={input}
+            onInputChange={setInput}
+            attachedImages={attachedImages}
+            onImagesChange={setAttachedImages}
+            attachedFiles={attachedFiles}
+            onFilesChange={setAttachedFiles}
+            disabled={false}
+            isConverting={isConverting}
+            isUploading={isUploading}
+            onSubmit={handleSubmit}
+            onStop={handleStop}
+            isAgentProcessing={isProcessing}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            modelDisabled={true}
+          />
+        )}
       </div>
-
-      {/* App Status Panel - Fixed above input */}
-      {sessionAppAutoDeploy && sessionAppName && (
-        <AppStatusPanel
-          sessionId={sessionId!}
-          appName={sessionAppName}
-          appUrl={appUrl}
-          consoleUrl={sessionConsoleUrl}
-          status={appStatus}
-          isDeploying={appIsDeploying}
-          isUnavailable={appIsUnavailable}
-          isExpanded={isAppPanelExpanded}
-          onToggle={() => setIsAppPanelExpanded(!isAppPanelExpanded)}
-          onDeploy={() => setIsDeployModalOpen(true)}
-          displayAppState={displayAppState}
-        />
-      )}
-
-      {/* Input Form - Hidden for archived sessions */}
-      {!isArchived && (
-        <ChatInput
-          input={input}
-          onInputChange={setInput}
-          attachedImages={attachedImages}
-          onImagesChange={setAttachedImages}
-          attachedFiles={attachedFiles}
-          onFilesChange={setAttachedFiles}
-          disabled={false}
-          isConverting={isConverting}
-          isUploading={isUploading}
-          onSubmit={handleSubmit}
-          onStop={handleStop}
-          isAgentProcessing={isProcessing}
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
-          modelDisabled={true}
-        />
-      )}
     </Flex>
   );
 }
