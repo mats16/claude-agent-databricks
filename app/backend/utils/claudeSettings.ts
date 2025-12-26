@@ -61,27 +61,27 @@ export function generateClaudeSettings(): ClaudeSettings {
       Stop: [
         {
           hooks: [
+            // Push claudeConfig (local -> workspace)
+            {
+              type: 'command',
+              command:
+                '[ "$CLAUDE_CONFIG_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_CONFIG_DIR" "$WORKSPACE_CLAUDE_CONFIG_DIR" > /dev/null 2>&1 &',
+            },
+          ],
+        },
+        {
+          hooks: [
             // Push workspace directory (local -> workspace)
             {
               type: 'command',
               command:
-                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_WORKING_DIR" "$WORKSPACE_DIR" --exclude ".claude/settings.local.json" --exclude "node_modules" > /dev/null 2>&1 &',
+                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_WORKING_DIR" "$WORKSPACE_DIR" --exclude ".claude/settings.local.json" --exclude "node_modules"',
             },
             // Auto deploy Databricks Apps for the session
             {
               type: 'command',
               command:
                 '[ "$APP_AUTO_DEPLOY" = "true" ] && databricks apps deploy "$SESSION_APP_NAME" --source-code-path "$WORKSPACE_DIR" --no-wait',
-            },
-          ],
-        },
-        {
-          hooks: [
-            // Push claudeConfig (local -> workspace)
-            {
-              type: 'command',
-              command:
-                '[ "$CLAUDE_CONFIG_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_CONFIG_DIR" "$WORKSPACE_CLAUDE_CONFIG_DIR" > /dev/null 2>&1 &',
             },
           ],
         },
