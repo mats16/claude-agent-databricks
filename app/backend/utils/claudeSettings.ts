@@ -42,22 +42,6 @@ export function generateClaudeSettings(): ClaudeSettings {
               command:
                 '[ "$APP_AUTO_DEPLOY" = "true" ] && databricks apps create "$SESSION_APP_NAME" --no-wait',
             },
-            //{
-            //  type: 'command',
-            //  command:
-            //    '[ "$APP_AUTO_DEPLOY" = "true" ] && databricks apps deploy "$SESSION_APP_NAME" --source-code-path "$WORKSPACE_DIR" --no-wait',
-            //},
-          ],
-        },
-        {
-          matcher: 'resume',
-          hooks: [
-            // Create Databricks Apps for the session if not exists
-            {
-              type: 'command',
-              command:
-                '[ "$APP_AUTO_DEPLOY" = "true" ] && databricks apps create "$SESSION_APP_NAME" --no-wait',
-            },
           ],
         },
       ],
