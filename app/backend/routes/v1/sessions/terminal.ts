@@ -44,16 +44,13 @@ const terminalWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       // Get the agent's local working directory
-      // Validate that the directory exists, fallback to HOME or /tmp
-      let cwd = session.agentLocalPath || process.env.HOME || '/tmp';
-      if (!fs.existsSync(cwd)) {
+      // Validate that the directory exists, fallback to HOME
+      let cwd = session.agentLocalPath || process.env.HOME;
+      if (!cwd || !fs.existsSync(cwd)) {
         console.warn(
           `Terminal cwd does not exist: ${cwd}, falling back to HOME`
         );
-        cwd = process.env.HOME || '/tmp';
-        if (!fs.existsSync(cwd)) {
-          cwd = '/tmp';
-        }
+        cwd = process.env.HOME!;
       }
 
       // Check if terminal session already exists for this session
