@@ -162,6 +162,29 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
     [attachedImages.length, attachedPdfs.length, t]
   );
 
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            imageFiles.push(file);
+          }
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleFiles(imageFiles);
+      }
+    },
+    [handleFiles]
+  );
+
   // Drag handlers
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -526,6 +549,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={t('sidebar.placeholder')}
             disabled={isProcessing}
             autoSize={{ minRows: 3, maxRows: 19 }}

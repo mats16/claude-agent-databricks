@@ -1,12 +1,11 @@
 {
   "hooks": {
-    "PostToolUse": [
+    "Stop": [
       {
-        "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "cd app && npx prettier --write \"$CLAUDE_TOOL_USE_INPUT_FILE\" --ignore-unknown 2>/dev/null || true"
+            "command": "cd app && npm run format"
           }
         ]
       }

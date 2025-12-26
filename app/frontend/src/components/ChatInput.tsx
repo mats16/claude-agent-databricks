@@ -184,6 +184,29 @@ export default function ChatInput({
     ]
   );
 
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            imageFiles.push(file);
+          }
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleFiles(imageFiles);
+      }
+    },
+    [handleFiles]
+  );
+
   const handleAttachClick = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -381,6 +404,7 @@ export default function ChatInput({
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           placeholder={placeholder || t('sessionPage.typeMessage')}
           disabled={disabled || isProcessing}
           variant="borderless"
