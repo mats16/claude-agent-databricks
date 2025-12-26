@@ -53,7 +53,7 @@ export function generateClaudeSettings(): ClaudeSettings {
             {
               type: 'command',
               command:
-                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_WORKING_DIR" "$WORKSPACE_DIR" --exclude ".claude/settings.local.json" --exclude "node_modules" --include ".git"',
+                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_WORKING_DIR" "$WORKSPACE_DIR" --exclude ".claude/settings.local.json" --exclude "node_modules" > /dev/null 2>&1 &',
             },
           ],
         },
@@ -65,7 +65,7 @@ export function generateClaudeSettings(): ClaudeSettings {
             {
               type: 'command',
               command:
-                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_WORKING_DIR" "$WORKSPACE_DIR" --exclude ".claude/settings.local.json" --exclude "node_modules" --include ".git"',
+                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_WORKING_DIR" "$WORKSPACE_DIR" --exclude ".claude/settings.local.json" --exclude "node_modules" > /dev/null 2>&1 &',
             },
             // Auto deploy Databricks Apps for the session
             {
@@ -81,7 +81,7 @@ export function generateClaudeSettings(): ClaudeSettings {
             {
               type: 'command',
               command:
-                '[ "$CLAUDE_CONFIG_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_CONFIG_DIR" "$WORKSPACE_CLAUDE_CONFIG_DIR" --exclude "settings.local.json"',
+                '[ "$CLAUDE_CONFIG_AUTO_PUSH" = "true" ] && databricks sync "$CLAUDE_CONFIG_DIR" "$WORKSPACE_CLAUDE_CONFIG_DIR" > /dev/null 2>&1 &',
             },
           ],
         },
