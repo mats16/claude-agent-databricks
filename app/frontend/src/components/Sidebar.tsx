@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useDraft } from '../hooks/useDraft';
+import { SIDEBAR_DRAFT_KEY } from '../utils/draftStorage';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -68,7 +70,7 @@ interface SidebarProps {
 export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const { t } = useTranslation();
   const { userInfo, userSettings, isLoading } = useUser();
-  const [input, setInput] = useState('');
+  const [input, setInput, clearInputDraft] = useDraft(SIDEBAR_DRAFT_KEY);
   const [selectedModel, setSelectedModel] = useState(() => {
     return (
       localStorage.getItem('sticky-model-selector') ||
@@ -321,7 +323,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       const data = await response.json();
       const sessionId = data.session_id;
 
-      setInput('');
+      clearInputDraft();
       clearAttachments();
       onSessionCreated?.(sessionId);
 

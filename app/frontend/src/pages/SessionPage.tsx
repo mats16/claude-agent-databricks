@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useDraft } from '../hooks/useDraft';
+import { getSessionDraftKey } from '../utils/draftStorage';
 import { useParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, Typography, Flex, Tooltip, Spin, Modal, message } from 'antd';
@@ -102,7 +104,11 @@ export default function SessionPage() {
     updateSessionLocally,
     isLoading: isLoadingSessions,
   } = useSessions();
-  const [input, setInput] = useState('');
+  const draftKey = useMemo(
+    () => (sessionId ? getSessionDraftKey(sessionId) : ''),
+    [sessionId]
+  );
+  const [input, setInput, clearInputDraft] = useDraft(draftKey);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [appUrl, setAppUrl] = useState<string | null>(null);
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
@@ -452,7 +458,7 @@ export default function SessionPage() {
       sendMessage(finalInput, imageContents, pdfContents);
 
       // Clear input, images, and files
-      setInput('');
+      clearInputDraft();
       clearImages();
       clearFiles();
     } catch (error) {
@@ -471,6 +477,7 @@ export default function SessionPage() {
     uploadTextFiles,
     clearImages,
     clearFiles,
+    clearInputDraft,
   ]);
 
   const handleStop = useCallback(() => {
