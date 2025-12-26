@@ -303,7 +303,8 @@ export function useFileUpload(
             const result: FileUploadResponse = await response.json();
 
             // Extract filename from path
-            const uploadedFileName = result.path.split('/').pop() || result.path;
+            const uploadedFileName =
+              result.path.split('/').pop() || result.path;
 
             // Update status to uploaded
             setAttachedFiles((prev) =>
