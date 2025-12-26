@@ -377,7 +377,14 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
       />
 
       {/* Header */}
-      <div style={{ padding: `${spacing.lg}px ${spacing.xl}px` }}>
+      <div
+        style={{
+          height: 50,
+          padding: `0 ${spacing.xl}px`,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
         <Link to="/" style={{ textDecoration: 'none' }}>
           <Typography.Title
             level={5}
