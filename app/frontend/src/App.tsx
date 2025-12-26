@@ -5,6 +5,7 @@ import { Card, Typography, Flex } from 'antd';
 import { BookOutlined, RocketOutlined, BugOutlined } from '@ant-design/icons';
 import Layout from './components/Layout';
 import SessionPage from './pages/SessionPage';
+import TerminalPage from './pages/TerminalPage';
 import QuickstartAppsModal from './components/QuickstartAppsModal';
 import QuickstartJobErrorsModal from './components/QuickstartJobErrorsModal';
 import { colors, borderRadius, typography } from './styles/theme';
@@ -165,6 +166,10 @@ function App() {
       <Routes>
         <Route path="/" element={<WelcomePage />} />
         <Route path="/sessions/:sessionId" element={<SessionPage />} />
+        <Route
+          path="/sessions/:sessionId/terminal"
+          element={<TerminalPage />}
+        />
       </Routes>
     </Layout>
   );

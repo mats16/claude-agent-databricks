@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useDraft, getSessionDraftKey } from '../hooks/useDraft';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, Typography, Flex, Tooltip, Spin, Modal, message } from 'antd';
 import {
@@ -10,6 +10,7 @@ import {
   FolderOutlined,
   RobotOutlined,
   ExclamationCircleOutlined,
+  CodeOutlined,
 } from '@ant-design/icons';
 import { useAgent } from '../hooks/useAgent';
 import { useAppLiveStatus } from '../hooks/useAppLiveStatus';
@@ -20,13 +21,7 @@ import TitleEditModal from '../components/TitleEditModal';
 import MessageRenderer from '../components/MessageRenderer';
 import ChatInput from '../components/ChatInput';
 import { AppStatusPanel } from '../components/AppStatusPanel';
-import {
-  colors,
-  spacing,
-  borderRadius,
-  layout,
-  typography,
-} from '../styles/theme';
+import { colors, spacing, layout, typography } from '../styles/theme';
 import {
   sectionHeaderStyle,
   getDropZoneStyle,
@@ -609,6 +604,20 @@ export default function SessionPage() {
             Open workspace
           </Button>
         )}
+        <Link to={`/sessions/${sessionId}/terminal`}>
+          <Button
+            type="text"
+            size="small"
+            icon={<CodeOutlined />}
+            style={{
+              marginRight: spacing.sm,
+              color: colors.textSecondary,
+              fontSize: typography.fontSizeSmall,
+            }}
+          >
+            {t('sessionPage.terminal')}
+          </Button>
+        </Link>
         <Tooltip title={getStatusText()} placement="left">
           <div
             style={{

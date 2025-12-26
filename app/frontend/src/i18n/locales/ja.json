@@ -278,7 +278,16 @@
     "confirmDeploy": "デプロイを実行しますか？",
     "deployStarted": "デプロイを開始しました",
     "deployFailed": "デプロイの開始に失敗しました",
-    "initialDeployStarted": "初回デプロイを開始しました"
+    "initialDeployStarted": "初回デプロイを開始しました",
+    "terminal": "ターミナル"
+  },
+  "terminal": {
+    "title": "ターミナル",
+    "backToSession": "セッションに戻る",
+    "connected": "接続中",
+    "disconnected": "切断",
+    "reconnect": "再接続",
+    "retry": "再試行"
   },
   "appStatusPanel": {
     "deploymentHistory": "デプロイ履歴",
