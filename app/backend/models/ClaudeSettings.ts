@@ -78,11 +78,6 @@ export class ClaudeSettings {
    */
   toJSON(): ClaudeSettingsJSON {
     const settingsJson: ClaudeSettingsJSON = {
-      env: {
-        WORKSPACE_DIR: this.workspacePath,
-        WORKSPACE_AUTO_PUSH: `${this.workspaceAutoPush}`,
-        APP_AUTO_DEPLOY: `${this.appAutoDeploy}`,
-      },
       hooks: {
         SessionStart: [
           {
