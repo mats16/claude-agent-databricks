@@ -26,26 +26,26 @@ interface ClaudeSettingsJSON {
 }
 
 export interface ClaudeSettingsOptions {
-  claudeConfigAutoPush: boolean;
   workspacePath?: string;
   workspaceAutoPush?: boolean;
   appAutoDeploy?: boolean;
+  claudeConfigAutoPush?: boolean;
 }
 
 /**
  * Claude settings model for workspace sync hooks
  */
 export class ClaudeSettings {
-  readonly claudeConfigAutoPush: boolean;
   readonly workspacePath?: string;
   readonly workspaceAutoPush: boolean;
   readonly appAutoDeploy: boolean;
+  readonly claudeConfigAutoPush: boolean;
 
   constructor(options: ClaudeSettingsOptions) {
-    this.claudeConfigAutoPush = options.claudeConfigAutoPush;
     this.workspacePath = options.workspacePath;
     this.workspaceAutoPush = options.workspaceAutoPush ?? false;
     this.appAutoDeploy = options.appAutoDeploy ?? false;
+    this.claudeConfigAutoPush = options.claudeConfigAutoPush ?? true;
   }
 
   /**

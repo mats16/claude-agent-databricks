@@ -128,10 +128,10 @@ export async function createSessionHandler(
   // Create settings.json with workspace sync hooks if workspacePath is provided
   if (workspacePath && workspacePath.trim()) {
     const claudeSettings = new ClaudeSettings({
-      claudeConfigAutoPush,
       workspacePath,
       workspaceAutoPush,
       appAutoDeploy,
+      claudeConfigAutoPush,
     });
     claudeSettings.save(localWorkPath);
   }
