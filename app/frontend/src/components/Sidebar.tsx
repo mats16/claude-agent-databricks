@@ -71,7 +71,8 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(() => {
     return (
-      localStorage.getItem('selectedModel') || 'databricks-claude-sonnet-4-5'
+      localStorage.getItem('sticky-model-selector') ||
+      'databricks-claude-sonnet-4-5'
     );
   });
   const [workspacePath, setWorkspacePath] = useState('');
@@ -362,7 +363,7 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
   // Handle model change: save to localStorage
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
-    localStorage.setItem('selectedModel', model);
+    localStorage.setItem('sticky-model-selector', model);
   };
 
   const isProcessing = isSubmitting || isConverting;
