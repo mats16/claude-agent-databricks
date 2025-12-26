@@ -1,5 +1,6 @@
 import { ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { Layout as AntLayout } from 'antd';
+import useLocalStorageState from 'use-local-storage-state';
 import Sidebar from './Sidebar';
 import { colors } from '../styles/theme';
 
@@ -15,9 +16,8 @@ const DEFAULT_SIDEBAR_WIDTH = 600;
 const STORAGE_KEY = 'sidebar-width';
 
 export default function Layout({ children }: LayoutProps) {
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? parseInt(saved, 10) : DEFAULT_SIDEBAR_WIDTH;
+  const [sidebarWidth, setSidebarWidth] = useLocalStorageState(STORAGE_KEY, {
+    defaultValue: DEFAULT_SIDEBAR_WIDTH,
   });
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -54,9 +54,8 @@ export default function Layout({ children }: LayoutProps) {
     if (isResizing) {
       setIsResizing(false);
       resizeRef.current = null;
-      localStorage.setItem(STORAGE_KEY, sidebarWidth.toString());
     }
-  }, [isResizing, sidebarWidth]);
+  }, [isResizing]);
 
   useEffect(() => {
     if (isResizing) {

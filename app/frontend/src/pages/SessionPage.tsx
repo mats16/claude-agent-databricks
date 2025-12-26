@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useDraft } from '../hooks/useDraft';
-import { getSessionDraftKey } from '../utils/draftStorage';
+import { useDraft, getSessionDraftKey } from '../hooks/useDraft';
 import { useParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, Typography, Flex, Tooltip, Spin, Modal, message } from 'antd';
