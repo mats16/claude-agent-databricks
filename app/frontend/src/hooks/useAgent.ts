@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import type {
   ImageContent,
   DocumentContent,
@@ -33,12 +33,130 @@ export type {
   UseAgentOptions,
 } from '../types/extend-claude-agent-sdk';
 
+// Processing state machine types
+type ProcessingPhase = 'idle' | 'starting' | 'processing' | 'stopping';
+
+interface ProcessingState {
+  phase: ProcessingPhase;
+  reason: string;
+  lastTransitionAt: number;
+  previousPhase: ProcessingPhase | null;
+}
+
+type ProcessingAction =
+  | { type: 'SESSION_RESET' }
+  | { type: 'HISTORY_AGENT_STILL_PROCESSING' }
+  | { type: 'BUFFERED_RESULT_RECEIVED' }
+  | { type: 'CONNECTION_ESTABLISHED_NEW_SESSION' }
+  | { type: 'ERROR_RECEIVED'; error?: string }
+  | { type: 'SYSTEM_INIT_RECEIVED' }
+  | { type: 'RESULT_RECEIVED'; subtype?: string }
+  | { type: 'USER_MESSAGE_SENT' }
+  | { type: 'STOP_REQUESTED' };
+
+function processingReducer(
+  state: ProcessingState,
+  action: ProcessingAction
+): ProcessingState {
+  const createNextState = (
+    phase: ProcessingPhase,
+    reason: string
+  ): ProcessingState => {
+    const nextState = {
+      phase,
+      reason,
+      lastTransitionAt: Date.now(),
+      previousPhase: state.phase,
+    };
+    // Debug logging in development
+    if (import.meta.env.DEV) {
+      console.log(
+        `[ProcessingState] ${state.phase} -> ${phase} | Action: ${action.type} | Reason: ${reason}`
+      );
+    }
+    return nextState;
+  };
+
+  switch (action.type) {
+    case 'SESSION_RESET':
+      return createNextState('idle', 'Session reset');
+
+    case 'USER_MESSAGE_SENT':
+      if (state.phase === 'idle') {
+        return createNextState('starting', 'User sent message');
+      }
+      return state; // Ignore if already processing
+
+    case 'CONNECTION_ESTABLISHED_NEW_SESSION':
+      if (state.phase === 'idle') {
+        return createNextState(
+          'starting',
+          'Connection established for new session'
+        );
+      }
+      return state;
+
+    case 'SYSTEM_INIT_RECEIVED':
+      if (state.phase === 'idle' || state.phase === 'starting') {
+        return createNextState('processing', 'System init received');
+      }
+      return state;
+
+    case 'HISTORY_AGENT_STILL_PROCESSING':
+      if (state.phase === 'idle') {
+        return createNextState(
+          'processing',
+          'Agent still processing from history'
+        );
+      }
+      return state;
+
+    case 'RESULT_RECEIVED':
+    case 'BUFFERED_RESULT_RECEIVED':
+      // Always transition to idle - this fixes the race condition
+      return createNextState(
+        'idle',
+        action.type === 'RESULT_RECEIVED'
+          ? `Agent completed (${(action as { subtype?: string }).subtype || 'success'})`
+          : 'Buffered result received'
+      );
+
+    case 'ERROR_RECEIVED':
+      return createNextState('idle', `Error: ${action.error || 'Unknown'}`);
+
+    case 'STOP_REQUESTED':
+      return createNextState('idle', 'Stop requested by user');
+
+    default:
+      return state;
+  }
+}
+
+function createInitialProcessingState(): ProcessingState {
+  return {
+    phase: 'idle',
+    reason: 'Initial state',
+    lastTransitionAt: Date.now(),
+    previousPhase: null,
+  };
+}
+
 export function useAgent(options: UseAgentOptions = {}) {
   const { sessionId, initialMessage, model } = options;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  // Processing state machine
+  const [processingState, dispatch] = useReducer(
+    processingReducer,
+    null,
+    createInitialProcessingState
+  );
+  // Derive boolean for backward compatibility
+  const isProcessing =
+    processingState.phase === 'starting' ||
+    processingState.phase === 'processing' ||
+    processingState.phase === 'stopping';
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [sessionNotFound, setSessionNotFound] = useState(false);
@@ -126,7 +244,7 @@ export function useAgent(options: UseAgentOptions = {}) {
       // Reset state
       setMessages([]);
       setIsConnected(false);
-      setIsProcessing(false);
+      dispatch({ type: 'SESSION_RESET' });
       setIsReconnecting(false);
       setSessionNotFound(false);
       setConnectionError(null);
@@ -194,7 +312,7 @@ export function useAgent(options: UseAgentOptions = {}) {
               // Agent is still processing - prepare for continuation
               currentMessageIdRef.current = lastAgentMsg.id;
               currentResponseRef.current = lastAgentMsg.content;
-              setIsProcessing(true);
+              dispatch({ type: 'HISTORY_AGENT_STILL_PROCESSING' });
             }
           }
           loadedSessionIdRef.current = sessionId;
@@ -275,7 +393,7 @@ export function useAgent(options: UseAgentOptions = {}) {
 
               // Handle result messages
               if (event.type === 'result') {
-                setIsProcessing(false);
+                dispatch({ type: 'BUFFERED_RESULT_RECEIVED' });
                 currentResponseRef.current = '';
                 currentMessageIdRef.current = '';
               }
@@ -347,7 +465,7 @@ export function useAgent(options: UseAgentOptions = {}) {
           // For new sessions with initial message, wait for the actual user message from queue
           // Don't create a local message here - the server will send the complete message with images
           if (initialMessageRef.current && !initialMessageAddedRef.current) {
-            setIsProcessing(true);
+            dispatch({ type: 'CONNECTION_ESTABLISHED_NEW_SESSION' });
             currentResponseRef.current = '';
             currentMessageIdRef.current = `agent-${Date.now()}`;
           }
@@ -381,7 +499,7 @@ export function useAgent(options: UseAgentOptions = {}) {
               ];
             }
           });
-          setIsProcessing(false);
+          dispatch({ type: 'ERROR_RECEIVED', error: rawMessage.error });
           return;
         }
 
@@ -399,13 +517,14 @@ export function useAgent(options: UseAgentOptions = {}) {
           return;
         }
 
-        // Skip events that were already loaded from REST API
+        // Skip events that were already processed (from REST API or previous WebSocket)
         if (message.uuid && loadedEventUuidsRef.current.has(message.uuid)) {
           return;
         }
 
-        // Track the last received event UUID for reconnection
+        // Track processed event UUIDs to prevent duplicates (including on reconnection)
         if (message.uuid) {
+          loadedEventUuidsRef.current.add(message.uuid);
           lastReceivedEventUuidRef.current = message.uuid;
         }
 
@@ -417,7 +536,7 @@ export function useAgent(options: UseAgentOptions = {}) {
         ) {
           console.log('Session initialized:', message.session_id);
           if (!initialMessageAddedRef.current) {
-            setIsProcessing(true);
+            dispatch({ type: 'SYSTEM_INIT_RECEIVED' });
             currentResponseRef.current = '';
             currentMessageIdRef.current = `agent-${Date.now()}`;
           }
@@ -663,7 +782,10 @@ export function useAgent(options: UseAgentOptions = {}) {
 
         // Handle SDK result message
         if (message.type === 'result') {
-          setIsProcessing(false);
+          dispatch({
+            type: 'RESULT_RECEIVED',
+            subtype: (message as SDKMessage & { subtype?: string }).subtype,
+          });
           currentResponseRef.current = '';
           currentMessageIdRef.current = '';
         }
@@ -745,7 +867,7 @@ export function useAgent(options: UseAgentOptions = {}) {
       };
 
       setMessages((prev) => [...prev, userMessage]);
-      setIsProcessing(true);
+      dispatch({ type: 'USER_MESSAGE_SENT' });
 
       currentResponseRef.current = '';
       currentMessageIdRef.current = `agent-${Date.now()}`;
@@ -811,7 +933,7 @@ export function useAgent(options: UseAgentOptions = {}) {
     // Reset refs - the interrupt message will be received from the backend via WebSocket
     currentResponseRef.current = '';
     currentMessageIdRef.current = '';
-    setIsProcessing(false);
+    dispatch({ type: 'STOP_REQUESTED' });
   }, [sessionId]);
 
   return {
