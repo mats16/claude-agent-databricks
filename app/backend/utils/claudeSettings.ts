@@ -53,7 +53,7 @@ export function generateClaudeSettings(): ClaudeSettings {
             {
               type: 'command',
               command:
-                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync . "$WORKSPACE_DIR" --exclude ".claude/settings.json" --exclude "node_modules" > /dev/null 2>&1 &',
+                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync . "$WORKSPACE_DIR" --exclude "node_modules" > /dev/null 2>&1 &',
             },
           ],
         },
@@ -75,7 +75,7 @@ export function generateClaudeSettings(): ClaudeSettings {
             {
               type: 'command',
               command:
-                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync . "$WORKSPACE_DIR" --exclude ".claude/settings.json" --exclude "node_modules"',
+                '[ "$WORKSPACE_AUTO_PUSH" = "true" ] && databricks sync . "$WORKSPACE_DIR" --exclude "node_modules"',
             },
             // Auto deploy Databricks Apps for the session
             {
