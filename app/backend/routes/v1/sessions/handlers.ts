@@ -125,16 +125,14 @@ export async function createSessionHandler(
   );
   fs.mkdirSync(localWorkPath, { recursive: true });
 
-  // Create settings.json with workspace sync hooks if workspacePath is provided
-  if (workspacePath && workspacePath.trim()) {
-    const claudeSettings = new ClaudeSettings({
-      workspacePath,
-      workspaceAutoPush,
-      appAutoDeploy,
-      claudeConfigAutoPush,
-    });
-    claudeSettings.save(localWorkPath);
-  }
+  // Create settings.json with workspace sync hooks for all sessions
+  const claudeSettings = new ClaudeSettings({
+    workspacePath,
+    workspaceAutoPush,
+    appAutoDeploy,
+    claudeConfigAutoPush,
+  });
+  claudeSettings.save(localWorkPath);
 
   const startAgentProcessing = async () => {
     // Create MessageStream for this session
