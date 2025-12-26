@@ -12,7 +12,16 @@ interface HookEntry {
   hooks: HookCommand[];
 }
 
-type HookEvent = 'PreToolUse' | 'PostToolUse' | 'UserPromptSubmit' | 'Notification' | 'Stop' | 'SubagentStop' | 'PreCompact' | 'SessionStart' | 'SessionEnd';
+type HookEvent =
+  | 'PreToolUse'
+  | 'PostToolUse'
+  | 'UserPromptSubmit'
+  | 'Notification'
+  | 'Stop'
+  | 'SubagentStop'
+  | 'PreCompact'
+  | 'SessionStart'
+  | 'SessionEnd';
 
 interface ClaudeSettingsJSON {
   permissions?: {
@@ -56,7 +65,11 @@ export class ClaudeSettings {
     const settingsPath = path.join(claudeDir, 'settings.json');
 
     fs.mkdirSync(claudeDir, { recursive: true });
-    fs.writeFileSync(settingsPath, JSON.stringify(this.toJSON(), null, 2), 'utf-8');
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify(this.toJSON(), null, 2),
+      'utf-8'
+    );
     console.log(`[Settings] Created settings.json at ${settingsPath}`);
   }
 
