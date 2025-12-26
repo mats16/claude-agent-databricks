@@ -78,7 +78,7 @@ export default function TerminalPage() {
       term.open(terminalRef.current);
 
       // Set up WebSocket connection
-      const wsUrl = getWebSocketUrl(`/api/v1/sessions/${sessionId}/terminal`);
+      const wsUrl = getWebSocketUrl(`/api/v1/sessions/${sessionId}/terminal/ws`);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 

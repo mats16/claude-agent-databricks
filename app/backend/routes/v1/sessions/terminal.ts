@@ -13,7 +13,7 @@ const terminalSessions = new Map<
 const terminalWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
   // WebSocket endpoint for terminal access
   fastify.get<{ Params: { sessionId: string } }>(
-    '/:sessionId/terminal',
+    '/:sessionId/terminal/ws',
     { websocket: true },
     async (socket, req) => {
       const sessionId = req.params.sessionId;
