@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { WebSocket } from 'ws';
+import * as fs from 'fs';
 import * as pty from 'node-pty';
 import { extractRequestContextFromHeaders } from '../../../utils/headers.js';
 import { getSessionById } from '../../../db/sessions.js';
@@ -43,24 +44,48 @@ const terminalWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       // Get the agent's local working directory
-      const cwd = session.agentLocalPath || process.env.HOME || '/tmp';
+      // Validate that the directory exists, fallback to HOME or /tmp
+      let cwd = session.agentLocalPath || process.env.HOME || '/tmp';
+      if (!fs.existsSync(cwd)) {
+        console.warn(
+          `Terminal cwd does not exist: ${cwd}, falling back to HOME`
+        );
+        cwd = process.env.HOME || '/tmp';
+        if (!fs.existsSync(cwd)) {
+          cwd = '/tmp';
+        }
+      }
 
       // Check if terminal session already exists for this session
       let terminalSession = terminalSessions.get(sessionId);
 
       if (!terminalSession) {
         // Create new PTY
-        const shell = process.env.SHELL || 'bash';
-        const ptyProcess = pty.spawn(shell, [], {
-          name: 'xterm-256color',
-          cols: 80,
-          rows: 24,
-          cwd,
-          env: {
-            ...process.env,
-            TERM: 'xterm-256color',
-          } as Record<string, string>,
-        });
+        const shell = process.env.SHELL || '/bin/bash';
+
+        let ptyProcess: pty.IPty;
+        try {
+          ptyProcess = pty.spawn(shell, [], {
+            name: 'xterm-256color',
+            cols: 80,
+            rows: 24,
+            cwd,
+            env: {
+              ...process.env,
+              TERM: 'xterm-256color',
+            } as Record<string, string>,
+          });
+        } catch (spawnError: any) {
+          console.error('Failed to spawn PTY:', spawnError);
+          socket.send(
+            JSON.stringify({
+              type: 'error',
+              error: `Failed to start terminal: ${spawnError.message}`,
+            })
+          );
+          socket.close();
+          return;
+        }
 
         terminalSession = {
           pty: ptyProcess,
