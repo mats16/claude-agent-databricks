@@ -360,7 +360,6 @@ export default function Sidebar({ onSessionCreated }: SidebarProps) {
     }
   };
 
-  
   const isProcessing = isSubmitting || isConverting;
   const hasAttachments = attachedImages.length > 0 || attachedPdfs.length > 0;
   // Can submit if: has permission OR has PAT
