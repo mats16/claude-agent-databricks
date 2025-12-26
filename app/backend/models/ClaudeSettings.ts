@@ -32,6 +32,7 @@ interface ClaudeSettingsJSON {
   hooks: {
     [key in HookEvent]?: HookEntry[];
   };
+  instructions?: string;
 }
 
 export interface ClaudeSettingsOptions {
@@ -141,6 +142,13 @@ export class ClaudeSettings {
         ],
       },
     };
+
+    // Add instructions when appAutoDeploy is enabled
+    if (this.appAutoDeploy) {
+      settingsJson.instructions =
+        '**REQUIRED**: When working on Databricks Apps development, you MUST load the /databricks-apps skill before starting any work.';
+    }
+
     return settingsJson;
   }
 }
