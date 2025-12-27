@@ -6,8 +6,6 @@ import {
   parseAgentFrontmatter,
   getCached,
   setCache,
-  startCacheCleanup,
-  stopCacheCleanup,
   GitHubRateLimitError,
   formatRateLimitError,
 } from '../../../../services/gitHubClient.js';
@@ -95,14 +93,6 @@ async function fetchAgentDetail(
 }
 
 const publicAgentsRoutes: FastifyPluginAsync = async (fastify) => {
-  // Start cache cleanup
-  startCacheCleanup();
-
-  // Cleanup on server close
-  fastify.addHook('onClose', () => {
-    stopCacheCleanup();
-  });
-
   // List Databricks agent names
   // GET /api/v1/agents/public/databricks
   fastify.get(

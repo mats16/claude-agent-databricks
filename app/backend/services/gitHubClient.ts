@@ -36,6 +36,57 @@ export function getGitHubHeaders(): Record<string, string> {
   return headers;
 }
 
+/**
+ * Validate and parse a GitHub repository name segment (owner or repo)
+ * GitHub naming rules:
+ * - Only alphanumeric, hyphen, underscore, and dot allowed
+ * - Cannot start with a dot or hyphen
+ * - Cannot contain consecutive dots or ".."
+ * - Cannot end with ".git" (we strip this)
+ */
+function isValidGitHubNameSegment(name: string): boolean {
+  // Must not be empty
+  if (!name || name.length === 0) return false;
+
+  // Cannot start with dot or hyphen
+  if (name.startsWith('.') || name.startsWith('-')) return false;
+
+  // Cannot contain path traversal patterns
+  if (name.includes('..') || name.includes('/') || name.includes('\\')) return false;
+
+  // Only allow alphanumeric, hyphen, underscore, and dot
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(name)) return false;
+
+  return true;
+}
+
+/**
+ * Parse and validate a GitHub repository URL
+ * Returns owner/repo string if valid, null otherwise
+ *
+ * Supported formats:
+ *   https://github.com/owner/repo
+ *   https://github.com/owner/repo.git
+ */
+export function parseGitHubRepo(input: string): string | null {
+  // Parse URL
+  const urlMatch = input.match(
+    /^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/
+  );
+
+  if (!urlMatch) return null;
+
+  const owner = urlMatch[1];
+  const repo = urlMatch[2];
+
+  // Validate both segments
+  if (!isValidGitHubNameSegment(owner) || !isValidGitHubNameSegment(repo)) {
+    return null;
+  }
+
+  return `${owner}/${repo}`;
+}
+
 // In-memory cache
 interface CacheEntry {
   data: unknown;

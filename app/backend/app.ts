@@ -23,6 +23,10 @@ import reposRoutes from './routes/v1/repos/index.js';
 import jobsRoutes from './routes/v1/jobs/index.js';
 import publicSkillsRoutes from './routes/v1/skills/public/index.js';
 import publicAgentsRoutes from './routes/v1/agents/public/index.js';
+import {
+  startCacheCleanup,
+  stopCacheCleanup,
+} from './services/gitHubClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,6 +81,14 @@ export async function buildApp() {
   await fastify.register(jobsRoutes, { prefix: '/api/v1/jobs' });
   await fastify.register(publicSkillsRoutes, { prefix: '/api/v1/skills/public' });
   await fastify.register(publicAgentsRoutes, { prefix: '/api/v1/agents/public' });
+
+  // Initialize GitHub client cache cleanup (once at startup)
+  startCacheCleanup();
+
+  // Stop cache cleanup on server close
+  fastify.addHook('onClose', () => {
+    stopCacheCleanup();
+  });
 
   return fastify;
 }

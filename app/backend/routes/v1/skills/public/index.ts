@@ -6,8 +6,6 @@ import {
   parseSkillFrontmatter,
   getCached,
   setCache,
-  startCacheCleanup,
-  stopCacheCleanup,
   GitHubRateLimitError,
   formatRateLimitError,
 } from '../../../../services/gitHubClient.js';
@@ -97,14 +95,6 @@ async function fetchSkillDetail(
 }
 
 const publicSkillsRoutes: FastifyPluginAsync = async (fastify) => {
-  // Start cache cleanup
-  startCacheCleanup();
-
-  // Cleanup on server close
-  fastify.addHook('onClose', () => {
-    stopCacheCleanup();
-  });
-
   // List Anthropic skill names
   // GET /api/v1/skills/public/anthropic
   fastify.get(

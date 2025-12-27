@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { extractRequestContext } from '../../../../utils/headers.js';
 import * as skillService from '../../../../services/skillService.js';
+import { parseGitHubRepo } from '../../../../services/gitHubClient.js';
 
 // List all skills
 export async function listSkillsHandler(
@@ -231,17 +232,6 @@ export async function importPresetSkillHandler(
     console.error('Failed to import preset skill:', error);
     return reply.status(500).send({ error: error.message });
   }
-}
-
-// Parse GitHub URL to extract owner/repo
-// Supports formats:
-//   https://github.com/owner/repo
-//   https://github.com/owner/repo.git
-function parseGitHubRepo(input: string): string | null {
-  const urlMatch = input.match(
-    /^https:\/\/github\.com\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+?)(?:\.git)?$/
-  );
-  return urlMatch ? urlMatch[1] : null;
 }
 
 // Import a skill from GitHub repository

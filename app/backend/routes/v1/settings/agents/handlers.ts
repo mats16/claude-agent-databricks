@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { extractRequestContext } from '../../../../utils/headers.js';
 import * as subagentService from '../../../../services/subagentService.js';
+import { parseGitHubRepo } from '../../../../services/gitHubClient.js';
 
 // List all subagents
 export async function listSubagentsHandler(
@@ -222,14 +223,6 @@ export async function listPresetSubagentsHandler(
     console.error('Failed to list preset subagents:', error);
     return reply.status(500).send({ error: error.message });
   }
-}
-
-// Parse GitHub URL to extract owner/repo
-function parseGitHubRepo(input: string): string | null {
-  const urlMatch = input.match(
-    /^https:\/\/github\.com\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+?)(?:\.git)?$/
-  );
-  return urlMatch ? urlMatch[1] : null;
 }
 
 // Import a subagent from GitHub repository
