@@ -16,7 +16,6 @@ import {
   Tabs,
   Alert,
   Button,
-  Descriptions,
 } from 'antd';
 import { GithubOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import type { PublicSkillDetail } from '../../hooks/useSkills';
@@ -197,34 +196,56 @@ export default function PresetImportModal({
         >
           {t('skillsModal.back')}
         </Button>
-        <Title level={5} style={{ marginBottom: spacing.md }}>
-          {selectedDetail.name}
+        <Title level={5} style={{ marginBottom: spacing.lg }}>
+          Skill name: {selectedDetail.name}
         </Title>
-        <Descriptions column={1} size="small" bordered>
-          <Descriptions.Item label={t('skillsModal.detailName')}>
-            <Text style={{ fontFamily: 'monospace' }}>
-              {selectedDetail.name}
-            </Text>
-          </Descriptions.Item>
-          <Descriptions.Item label={t('skillsModal.detailDescription')}>
-            {selectedDetail.description || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('skillsModal.detailVersion')}>
-            <Text style={{ fontFamily: 'monospace' }}>
-              {selectedDetail.version}
-            </Text>
-          </Descriptions.Item>
-          <Descriptions.Item label={t('skillsModal.detailRepo')}>
-            <Text style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-              {selectedDetail.repo}
-            </Text>
-          </Descriptions.Item>
-          <Descriptions.Item label={t('skillsModal.detailPath')}>
-            <Text style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-              {selectedDetail.path}
-            </Text>
-          </Descriptions.Item>
-        </Descriptions>
+
+        <Title level={5} style={{ marginBottom: spacing.xs, fontSize: '14px' }}>
+          Description
+        </Title>
+        <Text style={{ display: 'block', marginBottom: spacing.md }}>
+          {selectedDetail.description || '-'}
+        </Text>
+
+        <Title level={5} style={{ marginBottom: spacing.xs, fontSize: '14px' }}>
+          Version
+        </Title>
+        <Text
+          style={{
+            display: 'block',
+            marginBottom: spacing.md,
+            fontFamily: 'monospace',
+          }}
+        >
+          {selectedDetail.version}
+        </Text>
+
+        <Title level={5} style={{ marginBottom: spacing.xs, fontSize: '14px' }}>
+          Repo
+        </Title>
+        <Text
+          style={{
+            display: 'block',
+            marginBottom: spacing.md,
+            fontFamily: 'monospace',
+            fontSize: '12px',
+          }}
+        >
+          {selectedDetail.repo}
+        </Text>
+
+        <Title level={5} style={{ marginBottom: spacing.xs, fontSize: '14px' }}>
+          Path
+        </Title>
+        <Text
+          style={{
+            display: 'block',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+          }}
+        >
+          {selectedDetail.path}
+        </Text>
       </>
     );
   };
