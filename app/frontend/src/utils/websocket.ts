@@ -36,3 +36,13 @@ export function createSessionsWebSocketUrl(): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}/api/v1/sessions/ws`;
 }
+
+/**
+ * Create WebSocket URL for a given path
+ * @param path - Path to connect to (e.g., '/api/v1/sessions/123/terminal')
+ * @returns WebSocket URL
+ */
+export function getWebSocketUrl(path: string): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}${path}`;
+}

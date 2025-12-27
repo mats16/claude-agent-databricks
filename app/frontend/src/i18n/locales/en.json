@@ -278,7 +278,16 @@
     "confirmDeploy": "Are you sure you want to deploy?",
     "deployStarted": "Deployment started",
     "deployFailed": "Failed to start deployment",
-    "initialDeployStarted": "Initial deployment started"
+    "initialDeployStarted": "Initial deployment started",
+    "terminal": "Terminal"
+  },
+  "terminal": {
+    "title": "Terminal",
+    "backToSession": "Back to session",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "reconnect": "Reconnect",
+    "retry": "Retry"
   },
   "appStatusPanel": {
     "deploymentHistory": "Deployment History",

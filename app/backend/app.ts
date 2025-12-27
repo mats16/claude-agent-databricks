@@ -9,6 +9,7 @@ import dotenv from 'dotenv';
 import healthRoutes from './routes/health/index.js';
 import sessionRoutes from './routes/v1/sessions/index.js';
 import sessionWebSocketRoutes from './routes/v1/sessions/websocket.js';
+import terminalWebSocketRoutes from './routes/v1/sessions/terminal.js';
 import sessionFileRoutes from './routes/v1/sessions/files/index.js';
 import meRoutes from './routes/v1/me/index.js';
 import settingsRoutes from './routes/v1/settings/index.js';
@@ -56,6 +57,9 @@ export async function buildApp() {
     prefix: '/api/v1/sessions',
   });
   await fastify.register(sessionFileRoutes, {
+    prefix: '/api/v1/sessions',
+  });
+  await fastify.register(terminalWebSocketRoutes, {
     prefix: '/api/v1/sessions',
   });
   await fastify.register(meRoutes, { prefix: '/api/v1/me' });

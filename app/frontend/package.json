@@ -15,6 +15,7 @@
     "@app/shared": "*",
     "@fontsource/noto-sans-jp": "^5.2.8",
     "antd": "^6.1.1",
+    "ghostty-web": "^0.4.0",
     "i18next": "^25.7.3",
     "i18next-browser-languagedetector": "^8.2.0",
     "react": "^18.2.0",
