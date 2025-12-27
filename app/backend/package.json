@@ -9,6 +9,7 @@
     "dev": "tsx watch --env-file=../.env server.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "db:migrate": "tsx --env-file=../.env db/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
