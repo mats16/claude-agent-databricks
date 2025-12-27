@@ -48,7 +48,8 @@ databricks jobs get-run <run_id> -o json | jq '
 '
 
 # Step 3: Get detailed error for the failing task
-# Note: run_id here is the TASK run_id, not the job run_id
+# First, extract the task_run_id from Step 2 output
+# (The run_id field in .tasks[] is the TASK run_id, not the job run_id)
 databricks jobs get-run <task_run_id> -o json | jq '.state'
 
 # Step 4: Check the cluster logs if cluster-related

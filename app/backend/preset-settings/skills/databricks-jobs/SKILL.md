@@ -2,7 +2,7 @@
 name: databricks-jobs
 description: |
   Databricks Jobs management, monitoring, and debugging. Use for job status checks, run history, failure investigation, job execution, and historical analysis.
-  Triggers: list jobs, job status, run history, get run, why did job fail, debug job, task error, run job, cancel job, repair run, list-runs, job duration, failure rate, job metrics.
+  Triggers: job status, run history, job failure, debug job, run job, cancel job, repair run, job metrics, failure analysis.
   Real-time operations use CLI (databricks jobs). Historical analysis uses System Tables (system.lakeflow.*).
 ---
 
@@ -81,7 +81,7 @@ databricks jobs get-run-output <run_id> -o json | jq '{error, error_trace}'
 databricks jobs repair-run <run_id> --rerun-all-failed-tasks -o json
 ```
 
-For detailed troubleshooting: [troubleshooting.md](references/troubleshooting.md)
+For detailed troubleshooting: See [Troubleshooting Guide](references/troubleshooting.md)
 
 ### List and Search Jobs
 
@@ -179,12 +179,12 @@ ORDER BY r.period_start_time DESC;
 SELECT run_id, result_state, period_start_time,
   TIMESTAMPDIFF(MINUTE, period_start_time, period_end_time) AS duration_min
 FROM system.lakeflow.job_run_timeline
-WHERE job_id = <job_id>
+WHERE job_id = <job_id>  -- URLから抽出したjob_idを使用
 ORDER BY period_start_time DESC
 LIMIT 20;
 ```
 
-For comprehensive historical analysis queries: [system-tables.md](references/system-tables.md)
+For comprehensive historical analysis queries: See [System Tables Reference](references/system-tables.md)
 
 ## result_state Reference
 
