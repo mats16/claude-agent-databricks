@@ -4,6 +4,21 @@ const GITHUB_API_BASE = 'https://api.github.com';
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com';
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
+// GitHub token for authenticated requests (5000 req/hour vs 60 req/hour)
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+
+// Get GitHub API headers (with optional authentication)
+function getGitHubHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github.v3+json',
+    'User-Agent': 'claude-agent-databricks',
+  };
+  if (GITHUB_TOKEN) {
+    headers['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
+  }
+  return headers;
+}
+
 // Repository configurations
 const REPOS = {
   anthropic: {
@@ -62,10 +77,7 @@ async function fetchDefaultBranch(repo: string): Promise<string> {
   }
 
   const response = await fetch(`${GITHUB_API_BASE}/repos/${repo}`, {
-    headers: {
-      Accept: 'application/vnd.github.v3+json',
-      'User-Agent': 'claude-agent-databricks',
-    },
+    headers: getGitHubHeaders(),
   });
 
   if (!response.ok) {
@@ -114,10 +126,7 @@ async function fetchSkillNames(
   const url = `${GITHUB_API_BASE}/repos/${config.repo}/contents/${config.path}?ref=${branch}`;
 
   const response = await fetch(url, {
-    headers: {
-      Accept: 'application/vnd.github.v3+json',
-      'User-Agent': 'claude-agent-databricks',
-    },
+    headers: getGitHubHeaders(),
   });
 
   if (!response.ok) {
