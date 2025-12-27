@@ -237,29 +237,17 @@ export async function importPresetSkillHandler(
 // Supports formats:
 //   https://github.com/owner/repo
 //   https://github.com/owner/repo.git
-//   github.com/owner/repo
-//   owner/repo
 function parseGitHubRepo(input: string): string | null {
-  // Try URL format first
   const urlMatch = input.match(
-    /^(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+?)(?:\.git)?$/
+    /^https:\/\/github\.com\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+?)(?:\.git)?$/
   );
-  if (urlMatch) {
-    return urlMatch[1];
-  }
-
-  // Try owner/repo format
-  if (/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(input)) {
-    return input;
-  }
-
-  return null;
+  return urlMatch ? urlMatch[1] : null;
 }
 
 // Import a skill from GitHub repository
 export async function importGitHubSkillHandler(
   request: FastifyRequest<{
-    Body: { repo: string; path: string; branch?: string };
+    Body: { repo: string; path?: string; branch?: string };
   }>,
   reply: FastifyReply
 ) {
@@ -270,23 +258,19 @@ export async function importGitHubSkillHandler(
     return reply.status(400).send({ error: error.message });
   }
 
-  const { repo, path, branch } = request.body;
+  const { repo, path = '', branch } = request.body;
 
   // Validate required fields
   if (!repo || typeof repo !== 'string') {
     return reply.status(400).send({ error: 'repo is required' });
   }
 
-  if (!path || typeof path !== 'string') {
-    return reply.status(400).send({ error: 'path is required' });
-  }
-
-  // Parse and validate repository URL/name
+  // Parse and validate repository URL
   const repoName = parseGitHubRepo(repo);
   if (!repoName) {
     return reply
       .status(400)
-      .send({ error: 'Invalid repository format. Use URL or owner/repo' });
+      .send({ error: 'Invalid repo format. Use https://github.com/owner/repo' });
   }
 
   try {

@@ -45,6 +45,22 @@ function copyDirectoryRecursive(src: string, dest: string): void {
   }
 }
 
+// Copy directory recursively, excluding .git directory
+function copyDirectoryRecursiveExcludeGit(src: string, dest: string): void {
+  fs.mkdirSync(dest, { recursive: true });
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === '.git') continue;
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirectoryRecursiveExcludeGit(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
 // Sync a single skill to workspace (fire-and-forget)
 async function syncSkillToWorkspace(
   user: RequestUser,
@@ -348,8 +364,8 @@ async function getDefaultBranch(repoName: string): Promise<string> {
 }
 
 // Import a skill from GitHub repository
-// name: repository name (e.g., "anthropics/skills")
-// skillPath: path to skill directory (e.g., "skills/skill-creator")
+// repoName: repository name (e.g., "anthropics/skills")
+// skillPath: path to skill directory (e.g., "skills/skill-creator"), empty for repo root
 // branch: branch name (optional, defaults to repository's default branch)
 export async function importGitHubSkill(
   user: RequestUser,
@@ -358,7 +374,9 @@ export async function importGitHubSkill(
   branch?: string
 ): Promise<Skill> {
   const repoUrl = `https://github.com/${repoName}.git`;
-  const skillName = skillPath.split('/').pop() || '';
+  // Use last part of path, or repo name if path is empty
+  const skillName =
+    skillPath.split('/').pop() || repoName.split('/').pop() || '';
 
   if (!skillName) {
     throw new Error('Invalid skill path');
@@ -371,18 +389,24 @@ export async function importGitHubSkill(
   const tmpDir = path.join('/tmp', `skill-import-${randomUUID()}`);
 
   try {
-    // Clone with depth 1 and sparse checkout for efficiency
-    execSync(
-      `git clone --depth 1 --filter=blob:none --sparse -b ${targetBranch} ${repoUrl} ${tmpDir}`,
-      { stdio: 'pipe' }
-    );
+    if (skillPath) {
+      // Clone with sparse checkout for specific path
+      execSync(
+        `git clone --depth 1 --filter=blob:none --sparse -b ${targetBranch} ${repoUrl} ${tmpDir}`,
+        { stdio: 'pipe' }
+      );
+      execSync(`git -C ${tmpDir} sparse-checkout set ${skillPath}`, {
+        stdio: 'pipe',
+      });
+    } else {
+      // Clone entire repo (shallow) for root-level skill
+      execSync(
+        `git clone --depth 1 -b ${targetBranch} ${repoUrl} ${tmpDir}`,
+        { stdio: 'pipe' }
+      );
+    }
 
-    // Set up sparse checkout for the skill directory
-    execSync(`git -C ${tmpDir} sparse-checkout set ${skillPath}`, {
-      stdio: 'pipe',
-    });
-
-    const clonedSkillPath = path.join(tmpDir, skillPath);
+    const clonedSkillPath = skillPath ? path.join(tmpDir, skillPath) : tmpDir;
 
     // Check if skill directory exists
     if (!fs.existsSync(clonedSkillPath)) {
@@ -407,8 +431,12 @@ export async function importGitHubSkill(
       fs.rmSync(skillDirPath, { recursive: true, force: true });
     }
 
-    // Copy skill directory
-    copyDirectoryRecursive(clonedSkillPath, skillDirPath);
+    // Copy skill directory (exclude .git for root-level import)
+    if (skillPath) {
+      copyDirectoryRecursive(clonedSkillPath, skillDirPath);
+    } else {
+      copyDirectoryRecursiveExcludeGit(clonedSkillPath, skillDirPath);
+    }
 
     const finalSkillName = parsed.name || skillName;
 
