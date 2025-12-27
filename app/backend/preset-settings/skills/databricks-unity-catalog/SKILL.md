@@ -33,21 +33,21 @@ SHOW CATALOGS;
 SHOW CATALOGS LIKE 'prod*';
 
 -- Describe catalog
-DESCRIBE CATALOG EXTENDED <catalog_name>;
+DESCRIBE CATALOG EXTENDED <catalog>;
 
 -- List schemas
-SHOW SCHEMAS IN <catalog_name>;
-SHOW SCHEMAS IN <catalog_name> LIKE 'sales*';
+SHOW SCHEMAS IN <catalog>;
+SHOW SCHEMAS IN <catalog> LIKE 'sales*';
 
 -- Describe schema
-DESCRIBE SCHEMA EXTENDED <catalog_name>.<schema_name>;
+DESCRIBE SCHEMA EXTENDED <catalog>.<schema>;
 
 -- Current context
 SELECT current_catalog(), current_schema();
 
 -- Set context
-USE CATALOG <catalog_name>;
-USE SCHEMA <schema_name>;
+USE CATALOG <catalog>;
+USE SCHEMA <schema>;
 ```
 
 ## Tables and Views

@@ -15,23 +15,23 @@ Step-by-step verification when a table cannot be found:
 
 ```sql
 -- Step 1: Check if catalog exists
-SHOW CATALOGS LIKE '<catalog_name>';
+SHOW CATALOGS LIKE '<catalog>';
 
 -- Step 2: Check if schema exists
-SHOW SCHEMAS IN <catalog_name> LIKE '<schema_name>';
+SHOW SCHEMAS IN <catalog> LIKE '<schema>';
 
 -- Step 3: Check if table exists
-SHOW TABLES IN <catalog_name>.<schema_name> LIKE '<table_name>';
+SHOW TABLES IN <catalog>.<schema> LIKE '<table>';
 
 -- Step 4: Search with pattern (for typos)
-SHOW TABLES IN <catalog_name>.<schema_name> LIKE '%<partial_name>%';
+SHOW TABLES IN <catalog>.<schema> LIKE '%<partial_name>%';
 
 -- Step 5: Check current context
 SELECT current_catalog(), current_schema();
 
 -- Step 6: Search across schemas
 SELECT table_catalog, table_schema, table_name
-FROM <catalog_name>.information_schema.tables
+FROM <catalog>.information_schema.tables
 WHERE table_name LIKE '%<partial_name>%';
 ```
 
@@ -54,13 +54,13 @@ Full permission verification procedure:
 SELECT current_user();
 
 -- Step 2: Check catalog access
-SHOW GRANTS ON CATALOG <catalog_name>;
+SHOW GRANTS ON CATALOG <catalog>;
 
 -- Step 3: Check schema access
-SHOW GRANTS ON SCHEMA <catalog_name>.<schema_name>;
+SHOW GRANTS ON SCHEMA <catalog>.<schema>;
 
 -- Step 4: Check table access
-SHOW GRANTS ON TABLE <catalog_name>.<schema_name>.<table_name>;
+SHOW GRANTS ON TABLE <catalog>.<schema>.<table>;
 
 -- Step 5: Check grants to specific user
 SHOW GRANTS TO `user@example.com`;
