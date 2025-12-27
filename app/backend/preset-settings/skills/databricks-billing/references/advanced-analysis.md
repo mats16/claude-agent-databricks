@@ -42,8 +42,12 @@ SELECT
   total_cost,
   LAG(total_cost) OVER (ORDER BY month) AS prev_month_cost,
   total_cost - LAG(total_cost) OVER (ORDER BY month) AS cost_change,
-  ROUND((total_cost - LAG(total_cost) OVER (ORDER BY month))
-    / LAG(total_cost) OVER (ORDER BY month) * 100, 2) AS pct_change
+  CASE
+    WHEN LAG(total_cost) OVER (ORDER BY month) IS NULL
+         OR LAG(total_cost) OVER (ORDER BY month) = 0 THEN NULL
+    ELSE ROUND((total_cost - LAG(total_cost) OVER (ORDER BY month))
+         / LAG(total_cost) OVER (ORDER BY month) * 100, 2)
+  END AS pct_change
 FROM monthly
 ORDER BY month DESC
 ```
@@ -79,8 +83,12 @@ SELECT
   month,
   total_cost,
   LAG(total_cost) OVER (PARTITION BY sku_name ORDER BY month) AS prev_month,
-  ROUND((total_cost - LAG(total_cost) OVER (PARTITION BY sku_name ORDER BY month))
-    / NULLIF(LAG(total_cost) OVER (PARTITION BY sku_name ORDER BY month), 0) * 100, 2) AS pct_change
+  CASE
+    WHEN LAG(total_cost) OVER (PARTITION BY sku_name ORDER BY month) IS NULL
+         OR LAG(total_cost) OVER (PARTITION BY sku_name ORDER BY month) = 0 THEN NULL
+    ELSE ROUND((total_cost - LAG(total_cost) OVER (PARTITION BY sku_name ORDER BY month))
+         / LAG(total_cost) OVER (PARTITION BY sku_name ORDER BY month) * 100, 2)
+  END AS pct_change
 FROM monthly
 ORDER BY sku_name, month DESC
 ```
@@ -192,15 +200,20 @@ SELECT
   d.usage_date,
   d.daily_cost,
   s.avg_cost,
-  ROUND((d.daily_cost - s.avg_cost) / s.stddev_cost, 2) AS z_score,
   CASE
+    WHEN s.stddev_cost IS NULL OR s.stddev_cost = 0 THEN NULL
+    ELSE ROUND((d.daily_cost - s.avg_cost) / s.stddev_cost, 2)
+  END AS z_score,
+  CASE
+    WHEN s.stddev_cost IS NULL OR s.stddev_cost = 0 THEN 'INSUFFICIENT_DATA'
     WHEN (d.daily_cost - s.avg_cost) / s.stddev_cost > 3 THEN 'CRITICAL'
     WHEN (d.daily_cost - s.avg_cost) / s.stddev_cost > 2 THEN 'WARNING'
     ELSE 'NORMAL'
   END AS severity
 FROM daily_costs d
 CROSS JOIN stats s
-WHERE ABS((d.daily_cost - s.avg_cost) / s.stddev_cost) > 2
+WHERE s.stddev_cost > 0
+  AND ABS((d.daily_cost - s.avg_cost) / s.stddev_cost) > 2
 ORDER BY d.usage_date DESC
 ```
 

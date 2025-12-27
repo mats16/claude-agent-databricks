@@ -2,9 +2,9 @@
 name: databricks-billing
 version: 1.0.0
 description: |
-  Databricks billing data analysis and cost calculation. Analyze DBU usage, SKU costs, workspace/job/warehouse expenses using system.billing tables.
-  Triggers: cost analysis, billing report, DBU usage, SKU costs, monthly expenses, job costs, warehouse costs, spending breakdown, cost trend, budget tracking.
-  Real-time data uses SQL queries via mcp__databricks__run_sql. All cost calculations require joining usage with list_prices.
+  Databricks billing data analysis and cost calculation using system.billing tables.
+  Triggers: cost analysis, billing report, DBU usage, SKU costs, monthly expenses, job costs, warehouse costs, spending breakdown.
+  Uses mcp__databricks__run_sql for queries. Cost calculations require joining usage with list_prices.
 ---
 
 # Databricks Billing
@@ -52,6 +52,7 @@ WHERE u.usage_date >= CURRENT_DATE - INTERVAL 30 DAYS
 - Use `BROADCAST` hint for efficient join (prices table is small)
 - Handle `price_end_time` NULL with `COALESCE`
 - Filter by date range to limit scan
+- Use `HAVING SUM(usage_quantity) != 0` to handle correction records (see below)
 
 ## Table Schemas
 
