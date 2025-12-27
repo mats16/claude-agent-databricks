@@ -223,7 +223,10 @@ export default function PresetImportModal({
         <Title level={5} style={{ marginBottom: spacing.xs, fontSize: '14px' }}>
           Repo
         </Title>
-        <Text
+        <a
+          href={selectedDetail.repo.replace(/\.git$/, '')}
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
             display: 'block',
             marginBottom: spacing.md,
@@ -232,7 +235,7 @@ export default function PresetImportModal({
           }}
         >
           {selectedDetail.repo}
-        </Text>
+        </a>
 
         <Title level={5} style={{ marginBottom: spacing.xs, fontSize: '14px' }}>
           Path
