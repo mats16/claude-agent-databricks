@@ -243,14 +243,60 @@ UNION ALL
 SELECT * FROM catalog2.schema.table;
 ```
 
+## Data Lineage
+
+### Lineage System Tables
+
+| Table | Description |
+|-------|-------------|
+| `system.access.table_lineage` | Table-level data flow |
+| `system.access.column_lineage` | Column-level data flow |
+
+### Quick Lineage Queries
+
+```sql
+-- Upstream tables (sources feeding into this table)
+SELECT source_table_full_name, target_table_full_name, event_time
+FROM system.access.table_lineage
+WHERE target_table_full_name = '<catalog>.<schema>.<table>'
+ORDER BY event_time DESC;
+
+-- Downstream tables (tables consuming this table)
+SELECT source_table_full_name, target_table_full_name, event_time
+FROM system.access.table_lineage
+WHERE source_table_full_name = '<catalog>.<schema>.<table>'
+ORDER BY event_time DESC;
+
+-- Column-level lineage (source columns for a target column)
+SELECT source_table_full_name, source_column_name, target_column_name
+FROM system.access.column_lineage
+WHERE target_table_full_name = '<catalog>.<schema>.<table>'
+  AND target_column_name = '<column_name>';
+```
+
+### Lineage via API
+
+```bash
+# Table lineage (upstream and downstream)
+databricks api get /api/2.1/unity-catalog/lineage/table-lineage \
+  --json '{"table_name": "<catalog>.<schema>.<table>", "include_entity_lineage": true}'
+
+# Column lineage
+databricks api get /api/2.1/unity-catalog/lineage/column-lineage \
+  --json '{"table_name": "<catalog>.<schema>.<table>", "column_name": "<column>"}'
+```
+
+For detailed lineage analysis: See [Lineage Reference](references/lineage.md)
+
 ## Tips
 
 - Always use fully qualified names: `<catalog>.<schema>.<table>`
 - Use `LIKE '%pattern%'` for fuzzy searching
 - Check permissions at all levels when debugging access issues
 - Use `DESCRIBE HISTORY` to investigate recent changes
+- Use lineage system tables for impact analysis before schema changes
 
 ## References
 
 - [Troubleshooting](references/troubleshooting.md): Permission errors, table not found, debugging
-- [Lineage](references/lineage.md): Data lineage, change tracking, impact analysis
+- [Lineage](references/lineage.md): Comprehensive lineage analysis, impact assessment, entity relationships, workflow tracking
