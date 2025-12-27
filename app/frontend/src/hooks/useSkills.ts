@@ -393,11 +393,11 @@ export function useSkills() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('/api/v1/settings/skills/import-github', {
+        const response = await fetch('/api/v1/settings/skills/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: DATABRICKS_SKILLS_REPO,
+            repo: `https://github.com/${DATABRICKS_SKILLS_REPO}.git`,
             path: `${DATABRICKS_SKILLS_PATH}/${skillName}`,
           }),
         });
@@ -430,11 +430,11 @@ export function useSkills() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('/api/v1/settings/skills/import-github', {
+        const response = await fetch('/api/v1/settings/skills/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: ANTHROPIC_SKILLS_REPO,
+            repo: `https://github.com/${ANTHROPIC_SKILLS_REPO}.git`,
             path: `${ANTHROPIC_SKILLS_PATH}/${skillName}`,
           }),
         });
