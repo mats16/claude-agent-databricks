@@ -7,7 +7,6 @@ export interface Skill {
   content: string;
 }
 
-
 export interface GitHubSkill {
   name: string;
   description: string;
@@ -340,7 +339,9 @@ export function useSkills() {
       setDatabricksCached(result.cached);
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : 'Failed to fetch Databricks skills';
+        err instanceof Error
+          ? err.message
+          : 'Failed to fetch Databricks skills';
       setDatabricksError(message);
       console.error('Failed to fetch Databricks skills:', err);
 
@@ -410,7 +411,9 @@ export function useSkills() {
         return true;
       } catch (err: unknown) {
         const message =
-          err instanceof Error ? err.message : 'Failed to import Databricks skill';
+          err instanceof Error
+            ? err.message
+            : 'Failed to import Databricks skill';
         setError(message);
         console.error('Failed to import Databricks skill:', err);
         return false;
@@ -445,7 +448,9 @@ export function useSkills() {
         return true;
       } catch (err: unknown) {
         const message =
-          err instanceof Error ? err.message : 'Failed to import Anthropic skill';
+          err instanceof Error
+            ? err.message
+            : 'Failed to import Anthropic skill';
         setError(message);
         console.error('Failed to import Anthropic skill:', err);
         return false;

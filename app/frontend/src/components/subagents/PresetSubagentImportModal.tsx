@@ -4,16 +4,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import {
-  Modal,
-  List,
-  Flex,
-  Spin,
-  Typography,
-  Empty,
-  Tag,
-  Alert,
-} from 'antd';
+import { Modal, List, Flex, Spin, Typography, Empty, Tag, Alert } from 'antd';
 import { GithubOutlined } from '@ant-design/icons';
 import type { GitHubSubagent } from '../../hooks/useSubagents';
 import { colors, spacing } from '../../styles/theme';
@@ -59,7 +50,11 @@ export default function PresetSubagentImportModal({
       cancelButtonProps={{ disabled: isSaving }}
       width={600}
     >
-      <Flex align="center" gap={spacing.sm} style={{ marginBottom: spacing.md }}>
+      <Flex
+        align="center"
+        gap={spacing.sm}
+        style={{ marginBottom: spacing.md }}
+      >
         <GithubOutlined />
         <Title level={5} style={{ margin: 0 }}>
           {t('subagentModal.databricksAgents')}

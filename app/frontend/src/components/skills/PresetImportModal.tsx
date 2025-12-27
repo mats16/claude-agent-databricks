@@ -70,7 +70,9 @@ export default function PresetImportModal({
   };
 
   const isImportDisabled =
-    activeTab === 'databricks' ? !selectedDatabricksSkill : !selectedAnthropicSkill;
+    activeTab === 'databricks'
+      ? !selectedDatabricksSkill
+      : !selectedAnthropicSkill;
 
   const renderSkillList = (
     skills: GitHubSkill[],
