@@ -11,8 +11,15 @@ import {
   Empty,
   message,
 } from 'antd';
-import { BugOutlined, SearchOutlined } from '@ant-design/icons';
+import { BugOutlined, SearchOutlined, ImportOutlined } from '@ant-design/icons';
 import { colors, borderRadius } from '../styles/theme';
+import {
+  useSkills,
+  type PublicSkillDetail,
+} from '../hooks/useSkills';
+import PresetImportModal, {
+  type ImportTab,
+} from './skills/PresetImportModal';
 
 const { Text } = Typography;
 
@@ -53,6 +60,57 @@ export default function QuickstartJobErrorsModal({
   const [loading, setLoading] = useState(true);
   const [creatingSessionFor, setCreatingSessionFor] = useState<number | null>(
     null
+  );
+
+  // Skill import state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [activeImportTab, setActiveImportTab] =
+    useState<ImportTab>('databricks');
+  const [isSavingSkill, setIsSavingSkill] = useState(false);
+
+  const {
+    fetchSkills,
+    databricksSkillNames,
+    databricksLoading,
+    databricksError,
+    anthropicSkillNames,
+    anthropicLoading,
+    anthropicError,
+    fetchDatabricksSkillNames,
+    fetchAnthropicSkillNames,
+    fetchSkillDetail,
+    importSkill,
+  } = useSkills();
+
+  // Fetch skill names when import modal opens
+  useEffect(() => {
+    if (isImportModalOpen && activeImportTab === 'databricks') {
+      fetchDatabricksSkillNames();
+    }
+  }, [isImportModalOpen, activeImportTab, fetchDatabricksSkillNames]);
+
+  useEffect(() => {
+    if (isImportModalOpen && activeImportTab === 'anthropic') {
+      fetchAnthropicSkillNames();
+    }
+  }, [isImportModalOpen, activeImportTab, fetchAnthropicSkillNames]);
+
+  const handleImportSkill = useCallback(
+    async (detail: PublicSkillDetail): Promise<boolean> => {
+      setIsSavingSkill(true);
+      const success = await importSkill(detail);
+      setIsSavingSkill(false);
+
+      if (success) {
+        message.success(t('skillsModal.importSuccess'));
+        await fetchSkills();
+        return true;
+      } else {
+        message.error(t('skillsModal.importFailed'));
+        return false;
+      }
+    },
+    [importSkill, fetchSkills, t]
   );
 
   const fetchFailedJobs = useCallback(async () => {
@@ -147,9 +205,20 @@ export default function QuickstartJobErrorsModal({
       width={600}
       footer={<Button onClick={onClose}>{t('common.cancel')}</Button>}
     >
-      <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-        {t('quickstartJobs.subtitle')}
-      </Text>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <Text type="secondary">
+          {t('quickstartJobs.subtitle')}
+        </Text>
+        <Button
+          type="link"
+          size="small"
+          icon={<ImportOutlined />}
+          onClick={() => setIsImportModalOpen(true)}
+          style={{ padding: 0 }}
+        >
+          {t('quickstartJobs.importSkillLink')}
+        </Button>
+      </Flex>
       <div
         style={{
           border: `1px solid ${colors.border}`,
@@ -226,6 +295,22 @@ export default function QuickstartJobErrorsModal({
           />
         )}
       </div>
+
+      <PresetImportModal
+        isOpen={isImportModalOpen}
+        databricksSkillNames={databricksSkillNames}
+        databricksLoading={databricksLoading}
+        databricksError={databricksError}
+        anthropicSkillNames={anthropicSkillNames}
+        anthropicLoading={anthropicLoading}
+        anthropicError={anthropicError}
+        isSaving={isSavingSkill}
+        activeTab={activeImportTab}
+        onClose={() => setIsImportModalOpen(false)}
+        onTabChange={setActiveImportTab}
+        onFetchDetail={fetchSkillDetail}
+        onImport={handleImportSkill}
+      />
     </Modal>
   );
 }

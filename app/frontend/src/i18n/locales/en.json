@@ -367,6 +367,7 @@
   "quickstartJobs": {
     "title": "Quickstart: Failed Job Runs",
     "subtitle": "List of recently failed jobs",
+    "importSkillLink": "Import skill for Databricks Jobs",
     "loading": "Loading failed jobs...",
     "noFailedJobs": "No failed jobs",
     "investigate": "Investigate",

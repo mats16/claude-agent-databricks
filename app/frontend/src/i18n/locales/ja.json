@@ -367,6 +367,7 @@
   "quickstartJobs": {
     "title": "Quickstart: 失敗したジョブの調査",
     "subtitle": "直近で失敗したジョブ一覧",
+    "importSkillLink": "Databricks Jobs 用のスキルをインポートする",
     "loading": "失敗したジョブを読み込み中...",
     "noFailedJobs": "失敗したジョブはありません",
     "investigate": "調査",
