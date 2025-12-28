@@ -134,14 +134,28 @@ export async function hasDatabricksPat(userId: string): Promise<boolean> {
  * Returns undefined when not set (allows direct spread in env config).
  *
  * Note: Decryption is handled automatically by the encryptedText custom type.
+ * If decryption fails (e.g., encryption key changed), returns undefined and
+ * logs a warning. User will need to re-configure their PAT.
  */
 export async function getUserPersonalAccessToken(
   userId: string
 ): Promise<string | undefined> {
   if (!isEncryptionAvailable()) return undefined;
 
-  const pat = await getDatabricksPat(userId);
-  return pat ?? undefined;
+  try {
+    const pat = await getDatabricksPat(userId);
+    return pat ?? undefined;
+  } catch (error) {
+    // Decryption failure - likely due to encryption key change
+    // User will need to re-configure their PAT
+    console.warn(
+      `[PAT] Failed to decrypt PAT for user ${userId}. ` +
+        'This may occur if the encryption key was changed. ' +
+        'User should re-configure their PAT.',
+      error instanceof Error ? error.message : error
+    );
+    return undefined;
+  }
 }
 
 // Fetch token info from Databricks API using the PAT
