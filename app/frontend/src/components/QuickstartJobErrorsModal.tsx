@@ -11,7 +11,7 @@ import {
   Empty,
   message,
 } from 'antd';
-import { BugOutlined, SearchOutlined, ImportOutlined } from '@ant-design/icons';
+import { BugOutlined, SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { colors, borderRadius } from '../styles/theme';
 import {
   useSkills,
@@ -205,18 +205,29 @@ export default function QuickstartJobErrorsModal({
       width={600}
       footer={<Button onClick={onClose}>{t('common.cancel')}</Button>}
     >
-      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
-        <Text type="secondary">
-          {t('quickstartJobs.subtitle')}
+      <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+        {t('quickstartJobs.subtitle')}
+      </Text>
+      <Flex
+        align="center"
+        gap={8}
+        style={{
+          padding: '8px 12px',
+          marginBottom: 16,
+          background: colors.brandBg,
+          borderRadius: borderRadius.md,
+          border: `1px solid ${colors.brand}20`,
+        }}
+      >
+        <InfoCircleOutlined style={{ color: colors.brand, fontSize: 16 }} />
+        <Text style={{ flex: 1 }}>
+          {t('quickstartJobs.importSkillLink')}
         </Text>
         <Button
-          type="link"
           size="small"
-          icon={<ImportOutlined />}
           onClick={() => setIsImportModalOpen(true)}
-          style={{ padding: 0 }}
         >
-          {t('quickstartJobs.importSkillLink')}
+          {t('skillsModal.import')}
         </Button>
       </Flex>
       <div
