@@ -1,36 +1,51 @@
 import type { FastifyPluginAsync } from 'fastify';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import { extractRequestContext } from '../../../../utils/headers.js';
 import * as githubService from '../../../../services/githubService.js';
 import { isEncryptionAvailable } from '../../../../utils/encryption.js';
+import { jwtSecret } from '../../../../config/index.js';
 
-// In-memory state store for CSRF protection (userId -> { state, expiresAt })
-// In production with multiple instances, use Redis or similar
-const stateStore = new Map<string, { state: string; expiresAt: number }>();
+// State token expiration time (10 minutes)
+const STATE_EXPIRATION_SECONDS = 10 * 60;
 
-// Clean up expired states periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of stateStore.entries()) {
-    if (value.expiresAt < now) {
-      stateStore.delete(key);
-    }
-  }
-}, 60000); // Every minute
+interface StatePayload {
+  sub: string; // User ID
+  nonce: string; // Random nonce for uniqueness
+}
 
-function generateState(): string {
-  return crypto.randomBytes(32).toString('hex');
+/**
+ * Generate a JWT-based state token for CSRF protection.
+ * This is stateless and works across multiple server instances.
+ */
+function generateStateToken(userId: string): string {
+  const payload: StatePayload = {
+    sub: userId,
+    nonce: crypto.randomBytes(16).toString('hex'),
+  };
+  return jwt.sign(payload, jwtSecret, { expiresIn: STATE_EXPIRATION_SECONDS });
+}
+
+/**
+ * Verify and decode the state token.
+ * Returns the user ID if valid, throws if invalid or expired.
+ */
+function verifyStateToken(token: string): string {
+  const decoded = jwt.verify(token, jwtSecret) as StatePayload;
+  return decoded.sub;
 }
 
 function getCallbackUrl(request: {
   protocol: string;
   host: string;
-  headers: { 'x-forwarded-host'?: string; 'x-forwarded-proto'?: string };
+  headers: Record<string, string | string[] | undefined>;
 }): string {
   // Use X-Forwarded-Host if behind a proxy (e.g., Vite dev server)
   // Otherwise fall back to request.host
-  const host = request.headers['x-forwarded-host'] || request.host;
-  const protocol = request.headers['x-forwarded-proto'] || request.protocol || 'https';
+  const forwardedHost = request.headers['x-forwarded-host'];
+  const forwardedProto = request.headers['x-forwarded-proto'];
+  const host = (typeof forwardedHost === 'string' ? forwardedHost : undefined) || request.host;
+  const protocol = (typeof forwardedProto === 'string' ? forwardedProto : undefined) || request.protocol || 'https';
   return `${protocol}://${host}/api/v1/oauth/github/callback`;
 }
 
@@ -92,12 +107,8 @@ const githubRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
-    // Generate and store state for CSRF protection
-    const state = generateState();
-    stateStore.set(context.user.sub, {
-      state,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-    });
+    // Generate JWT-based state token for CSRF protection
+    const state = generateStateToken(context.user.sub);
 
     const callbackUrl = getCallbackUrl(request);
     const authUrl = githubService.getAuthorizationUrl(state, callbackUrl);
@@ -129,17 +140,20 @@ const githubRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.redirect('/?github_error=' + encodeURIComponent('Authentication required'));
     }
 
-    // Verify state for CSRF protection
-    const storedState = stateStore.get(context.user.sub);
-    if (!storedState || storedState.state !== state) {
-      stateStore.delete(context.user.sub);
+    // Verify JWT state token for CSRF protection
+    let stateUserId: string;
+    try {
+      stateUserId = verifyStateToken(state);
+    } catch (error: any) {
+      if (error.name === 'TokenExpiredError') {
+        return reply.redirect('/?github_error=' + encodeURIComponent('Session expired. Please try again.'));
+      }
       return reply.redirect('/?github_error=' + encodeURIComponent('Invalid state. Please try again.'));
     }
-    stateStore.delete(context.user.sub);
 
-    // Check if state is expired
-    if (storedState.expiresAt < Date.now()) {
-      return reply.redirect('/?github_error=' + encodeURIComponent('Session expired. Please try again.'));
+    // Ensure the state token was issued for this user
+    if (stateUserId !== context.user.sub) {
+      return reply.redirect('/?github_error=' + encodeURIComponent('Invalid state. Please try again.'));
     }
 
     try {
