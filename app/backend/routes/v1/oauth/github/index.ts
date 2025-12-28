@@ -5,7 +5,7 @@ import { isEncryptionAvailable } from '../../../../utils/encryption.js';
 
 const githubRoutes: FastifyPluginAsync = async (fastify) => {
   // Check if GitHub PAT is set (returns boolean only, never the actual token)
-  // GET /api/v1/settings/github
+  // GET /api/v1/oauth/github
   fastify.get('/', async (request, reply) => {
     let context;
     try {
@@ -28,7 +28,7 @@ const githubRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Set GitHub PAT
-  // POST /api/v1/settings/github
+  // POST /api/v1/oauth/github
   fastify.post<{ Body: { pat: string } }>('/', async (request, reply) => {
     let context;
     try {
@@ -71,7 +71,7 @@ const githubRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Clear GitHub PAT
-  // DELETE /api/v1/settings/github
+  // DELETE /api/v1/oauth/github
   fastify.delete('/', async (request, reply) => {
     let context;
     try {

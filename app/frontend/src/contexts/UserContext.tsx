@@ -67,7 +67,7 @@ export function UserProvider({ children }: UserProviderProps) {
       const [settingsRes, patRes, githubRes] = await Promise.all([
         fetch('/api/v1/settings'),
         fetch('/api/v1/settings/pat'),
-        fetch('/api/v1/settings/github'),
+        fetch('/api/v1/oauth/github'),
       ]);
 
       let settings = {

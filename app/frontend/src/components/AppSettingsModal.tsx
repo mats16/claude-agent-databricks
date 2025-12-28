@@ -206,7 +206,7 @@ export default function AppSettingsModal({
     setGithubPatMessage(null);
 
     try {
-      const response = await fetch('/api/v1/settings/github', {
+      const response = await fetch('/api/v1/oauth/github', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pat: githubPatValue }),
@@ -238,7 +238,7 @@ export default function AppSettingsModal({
     setGithubPatMessage(null);
 
     try {
-      const response = await fetch('/api/v1/settings/github', {
+      const response = await fetch('/api/v1/oauth/github', {
         method: 'DELETE',
       });
 
