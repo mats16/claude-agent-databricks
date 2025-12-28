@@ -22,10 +22,11 @@ function generateState(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
-function getCallbackUrl(request: { protocol: string; hostname: string }): string {
+function getCallbackUrl(request: { protocol: string; host: string }): string {
   // Construct callback URL from request
+  // request.host includes port (e.g., localhost:5173), request.hostname does not
   const protocol = request.protocol || 'https';
-  const host = request.hostname;
+  const host = request.host;
   return `${protocol}://${host}/api/v1/oauth/github/callback`;
 }
 
