@@ -24,6 +24,7 @@ import {
   DeleteOutlined,
   CloseCircleOutlined,
   WarningOutlined,
+  GithubOutlined,
 } from '@ant-design/icons';
 import { useUser } from '../contexts/UserContext';
 import { colors, spacing } from '../styles/theme';
@@ -69,21 +70,33 @@ export default function AppSettingsModal({
     text: string;
   } | null>(null);
 
+  // GitHub PAT state
+  const [githubPatValue, setGithubPatValue] = useState('');
+  const [isSavingGithubPat, setIsSavingGithubPat] = useState(false);
+  const [isDeletingGithubPat, setIsDeletingGithubPat] = useState(false);
+  const [githubPatMessage, setGithubPatMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
   // Access option state for initial setup
   type AccessOption = 'pat' | 'sp';
   const [selectedOption, setSelectedOption] = useState<AccessOption>('pat');
 
   const hasPat = userSettings?.hasDatabricksPat ?? false;
+  const hasGithubPat = userSettings?.hasGithubPat ?? false;
   const encryptionAvailable = userSettings?.encryptionAvailable ?? false;
 
   const hasPermission = userInfo?.hasWorkspacePermission ?? null;
   const isLoading = isUserLoading || isCheckingPermission;
 
-  // Clear PAT input when modal opens
+  // Clear PAT inputs when modal opens
   useEffect(() => {
     if (isOpen) {
       setPatValue('');
       setPatMessage(null);
+      setGithubPatValue('');
+      setGithubPatMessage(null);
     }
   }, [isOpen]);
 
@@ -177,6 +190,74 @@ export default function AppSettingsModal({
       setPatMessage({ type: 'error', text: t('patSection.deleteFailed') });
     } finally {
       setIsDeletingPat(false);
+    }
+  };
+
+  const handleSaveGithubPat = async () => {
+    if (!githubPatValue.trim()) {
+      setGithubPatMessage({
+        type: 'error',
+        text: t('githubSection.patRequired'),
+      });
+      return;
+    }
+
+    setIsSavingGithubPat(true);
+    setGithubPatMessage(null);
+
+    try {
+      const response = await fetch('/api/v1/settings/github', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pat: githubPatValue }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to save GitHub PAT');
+      }
+
+      setGithubPatValue('');
+      setGithubPatMessage({
+        type: 'success',
+        text: t('githubSection.saveSuccess'),
+      });
+      await refetchUserSettings();
+    } catch (error: any) {
+      setGithubPatMessage({
+        type: 'error',
+        text: error.message || t('githubSection.saveFailed'),
+      });
+    } finally {
+      setIsSavingGithubPat(false);
+    }
+  };
+
+  const handleDeleteGithubPat = async () => {
+    setIsDeletingGithubPat(true);
+    setGithubPatMessage(null);
+
+    try {
+      const response = await fetch('/api/v1/settings/github', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete GitHub PAT');
+      }
+
+      setGithubPatMessage({
+        type: 'success',
+        text: t('githubSection.deleteSuccess'),
+      });
+      await refetchUserSettings();
+    } catch {
+      setGithubPatMessage({
+        type: 'error',
+        text: t('githubSection.deleteFailed'),
+      });
+    } finally {
+      setIsDeletingGithubPat(false);
     }
   };
 
@@ -447,6 +528,104 @@ export default function AppSettingsModal({
     );
   };
 
+  const renderGithubSection = () => {
+    if (!encryptionAvailable) {
+      return (
+        <Alert
+          type="warning"
+          icon={<WarningOutlined />}
+          message={t('githubSection.encryptionUnavailable')}
+          description={t('githubSection.encryptionUnavailableDesc')}
+          showIcon
+        />
+      );
+    }
+
+    return (
+      <div>
+        {/* Current status */}
+        <div style={{ marginBottom: spacing.lg }}>
+          <Text
+            type="secondary"
+            style={{ display: 'block', marginBottom: spacing.sm }}
+          >
+            {t('githubSection.status')}:{' '}
+            {hasGithubPat ? (
+              <Text strong style={{ color: colors.success }}>
+                <CheckCircleOutlined style={{ marginRight: spacing.xs }} />
+                {t('githubSection.configured')}
+              </Text>
+            ) : (
+              <Text strong style={{ color: colors.textMuted }}>
+                <CloseCircleOutlined style={{ marginRight: spacing.xs }} />
+                {t('githubSection.notConfigured')}
+              </Text>
+            )}
+          </Text>
+        </div>
+
+        {/* GitHub PAT Input */}
+        <div style={{ marginBottom: spacing.lg }}>
+          <Text strong style={{ display: 'block', marginBottom: spacing.sm }}>
+            {hasGithubPat
+              ? t('githubSection.updatePat')
+              : t('githubSection.setPat')}
+          </Text>
+
+          <Space.Compact style={{ width: '100%', marginBottom: spacing.md }}>
+            <Input.Password
+              value={githubPatValue}
+              onChange={(e) => setGithubPatValue(e.target.value)}
+              placeholder={t('githubSection.placeholder')}
+              style={{ flex: 1 }}
+            />
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSaveGithubPat}
+              loading={isSavingGithubPat}
+              disabled={isDeletingGithubPat || !githubPatValue.trim()}
+            >
+              {t('common.save')}
+            </Button>
+          </Space.Compact>
+
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {t('githubSection.hint')}
+          </Text>
+        </div>
+
+        {/* Delete GitHub PAT */}
+        {hasGithubPat && (
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: spacing.sm }}>
+              {t('githubSection.removePat')}
+            </Text>
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              onClick={handleDeleteGithubPat}
+              loading={isDeletingGithubPat}
+              disabled={isSavingGithubPat}
+            >
+              {t('githubSection.deleteButton')}
+            </Button>
+          </div>
+        )}
+
+        {/* Message */}
+        {githubPatMessage && (
+          <Alert
+            type={githubPatMessage.type}
+            message={githubPatMessage.text}
+            showIcon
+            style={{ marginTop: spacing.lg }}
+          />
+        )}
+      </div>
+    );
+  };
+
   const renderSettings = () => (
     <div>
       {isInitialSetup && (
@@ -478,6 +657,22 @@ export default function AppSettingsModal({
       </Flex>
 
       {renderPatSection()}
+
+      <Divider />
+
+      {/* GitHub Section */}
+      <Flex
+        align="center"
+        gap={spacing.sm}
+        style={{ marginBottom: spacing.md }}
+      >
+        <GithubOutlined style={{ color: colors.brand }} />
+        <Text strong style={{ fontSize: 16 }}>
+          {t('githubSection.title')}
+        </Text>
+      </Flex>
+
+      {renderGithubSection()}
     </div>
   );
 

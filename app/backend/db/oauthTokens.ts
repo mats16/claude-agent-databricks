@@ -4,6 +4,7 @@ import { oauthTokens, type OAuthToken, type NewOAuthToken } from './schema.js';
 
 // Provider constants
 export const PROVIDER_DATABRICKS = 'databricks';
+export const PROVIDER_GITHUB = 'github';
 export const AUTH_TYPE_PAT = 'pat';
 
 // Helper to execute queries with RLS user context
@@ -198,4 +199,42 @@ export async function setDatabricksPat(
  */
 export async function deleteDatabricksPat(userId: string): Promise<void> {
   return deleteToken(userId, PROVIDER_DATABRICKS);
+}
+
+// ============================================================================
+// Convenience functions for GitHub PAT
+// ============================================================================
+
+/**
+ * Get GitHub PAT (without RLS - for internal use).
+ * Returns the decrypted plaintext token.
+ */
+export async function getGithubPat(userId: string): Promise<string | null> {
+  const token = await getTokenDirect(userId, PROVIDER_GITHUB);
+  return token?.accessToken ?? null;
+}
+
+/**
+ * Check if GitHub PAT is set (with RLS).
+ */
+export async function hasGithubPat(userId: string): Promise<boolean> {
+  return hasToken(userId, PROVIDER_GITHUB);
+}
+
+/**
+ * Set GitHub PAT (with RLS).
+ * The PAT is automatically encrypted by the encryptedText custom type.
+ *
+ * @param userId - User ID
+ * @param pat - Plaintext PAT (will be encrypted automatically)
+ */
+export async function setGithubPat(userId: string, pat: string): Promise<void> {
+  return upsertToken(userId, PROVIDER_GITHUB, AUTH_TYPE_PAT, pat, null);
+}
+
+/**
+ * Delete GitHub PAT (with RLS).
+ */
+export async function deleteGithubPat(userId: string): Promise<void> {
+  return deleteToken(userId, PROVIDER_GITHUB);
 }

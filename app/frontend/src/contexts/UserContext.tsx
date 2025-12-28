@@ -19,6 +19,7 @@ export interface UserSettings {
   userId: string;
   claudeConfigAutoPush: boolean;
   hasDatabricksPat: boolean;
+  hasGithubPat: boolean;
   encryptionAvailable: boolean;
 }
 
@@ -62,16 +63,18 @@ export function UserProvider({ children }: UserProviderProps) {
 
   const fetchUserSettings = useCallback(async () => {
     try {
-      // Fetch both settings and PAT status in parallel
-      const [settingsRes, patRes] = await Promise.all([
+      // Fetch settings, PAT status, and GitHub status in parallel
+      const [settingsRes, patRes, githubRes] = await Promise.all([
         fetch('/api/v1/settings'),
         fetch('/api/v1/settings/pat'),
+        fetch('/api/v1/settings/github'),
       ]);
 
       let settings = {
         userId: '',
         claudeConfigAutoPush: true,
         hasDatabricksPat: false,
+        hasGithubPat: false,
         encryptionAvailable: false,
       };
 
@@ -84,6 +87,11 @@ export function UserProvider({ children }: UserProviderProps) {
         const patData = await patRes.json();
         settings.hasDatabricksPat = patData.hasPat ?? false;
         settings.encryptionAvailable = patData.encryptionAvailable ?? false;
+      }
+
+      if (githubRes.ok) {
+        const githubData = await githubRes.json();
+        settings.hasGithubPat = githubData.hasGithubPat ?? false;
       }
 
       setUserSettings(settings);
