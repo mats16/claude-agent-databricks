@@ -92,17 +92,17 @@ describe('Session', () => {
   });
 
   describe('localPath getter', () => {
-    it('should return path with shortSuffix', () => {
+    it('should return path with full session id', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
       const session = new Session(existingId);
 
-      expect(session.localPath).toBe('/home/test/ws/084sn02q');
+      expect(session.localPath).toBe('/home/test/ws/session_01h455vb4pex5vsknk084sn02q');
     });
 
     it('should use sessionsBase from config', () => {
       const session = new Session();
 
-      expect(session.localPath.startsWith('/home/test/ws/')).toBe(true);
+      expect(session.localPath.startsWith('/home/test/ws/session_')).toBe(true);
     });
   });
 
@@ -162,7 +162,7 @@ describe('Session', () => {
       session.ensureLocalDir();
 
       expect(fs.mkdirSync).toHaveBeenCalledWith(
-        '/home/test/ws/084sn02q',
+        '/home/test/ws/session_01h455vb4pex5vsknk084sn02q',
         { recursive: true }
       );
     });

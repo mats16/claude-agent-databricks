@@ -59,10 +59,10 @@ export class Session {
   }
 
   /**
-   * Local working directory path: $HOME/ws/{shortSuffix}
+   * Local working directory path: $HOME/ws/{session_id}
    */
   get localPath(): string {
-    return path.join(paths.sessionsBase, this.shortSuffix);
+    return path.join(paths.sessionsBase, this.id);
   }
 
   /**
@@ -90,7 +90,7 @@ export class Session {
 
   /**
    * Ensure local working directory exists
-   * Creates: $HOME/ws/{shortSuffix}
+   * Creates: $HOME/ws/{session_id}
    */
   ensureLocalDir(): void {
     fs.mkdirSync(this.localPath, { recursive: true });
