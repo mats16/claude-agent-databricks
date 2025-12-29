@@ -4,24 +4,33 @@ import { typeid, TypeID } from 'typeid-js';
 import { paths } from '../config/index.js';
 
 /**
- * Session model using TypeID format (session_ + UUIDv7 Base32)
+ * Common interface for Session and SessionDraft
+ */
+export interface ISession {
+  readonly id: string;
+  readonly suffix: string;
+  readonly shortSuffix: string;
+  readonly localPath: string;
+  readonly appName: string;
+  readonly gitBranch: string;
+  ensureLocalDir(): void;
+}
+
+/**
+ * Base class for session models using TypeID format (session_ + UUIDv7 Base32)
  *
  * Example ID: session_01h455vb4pex5vsknk084sn02q
  */
-export class Session {
-  private readonly _id: TypeID<'session'>;
-  private _claudeCodeSessionId: string | null = null;
+abstract class SessionBase implements ISession {
+  protected readonly _id: TypeID<'session'>;
 
-  /**
-   * Create a new Session or restore from existing ID
-   * @param id - Optional existing TypeID string to restore
-   * @throws Error if id has invalid format or wrong prefix
-   */
-  constructor(id?: string) {
+  protected constructor(id?: string) {
     if (id) {
       const parsed = TypeID.fromString(id);
       if (parsed.getType() !== 'session') {
-        throw new Error(`Invalid session ID prefix: expected 'session', got '${parsed.getType()}'`);
+        throw new Error(
+          `Invalid session ID prefix: expected 'session', got '${parsed.getType()}'`
+        );
       }
       this._id = parsed as TypeID<'session'>;
     } else {
@@ -52,20 +61,6 @@ export class Session {
    */
   get shortSuffix(): string {
     return this.suffix.slice(-12);
-  }
-
-  /**
-   * Claude Code internal session ID (set after SDK init message)
-   */
-  get claudeCodeSessionId(): string | null {
-    return this._claudeCodeSessionId;
-  }
-
-  /**
-   * Set Claude Code internal session ID (from SDK init message)
-   */
-  setClaudeCodeSessionId(sessionId: string): void {
-    this._claudeCodeSessionId = sessionId;
   }
 
   /**
@@ -100,13 +95,6 @@ export class Session {
   }
 
   /**
-   * Create Session from existing TypeID string
-   */
-  static fromString(id: string): Session {
-    return new Session(id);
-  }
-
-  /**
    * Validate if a string is a valid session TypeID
    */
   static isValidId(id: string): boolean {
@@ -116,5 +104,38 @@ export class Session {
     } catch {
       return false;
     }
+  }
+}
+
+/**
+ * Draft session before SDK init (no claudeCodeSessionId)
+ *
+ * Use this when creating a new session. After receiving the SDK init message,
+ * create a full Session via createSession() which saves to DB and returns Session.
+ */
+export class SessionDraft extends SessionBase {
+  constructor() {
+    super();
+  }
+}
+
+/**
+ * Immutable session with required claudeCodeSessionId
+ *
+ * Created after SDK init when session is saved to DB.
+ */
+export class Session extends SessionBase {
+  readonly claudeCodeSessionId: string;
+
+  constructor(id: string, claudeCodeSessionId: string) {
+    super(id);
+    this.claudeCodeSessionId = claudeCodeSessionId;
+  }
+
+  /**
+   * Create Session from existing TypeID string and claudeCodeSessionId
+   */
+  static fromRecord(id: string, claudeCodeSessionId: string): Session {
+    return new Session(id, claudeCodeSessionId);
   }
 }

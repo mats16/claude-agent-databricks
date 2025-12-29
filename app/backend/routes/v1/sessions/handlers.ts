@@ -16,7 +16,6 @@ import {
   getSessionsByUserId,
   updateSession,
   archiveSession,
-  updateClaudeCodeSessionId,
 } from '../../../db/sessions.js';
 import { getSettingsDirect } from '../../../db/settings.js';
 import { upsertUser } from '../../../db/users.js';
@@ -24,7 +23,7 @@ import { enqueueDelete } from '../../../services/workspaceQueueService.js';
 import { getUserPersonalAccessToken } from '../../../services/userService.js';
 import { extractRequestContext } from '../../../utils/headers.js';
 import { ClaudeSettings } from '../../../models/ClaudeSettings.js';
-import { Session } from '../../../models/Session.js';
+import { Session, SessionDraft } from '../../../models/Session.js';
 import {
   sessionMessageStreams,
   notifySessionCreated,
@@ -116,11 +115,11 @@ export async function createSessionHandler(
       ? [{ type: 'text', text: userMessage }]
       : userMessage;
 
-  // Create Session model with TypeID and local directory
-  const session = new Session();
-  session.ensureLocalDir();
+  // Create SessionDraft with TypeID and local directory
+  const sessionDraft = new SessionDraft();
+  sessionDraft.ensureLocalDir();
   console.log(
-    `[New Session] Created session: ${session.id}, localPath: ${session.localPath}`
+    `[New Session] Created draft: ${sessionDraft.id}, localPath: ${sessionDraft.localPath}`
   );
 
   // Create settings.json with workspace sync hooks for all sessions
@@ -130,11 +129,14 @@ export async function createSessionHandler(
     claudeConfigAutoPush,
   });
   try {
-    claudeSettings.save(session.localPath);
+    claudeSettings.save(sessionDraft.localPath);
   } catch (error) {
     console.error('[Session] Failed to save Claude settings:', error);
     throw new Error('Failed to initialize session settings');
   }
+
+  // Session will be set after SDK init
+  let session: Session | null = null;
 
   const startAgentProcessing = async () => {
     // Create MessageStream for this session
@@ -151,10 +153,10 @@ export async function createSessionHandler(
       {
         databricksWorkspaceAutoPush,
         claudeConfigAutoPush,
-        sessionId: session.id,
-        sessionLocalPath: session.localPath,
-        sessionAppName: session.appName,
-        sessionGitBranch: session.gitBranch,
+        sessionId: sessionDraft.id,
+        sessionLocalPath: sessionDraft.localPath,
+        sessionAppName: sessionDraft.appName,
+        sessionGitBranch: sessionDraft.gitBranch,
       },
       undefined,
       user,
@@ -169,28 +171,26 @@ export async function createSessionHandler(
         let userMessageSaved = false;
         let sessionSaved = false;
         for await (const sdkMessage of agentIterator) {
-          // Extract Claude Code session ID from init message
+          // Extract Claude Code session ID from init message and create Session
           if (
             sdkMessage.type === 'system' &&
             'subtype' in sdkMessage &&
             sdkMessage.subtype === 'init'
           ) {
             claudeCodeSessionId = sdkMessage.session_id;
-            session.setClaudeCodeSessionId(claudeCodeSessionId);
-            getOrCreateQueue(session.id);
+            getOrCreateQueue(sessionDraft.id);
 
             // Store MessageStream for this session (for interactive messaging)
-            sessionMessageStreams.set(session.id, stream);
+            sessionMessageStreams.set(sessionDraft.id, stream);
 
             // Ensure user exists before creating session
             await upsertUser(userId, user.email);
 
-            // Save session to database with our TypeID
-            // Title is null initially, will be auto-generated from structured output
+            // Save session to database and get immutable Session model
             const sessionTitle = null;
-            await createSession(
+            session = await createSession(
               {
-                id: session.id,
+                id: sessionDraft.id,
                 claudeCodeSessionId,
                 title: sessionTitle,
                 model,
@@ -205,7 +205,7 @@ export async function createSessionHandler(
             // Notify session list WebSocket listeners
             notifySessionCreated(userId, {
               id: session.id,
-              claudeCodeSessionId,
+              claudeCodeSessionId: session.claudeCodeSessionId,
               title: sessionTitle,
               databricksWorkspacePath: databricksWorkspacePath ?? null,
               databricksWorkspaceAutoPush,
@@ -223,7 +223,7 @@ export async function createSessionHandler(
             resolveInit?.();
 
             // Save user message after session is created
-            if (!userMessageSaved) {
+            if (!userMessageSaved && session) {
               const userMsg = createUserMessage(session.id, messageContent);
               await saveMessage(userMsg);
               addEventToQueue(session.id, userMsg);
@@ -232,7 +232,7 @@ export async function createSessionHandler(
           }
 
           // Save all messages to database (use our session ID for events)
-          if (sessionSaved) {
+          if (sessionSaved && session) {
             await saveMessage(sdkMessage);
             addEventToQueue(session.id, sdkMessage);
           }
@@ -259,7 +259,7 @@ export async function createSessionHandler(
           }
         }
       } finally {
-        if (claudeCodeSessionId) {
+        if (claudeCodeSessionId && session) {
           markQueueCompleted(session.id);
           // Cleanup MessageStream
           sessionMessageStreams.delete(session.id);
@@ -286,8 +286,9 @@ export async function createSessionHandler(
     return reply.status(500).send({ error: error.message });
   }
 
+  // session is guaranteed to be set after initReceived resolves
   return {
-    session_id: session.id,
+    session_id: session!.id,
   };
 }
 
@@ -404,8 +405,8 @@ export async function archiveSessionHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  // Reconstruct Session model from TypeID to get paths
-  const sessionModel = Session.fromString(dbSession.id);
+  // Reconstruct Session model from DB record to get paths
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
 
   // Archive the session in database
   await archiveSession(sessionId, userId);
@@ -504,8 +505,8 @@ export async function getAppLiveStatusHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  // Reconstruct Session model from TypeID to get app name
-  const sessionModel = Session.fromString(dbSession.id);
+  // Reconstruct Session model from DB record to get app name
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
   const appName = sessionModel.appName;
 
   // Get access token (User PAT first, then fallback to Service Principal)
@@ -600,7 +601,7 @@ export async function getAppHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  const sessionModel = Session.fromString(dbSession.id);
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
   const appName = sessionModel.appName;
 
   let accessToken: string;
@@ -653,7 +654,7 @@ export async function listAppDeploymentsHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  const sessionModel = Session.fromString(dbSession.id);
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
   const appName = sessionModel.appName;
 
   let accessToken: string;
@@ -706,7 +707,7 @@ export async function createAppDeploymentHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  const sessionModel = Session.fromString(dbSession.id);
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
   const appName = sessionModel.appName;
 
   let accessToken: string;
@@ -767,8 +768,8 @@ export async function getSessionHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  // Reconstruct Session model from TypeID to get paths
-  const sessionModel = Session.fromString(dbSession.id);
+  // Reconstruct Session model from DB record to get paths
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
 
   // Get workspace_url if databricksWorkspacePath is set
   let workspaceUrl: string | null = null;

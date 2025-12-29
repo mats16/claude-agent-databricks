@@ -176,8 +176,8 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               if (!dbSession) {
                 throw new Error('Session not found. Cannot resume session.');
               }
-              // Reconstruct Session model from TypeID to get paths
-              const sessionModel = Session.fromString(dbSession.id);
+              // Reconstruct Session model from DB record to get paths
+              const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
               const databricksWorkspacePath =
                 dbSession.databricksWorkspacePath ?? undefined;
               const databricksWorkspaceAutoPush =

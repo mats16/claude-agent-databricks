@@ -1,6 +1,11 @@
 import { eq, desc, sql, and } from 'drizzle-orm';
 import { db } from './index.js';
-import { sessions, type NewSession, type Session } from './schema.js';
+import {
+  sessions,
+  type NewSession,
+  type Session as DbSession,
+} from './schema.js';
+import { Session } from '../models/Session.js';
 
 // Helper to execute queries with RLS user context
 async function withUserContext<T>(
@@ -13,14 +18,15 @@ async function withUserContext<T>(
   return fn();
 }
 
-// Create a new session (with RLS)
+// Create a new session and return Session model (with RLS)
 // Uses ON CONFLICT DO NOTHING to handle retries with the same session ID
 export async function createSession(
   session: NewSession,
   userId: string
-): Promise<void> {
+): Promise<Session> {
   return withUserContext(userId, async () => {
     await db.insert(sessions).values(session).onConflictDoNothing();
+    return Session.fromRecord(session.id, session.claudeCodeSessionId);
   });
 }
 
@@ -28,7 +34,7 @@ export async function createSession(
 export async function getSessionById(
   id: string,
   userId: string
-): Promise<Session | null> {
+): Promise<DbSession | null> {
   return withUserContext(userId, async () => {
     const result = await db
       .select()
@@ -43,7 +49,7 @@ export async function getSessionById(
 // Get session by ID without RLS (for internal use when user context is already verified)
 export async function getSessionByIdDirect(
   id: string
-): Promise<Session | null> {
+): Promise<DbSession | null> {
   const result = await db
     .select()
     .from(sessions)
@@ -57,7 +63,7 @@ export async function getSessionByIdDirect(
 export async function getSessionsByUserId(
   userId: string,
   filter: 'active' | 'archived' | 'all' = 'active'
-): Promise<Session[]> {
+): Promise<DbSession[]> {
   return withUserContext(userId, async () => {
     let whereClause;
     if (filter === 'active') {
@@ -133,16 +139,3 @@ export async function archiveSession(
   });
 }
 
-// Update Claude Code session ID (with RLS)
-export async function updateClaudeCodeSessionId(
-  id: string,
-  claudeCodeSessionId: string,
-  userId: string
-): Promise<void> {
-  return withUserContext(userId, async () => {
-    await db
-      .update(sessions)
-      .set({ claudeCodeSessionId, updatedAt: new Date() })
-      .where(eq(sessions.id, id));
-  });
-}

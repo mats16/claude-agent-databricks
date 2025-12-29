@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fs from 'fs';
-import path from 'path';
-import { Session } from '../Session.js';
+import { Session, SessionDraft } from '../Session.js';
 
 // Mock fs module
 vi.mock('fs', () => ({
@@ -17,65 +16,139 @@ vi.mock('../../config/index.js', () => ({
   },
 }));
 
+describe('SessionDraft', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('constructor', () => {
+    it('should generate new TypeID', () => {
+      const draft = new SessionDraft();
+
+      expect(draft.id).toMatch(/^session_[0-9a-z]{26}$/);
+    });
+  });
+
+  describe('id getter', () => {
+    it('should return full TypeID string', () => {
+      const draft = new SessionDraft();
+
+      expect(draft.id).toMatch(/^session_[0-9a-z]{26}$/);
+      expect(draft.id.startsWith('session_')).toBe(true);
+    });
+  });
+
+  describe('suffix getter', () => {
+    it('should return UUIDv7 Base32 without prefix', () => {
+      const draft = new SessionDraft();
+
+      expect(draft.suffix).toHaveLength(26);
+      expect(draft.id).toBe(`session_${draft.suffix}`);
+    });
+  });
+
+  describe('shortSuffix getter', () => {
+    it('should return last 12 characters of suffix', () => {
+      const draft = new SessionDraft();
+
+      expect(draft.shortSuffix).toHaveLength(12);
+      expect(draft.suffix.endsWith(draft.shortSuffix)).toBe(true);
+    });
+  });
+
+  describe('localPath getter', () => {
+    it('should use sessionsBase from config', () => {
+      const draft = new SessionDraft();
+
+      expect(draft.localPath.startsWith('/home/test/ws/')).toBe(true);
+      expect(draft.localPath).toMatch(/\/home\/test\/ws\/[0-9a-z]{12}$/);
+    });
+  });
+
+  describe('appName getter', () => {
+    it('should return dev-{suffix} format', () => {
+      const draft = new SessionDraft();
+
+      expect(draft.appName).toMatch(/^dev-[0-9a-z]{26}$/);
+    });
+
+    it('should have max length of 30 characters', () => {
+      const draft = new SessionDraft();
+
+      // dev- (4 chars) + suffix (26 chars) = 30 chars
+      expect(draft.appName.length).toBe(30);
+    });
+  });
+
+  describe('gitBranch getter', () => {
+    it('should return claude/session-{shortSuffix} format', () => {
+      const draft = new SessionDraft();
+
+      expect(draft.gitBranch).toMatch(/^claude\/session-[0-9a-z]{12}$/);
+    });
+  });
+
+  describe('ensureLocalDir', () => {
+    it('should create directory with recursive option', () => {
+      const draft = new SessionDraft();
+
+      draft.ensureLocalDir();
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(draft.localPath, {
+        recursive: true,
+      });
+    });
+  });
+});
+
 describe('Session', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('constructor', () => {
-    it('should generate new TypeID when no id provided', () => {
-      const session = new Session();
-
-      expect(session.id).toMatch(/^session_[0-9a-z]{26}$/);
-    });
-
-    it('should restore from existing TypeID string', () => {
+    it('should require id and claudeCodeSessionId', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
-      const session = new Session(existingId);
+      const claudeCodeSessionId = 'claude-session-123';
+      const session = new Session(existingId, claudeCodeSessionId);
 
       expect(session.id).toBe(existingId);
+      expect(session.claudeCodeSessionId).toBe(claudeCodeSessionId);
     });
 
     it('should throw error for invalid TypeID format', () => {
-      expect(() => new Session('invalid-id')).toThrow();
+      expect(() => new Session('invalid-id', 'claude-123')).toThrow();
     });
 
     it('should throw error for wrong TypeID prefix', () => {
-      // Constructor now validates prefix for type safety
-      expect(() => new Session('user_01h455vb4pex5vsknk084sn02q')).toThrow(
-        "Invalid session ID prefix: expected 'session', got 'user'"
-      );
+      expect(
+        () => new Session('user_01h455vb4pex5vsknk084sn02q', 'claude-123')
+      ).toThrow("Invalid session ID prefix: expected 'session', got 'user'");
     });
   });
 
   describe('id getter', () => {
     it('should return full TypeID string', () => {
-      const session = new Session();
+      const existingId = 'session_01h455vb4pex5vsknk084sn02q';
+      const session = new Session(existingId, 'claude-123');
 
-      expect(session.id).toMatch(/^session_[0-9a-z]{26}$/);
-      expect(session.id.startsWith('session_')).toBe(true);
+      expect(session.id).toBe(existingId);
     });
   });
 
   describe('suffix getter', () => {
     it('should return UUIDv7 Base32 without prefix', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
-      const session = new Session(existingId);
+      const session = new Session(existingId, 'claude-123');
 
       expect(session.suffix).toBe('01h455vb4pex5vsknk084sn02q');
-    });
-
-    it('should have 26 character length', () => {
-      const session = new Session();
-
-      expect(session.suffix).toHaveLength(26);
     });
   });
 
   describe('shortSuffix getter', () => {
     it('should return last 12 characters of suffix', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
-      const session = new Session(existingId);
+      const session = new Session(existingId, 'claude-123');
 
       // suffix: 01h455vb4pex5vsknk084sn02q (26 chars)
       // slice(-12): sknk084sn02q (12 chars)
@@ -83,7 +156,8 @@ describe('Session', () => {
     });
 
     it('should have 12 character length', () => {
-      const session = new Session();
+      const existingId = 'session_01h455vb4pex5vsknk084sn02q';
+      const session = new Session(existingId, 'claude-123');
 
       expect(session.shortSuffix).toHaveLength(12);
     });
@@ -92,35 +166,23 @@ describe('Session', () => {
   describe('localPath getter', () => {
     it('should return path with shortSuffix', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
-      const session = new Session(existingId);
+      const session = new Session(existingId, 'claude-123');
 
       expect(session.localPath).toBe('/home/test/ws/sknk084sn02q');
-    });
-
-    it('should use sessionsBase from config', () => {
-      const session = new Session();
-
-      expect(session.localPath.startsWith('/home/test/ws/')).toBe(true);
-      expect(session.localPath).toMatch(/\/home\/test\/ws\/[0-9a-z]{12}$/);
     });
   });
 
   describe('appName getter', () => {
     it('should return dev-{suffix} format', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
-      const session = new Session(existingId);
+      const session = new Session(existingId, 'claude-123');
 
       expect(session.appName).toBe('dev-01h455vb4pex5vsknk084sn02q');
     });
 
-    it('should use full suffix for uniqueness', () => {
-      const session = new Session();
-
-      expect(session.appName).toMatch(/^dev-[0-9a-z]{26}$/);
-    });
-
     it('should have max length of 30 characters', () => {
-      const session = new Session();
+      const existingId = 'session_01h455vb4pex5vsknk084sn02q';
+      const session = new Session(existingId, 'claude-123');
 
       // dev- (4 chars) + suffix (26 chars) = 30 chars
       expect(session.appName.length).toBe(30);
@@ -130,53 +192,47 @@ describe('Session', () => {
   describe('gitBranch getter', () => {
     it('should return claude/session-{shortSuffix} format', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
-      const session = new Session(existingId);
+      const session = new Session(existingId, 'claude-123');
 
       expect(session.gitBranch).toBe('claude/session-sknk084sn02q');
     });
   });
 
   describe('claudeCodeSessionId', () => {
-    it('should be null by default', () => {
-      const session = new Session();
+    it('should be required and readonly', () => {
+      const existingId = 'session_01h455vb4pex5vsknk084sn02q';
+      const claudeCodeSessionId = 'claude-session-123';
+      const session = new Session(existingId, claudeCodeSessionId);
 
-      expect(session.claudeCodeSessionId).toBeNull();
-    });
-
-    it('should be settable via setClaudeCodeSessionId', () => {
-      const session = new Session();
-      const claudeSessionId = 'claude-session-123';
-
-      session.setClaudeCodeSessionId(claudeSessionId);
-
-      expect(session.claudeCodeSessionId).toBe(claudeSessionId);
+      expect(session.claudeCodeSessionId).toBe(claudeCodeSessionId);
     });
   });
 
   describe('ensureLocalDir', () => {
     it('should create directory with recursive option', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
-      const session = new Session(existingId);
+      const session = new Session(existingId, 'claude-123');
 
       session.ensureLocalDir();
 
-      expect(fs.mkdirSync).toHaveBeenCalledWith(
-        '/home/test/ws/sknk084sn02q',
-        { recursive: true }
-      );
+      expect(fs.mkdirSync).toHaveBeenCalledWith('/home/test/ws/sknk084sn02q', {
+        recursive: true,
+      });
     });
   });
 
-  describe('fromString static method', () => {
-    it('should create Session from valid TypeID string', () => {
+  describe('fromRecord static method', () => {
+    it('should create Session from id and claudeCodeSessionId', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
-      const session = Session.fromString(existingId);
+      const claudeCodeSessionId = 'claude-session-123';
+      const session = Session.fromRecord(existingId, claudeCodeSessionId);
 
       expect(session.id).toBe(existingId);
+      expect(session.claudeCodeSessionId).toBe(claudeCodeSessionId);
     });
 
     it('should throw error for invalid string', () => {
-      expect(() => Session.fromString('invalid')).toThrow();
+      expect(() => Session.fromRecord('invalid', 'claude-123')).toThrow();
     });
   });
 
@@ -200,57 +256,72 @@ describe('Session', () => {
     });
 
     it('should return false for UUID format (not TypeID)', () => {
-      expect(Session.isValidId('550e8400-e29b-41d4-a716-446655440000')).toBe(false);
+      expect(Session.isValidId('550e8400-e29b-41d4-a716-446655440000')).toBe(
+        false
+      );
     });
   });
+});
 
-  describe('uniqueness', () => {
-    it('should generate unique IDs for multiple sessions', () => {
-      const session1 = new Session();
-      const session2 = new Session();
-      const session3 = new Session();
-
-      const ids = [session1.id, session2.id, session3.id];
-      const uniqueIds = new Set(ids);
-
-      expect(uniqueIds.size).toBe(3);
-    });
+describe('SessionDraft to Session flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe('edge cases', () => {
-    it('should be sortable by creation time (TypeID property)', () => {
-      // TypeID uses UUIDv7 which is time-ordered
-      const session1 = new Session();
-      const session2 = new Session();
-      const session3 = new Session();
+  it('should support draft → session creation flow', () => {
+    // Create draft
+    const draft = new SessionDraft();
+    draft.ensureLocalDir();
 
-      const ids = [session3.id, session1.id, session2.id];
-      const sortedIds = [...ids].sort();
+    // Simulate SDK init returning claudeCodeSessionId
+    const claudeCodeSessionId = 'claude-session-abc123';
 
-      // Sessions created in order should sort in creation order
-      expect(sortedIds).toEqual([session1.id, session2.id, session3.id]);
-    });
+    // Create session from draft ID
+    const session = Session.fromRecord(draft.id, claudeCodeSessionId);
 
-    it('should have consistent suffix extraction', () => {
-      const existingId = 'session_01h455vb4pex5vsknk084sn02q';
-      const session = new Session(existingId);
+    // Verify same ID
+    expect(session.id).toBe(draft.id);
+    expect(session.suffix).toBe(draft.suffix);
+    expect(session.shortSuffix).toBe(draft.shortSuffix);
+    expect(session.localPath).toBe(draft.localPath);
+    expect(session.appName).toBe(draft.appName);
+    expect(session.gitBranch).toBe(draft.gitBranch);
 
-      // Verify suffix relationships
-      expect(session.id).toBe(`session_${session.suffix}`);
-      expect(session.suffix.endsWith(session.shortSuffix)).toBe(true);
-      expect(session.shortSuffix).toHaveLength(12);
-    });
+    // Session has claudeCodeSessionId
+    expect(session.claudeCodeSessionId).toBe(claudeCodeSessionId);
+  });
 
-    it('should handle session restoration consistently', () => {
-      const original = new Session();
-      const restored = Session.fromString(original.id);
+  it('should generate unique IDs for multiple drafts', () => {
+    const draft1 = new SessionDraft();
+    const draft2 = new SessionDraft();
+    const draft3 = new SessionDraft();
 
-      expect(restored.id).toBe(original.id);
-      expect(restored.suffix).toBe(original.suffix);
-      expect(restored.shortSuffix).toBe(original.shortSuffix);
-      expect(restored.localPath).toBe(original.localPath);
-      expect(restored.appName).toBe(original.appName);
-      expect(restored.gitBranch).toBe(original.gitBranch);
-    });
+    const ids = [draft1.id, draft2.id, draft3.id];
+    const uniqueIds = new Set(ids);
+
+    expect(uniqueIds.size).toBe(3);
+  });
+
+  it('should be sortable by creation time (TypeID property)', () => {
+    // TypeID uses UUIDv7 which is time-ordered
+    const draft1 = new SessionDraft();
+    const draft2 = new SessionDraft();
+    const draft3 = new SessionDraft();
+
+    const ids = [draft3.id, draft1.id, draft2.id];
+    const sortedIds = [...ids].sort();
+
+    // Sessions created in order should sort in creation order
+    expect(sortedIds).toEqual([draft1.id, draft2.id, draft3.id]);
+  });
+
+  it('should have consistent suffix extraction', () => {
+    const existingId = 'session_01h455vb4pex5vsknk084sn02q';
+    const session = new Session(existingId, 'claude-123');
+
+    // Verify suffix relationships
+    expect(session.id).toBe(`session_${session.suffix}`);
+    expect(session.suffix.endsWith(session.shortSuffix)).toBe(true);
+    expect(session.shortSuffix).toHaveLength(12);
   });
 });

@@ -127,8 +127,8 @@ export async function getFileHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  // Reconstruct Session model from TypeID to get localPath
-  const sessionModel = Session.fromString(dbSession.id);
+  // Reconstruct Session model from DB record to get localPath
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
   const agentLocalPath = sessionModel.localPath;
 
   // Validate file path
@@ -200,8 +200,8 @@ export async function uploadFileHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  // Reconstruct Session model from TypeID to get localPath
-  const sessionModel = Session.fromString(dbSession.id);
+  // Reconstruct Session model from DB record to get localPath
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
   const agentLocalPath = sessionModel.localPath;
 
   // Validate file path
@@ -280,8 +280,8 @@ export async function deleteFileHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  // Reconstruct Session model from TypeID to get localPath
-  const sessionModel = Session.fromString(dbSession.id);
+  // Reconstruct Session model from DB record to get localPath
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
   const agentLocalPath = sessionModel.localPath;
 
   // Validate file path
@@ -339,8 +339,8 @@ export async function listFilesHandler(
     return reply.status(404).send({ error: 'Session not found' });
   }
 
-  // Reconstruct Session model from TypeID to get localPath
-  const sessionModel = Session.fromString(dbSession.id);
+  // Reconstruct Session model from DB record to get localPath
+  const sessionModel = Session.fromRecord(dbSession.id, dbSession.claudeCodeSessionId);
   const agentLocalPath = sessionModel.localPath;
 
   // Check if directory exists
