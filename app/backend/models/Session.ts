@@ -39,8 +39,8 @@ export class Session {
   }
 
   /**
-   * Short suffix for App name and directory (last 8 characters)
-   * Used for: app-by-claude-{shortSuffix}, directory name
+   * Short suffix for directory name (last 8 characters)
+   * Used for: directory name
    */
   get shortSuffix(): string {
     return this.suffix.slice(-8);
@@ -61,11 +61,11 @@ export class Session {
   }
 
   /**
-   * Databricks App name: app-by-claude-{shortSuffix}
-   * Fits within 30-char limit
+   * Databricks App name: claude-{suffix}
+   * Uses full UUIDv7 Base32 suffix for uniqueness
    */
   get appName(): string {
-    return `app-by-claude-${this.shortSuffix}`;
+    return `claude-${this.suffix}`;
   }
 
   /**
