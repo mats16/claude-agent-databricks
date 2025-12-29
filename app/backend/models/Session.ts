@@ -44,11 +44,14 @@ export class Session {
   }
 
   /**
-   * Short suffix (last 8 characters of UUIDv7)
+   * Short suffix (last 12 characters of UUIDv7 Base32)
    * Used for: local directory name, git branch name
+   *
+   * 12 characters provide ~60 bits of entropy (5 bits per Base32 char).
+   * Collision probability is negligible for practical use cases.
    */
   get shortSuffix(): string {
-    return this.suffix.slice(-8);
+    return this.suffix.slice(-12);
   }
 
   /**

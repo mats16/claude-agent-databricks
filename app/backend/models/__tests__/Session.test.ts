@@ -73,21 +73,19 @@ describe('Session', () => {
   });
 
   describe('shortSuffix getter', () => {
-    it('should return last 8 characters of suffix', () => {
+    it('should return last 12 characters of suffix', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
       const session = new Session(existingId);
 
       // suffix: 01h455vb4pex5vsknk084sn02q (26 chars)
-      // slice(-8): 084sn02q (8 chars)
-      expect(session.shortSuffix).toBe('084sn02q');
+      // slice(-12): sknk084sn02q (12 chars)
+      expect(session.shortSuffix).toBe('sknk084sn02q');
     });
 
-    it('should have 8 character length', () => {
+    it('should have 12 character length', () => {
       const session = new Session();
 
-      // shortSuffix is suffix.slice(-8), but suffix is 26 chars
-      // so shortSuffix should be 8 chars
-      expect(session.shortSuffix.length).toBeLessThanOrEqual(8);
+      expect(session.shortSuffix).toHaveLength(12);
     });
   });
 
@@ -96,14 +94,14 @@ describe('Session', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
       const session = new Session(existingId);
 
-      expect(session.localPath).toBe('/home/test/ws/084sn02q');
+      expect(session.localPath).toBe('/home/test/ws/sknk084sn02q');
     });
 
     it('should use sessionsBase from config', () => {
       const session = new Session();
 
       expect(session.localPath.startsWith('/home/test/ws/')).toBe(true);
-      expect(session.localPath).toMatch(/\/home\/test\/ws\/[0-9a-z]{8}$/);
+      expect(session.localPath).toMatch(/\/home\/test\/ws\/[0-9a-z]{12}$/);
     });
   });
 
@@ -134,7 +132,7 @@ describe('Session', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
       const session = new Session(existingId);
 
-      expect(session.gitBranch).toBe('claude/session-084sn02q');
+      expect(session.gitBranch).toBe('claude/session-sknk084sn02q');
     });
   });
 
@@ -163,7 +161,7 @@ describe('Session', () => {
       session.ensureLocalDir();
 
       expect(fs.mkdirSync).toHaveBeenCalledWith(
-        '/home/test/ws/084sn02q',
+        '/home/test/ws/sknk084sn02q',
         { recursive: true }
       );
     });
@@ -216,6 +214,43 @@ describe('Session', () => {
       const uniqueIds = new Set(ids);
 
       expect(uniqueIds.size).toBe(3);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should be sortable by creation time (TypeID property)', () => {
+      // TypeID uses UUIDv7 which is time-ordered
+      const session1 = new Session();
+      const session2 = new Session();
+      const session3 = new Session();
+
+      const ids = [session3.id, session1.id, session2.id];
+      const sortedIds = [...ids].sort();
+
+      // Sessions created in order should sort in creation order
+      expect(sortedIds).toEqual([session1.id, session2.id, session3.id]);
+    });
+
+    it('should have consistent suffix extraction', () => {
+      const existingId = 'session_01h455vb4pex5vsknk084sn02q';
+      const session = new Session(existingId);
+
+      // Verify suffix relationships
+      expect(session.id).toBe(`session_${session.suffix}`);
+      expect(session.suffix.endsWith(session.shortSuffix)).toBe(true);
+      expect(session.shortSuffix).toHaveLength(12);
+    });
+
+    it('should handle session restoration consistently', () => {
+      const original = new Session();
+      const restored = Session.fromString(original.id);
+
+      expect(restored.id).toBe(original.id);
+      expect(restored.suffix).toBe(original.suffix);
+      expect(restored.shortSuffix).toBe(original.shortSuffix);
+      expect(restored.localPath).toBe(original.localPath);
+      expect(restored.appName).toBe(original.appName);
+      expect(restored.gitBranch).toBe(original.gitBranch);
     });
   });
 });
