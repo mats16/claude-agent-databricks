@@ -92,17 +92,18 @@ describe('Session', () => {
   });
 
   describe('localPath getter', () => {
-    it('should return path with full session id', () => {
+    it('should return path with shortSuffix', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
       const session = new Session(existingId);
 
-      expect(session.localPath).toBe('/home/test/ws/session_01h455vb4pex5vsknk084sn02q');
+      expect(session.localPath).toBe('/home/test/ws/084sn02q');
     });
 
     it('should use sessionsBase from config', () => {
       const session = new Session();
 
-      expect(session.localPath.startsWith('/home/test/ws/session_')).toBe(true);
+      expect(session.localPath.startsWith('/home/test/ws/')).toBe(true);
+      expect(session.localPath).toMatch(/\/home\/test\/ws\/[0-9a-z]{8}$/);
     });
   });
 
@@ -137,23 +138,6 @@ describe('Session', () => {
     });
   });
 
-  describe('claudeCodeSessionId', () => {
-    it('should be null by default', () => {
-      const session = new Session();
-
-      expect(session.claudeCodeSessionId).toBeNull();
-    });
-
-    it('should be settable via setClaudeCodeSessionId', () => {
-      const session = new Session();
-      const claudeSessionId = 'claude-session-123';
-
-      session.setClaudeCodeSessionId(claudeSessionId);
-
-      expect(session.claudeCodeSessionId).toBe(claudeSessionId);
-    });
-  });
-
   describe('ensureLocalDir', () => {
     it('should create directory with recursive option', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
@@ -162,7 +146,7 @@ describe('Session', () => {
       session.ensureLocalDir();
 
       expect(fs.mkdirSync).toHaveBeenCalledWith(
-        '/home/test/ws/session_01h455vb4pex5vsknk084sn02q',
+        '/home/test/ws/084sn02q',
         { recursive: true }
       );
     });

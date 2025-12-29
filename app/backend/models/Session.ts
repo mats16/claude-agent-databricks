@@ -10,7 +10,6 @@ import { paths } from '../config/index.js';
  */
 export class Session {
   private readonly _id: TypeID<'session'>;
-  private _claudeCodeSessionId: string | null = null;
 
   /**
    * Create a new Session or restore from existing ID
@@ -44,25 +43,18 @@ export class Session {
   }
 
   /**
-   * Short suffix for directory name (last 8 characters)
-   * Used for: directory name
+   * Short suffix (last 8 characters of UUIDv7)
+   * Used for: local directory name, git branch name
    */
   get shortSuffix(): string {
     return this.suffix.slice(-8);
   }
 
   /**
-   * Claude Code internal session ID (set after init message)
-   */
-  get claudeCodeSessionId(): string | null {
-    return this._claudeCodeSessionId;
-  }
-
-  /**
-   * Local working directory path: $HOME/ws/{session_id}
+   * Local working directory path: $HOME/ws/{shortSuffix}
    */
   get localPath(): string {
-    return path.join(paths.sessionsBase, this.id);
+    return path.join(paths.sessionsBase, this.shortSuffix);
   }
 
   /**
@@ -82,15 +74,8 @@ export class Session {
   }
 
   /**
-   * Set Claude Code internal session ID (from init message)
-   */
-  setClaudeCodeSessionId(sessionId: string): void {
-    this._claudeCodeSessionId = sessionId;
-  }
-
-  /**
    * Ensure local working directory exists
-   * Creates: $HOME/ws/{session_id}
+   * Creates: $HOME/ws/{shortSuffix}
    */
   ensureLocalDir(): void {
     fs.mkdirSync(this.localPath, { recursive: true });

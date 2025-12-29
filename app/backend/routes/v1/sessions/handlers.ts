@@ -129,7 +129,12 @@ export async function createSessionHandler(
     workspaceAutoPush: databricksWorkspaceAutoPush,
     claudeConfigAutoPush,
   });
-  claudeSettings.save(session.localPath);
+  try {
+    claudeSettings.save(session.localPath);
+  } catch (error) {
+    console.error('[Session] Failed to save Claude settings:', error);
+    throw new Error('Failed to initialize session settings');
+  }
 
   const startAgentProcessing = async () => {
     // Create MessageStream for this session
@@ -171,7 +176,6 @@ export async function createSessionHandler(
             sdkMessage.subtype === 'init'
           ) {
             claudeCodeSessionId = sdkMessage.session_id;
-            session.setClaudeCodeSessionId(claudeCodeSessionId);
             getOrCreateQueue(session.id);
 
             // Store MessageStream for this session (for interactive messaging)
