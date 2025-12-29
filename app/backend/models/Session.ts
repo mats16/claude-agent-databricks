@@ -15,10 +15,15 @@ export class Session {
   /**
    * Create a new Session or restore from existing ID
    * @param id - Optional existing TypeID string to restore
+   * @throws Error if id has invalid format or wrong prefix
    */
   constructor(id?: string) {
     if (id) {
-      this._id = TypeID.fromString(id) as TypeID<'session'>;
+      const parsed = TypeID.fromString(id);
+      if (parsed.getType() !== 'session') {
+        throw new Error(`Invalid session ID prefix: expected 'session', got '${parsed.getType()}'`);
+      }
+      this._id = parsed as TypeID<'session'>;
     } else {
       this._id = typeid('session');
     }
@@ -61,11 +66,12 @@ export class Session {
   }
 
   /**
-   * Databricks App name: claude-{suffix}
+   * Databricks App name: dev-{suffix}
    * Uses full UUIDv7 Base32 suffix for uniqueness
+   * Prefix 'dev-' keeps total length under 30 chars (4 + 26 = 30)
    */
   get appName(): string {
-    return `claude-${this.suffix}`;
+    return `dev-${this.suffix}`;
   }
 
   /**

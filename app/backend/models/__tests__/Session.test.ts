@@ -40,11 +40,11 @@ describe('Session', () => {
       expect(() => new Session('invalid-id')).toThrow();
     });
 
-    it('should accept TypeID with different prefix (but isValidId returns false)', () => {
-      // TypeID.fromString parses any valid TypeID, so constructor doesn't throw
-      // Use isValidId to validate the prefix
-      const session = new Session('session_01h455vb4pex5vsknk084sn02q');
-      expect(session.id).toBe('session_01h455vb4pex5vsknk084sn02q');
+    it('should throw error for wrong TypeID prefix', () => {
+      // Constructor now validates prefix for type safety
+      expect(() => new Session('user_01h455vb4pex5vsknk084sn02q')).toThrow(
+        "Invalid session ID prefix: expected 'session', got 'user'"
+      );
     });
   });
 
@@ -107,17 +107,24 @@ describe('Session', () => {
   });
 
   describe('appName getter', () => {
-    it('should return claude-{suffix} format', () => {
+    it('should return dev-{suffix} format', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';
       const session = new Session(existingId);
 
-      expect(session.appName).toBe('claude-01h455vb4pex5vsknk084sn02q');
+      expect(session.appName).toBe('dev-01h455vb4pex5vsknk084sn02q');
     });
 
     it('should use full suffix for uniqueness', () => {
       const session = new Session();
 
-      expect(session.appName).toMatch(/^claude-[0-9a-z]{26}$/);
+      expect(session.appName).toMatch(/^dev-[0-9a-z]{26}$/);
+    });
+
+    it('should have max length of 30 characters', () => {
+      const session = new Session();
+
+      // dev- (4 chars) + suffix (26 chars) = 30 chars
+      expect(session.appName.length).toBe(30);
     });
   });
 

@@ -36,7 +36,11 @@ CREATE TABLE events (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- Recreate indexes
+-- Recreate indexes (drop first to avoid duplication errors)
+DROP INDEX IF EXISTS idx_sessions_user_id;
+DROP INDEX IF EXISTS idx_events_session_id;
+DROP INDEX IF EXISTS idx_events_session_seq;
+
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX idx_events_session_id ON events(session_id);
 CREATE INDEX idx_events_session_seq ON events(session_id, seq);
