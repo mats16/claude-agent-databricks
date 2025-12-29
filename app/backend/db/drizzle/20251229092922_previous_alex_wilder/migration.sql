@@ -22,7 +22,7 @@ CREATE TABLE "oauth_tokens" (
 ALTER TABLE "oauth_tokens" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "sessions" (
 	"id" text PRIMARY KEY,
-	"claude_code_session_id" text,
+	"claude_code_session_id" text NOT NULL,
 	"title" text,
 	"summary" text,
 	"model" text NOT NULL,

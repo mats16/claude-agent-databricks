@@ -138,6 +138,23 @@ describe('Session', () => {
     });
   });
 
+  describe('claudeCodeSessionId', () => {
+    it('should be null by default', () => {
+      const session = new Session();
+
+      expect(session.claudeCodeSessionId).toBeNull();
+    });
+
+    it('should be settable via setClaudeCodeSessionId', () => {
+      const session = new Session();
+      const claudeSessionId = 'claude-session-123';
+
+      session.setClaudeCodeSessionId(claudeSessionId);
+
+      expect(session.claudeCodeSessionId).toBe(claudeSessionId);
+    });
+  });
+
   describe('ensureLocalDir', () => {
     it('should create directory with recursive option', () => {
       const existingId = 'session_01h455vb4pex5vsknk084sn02q';

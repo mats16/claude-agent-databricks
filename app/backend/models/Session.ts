@@ -10,6 +10,7 @@ import { paths } from '../config/index.js';
  */
 export class Session {
   private readonly _id: TypeID<'session'>;
+  private _claudeCodeSessionId: string | null = null;
 
   /**
    * Create a new Session or restore from existing ID
@@ -48,6 +49,20 @@ export class Session {
    */
   get shortSuffix(): string {
     return this.suffix.slice(-8);
+  }
+
+  /**
+   * Claude Code internal session ID (set after SDK init message)
+   */
+  get claudeCodeSessionId(): string | null {
+    return this._claudeCodeSessionId;
+  }
+
+  /**
+   * Set Claude Code internal session ID (from SDK init message)
+   */
+  setClaudeCodeSessionId(sessionId: string): void {
+    this._claudeCodeSessionId = sessionId;
   }
 
   /**

@@ -29,7 +29,7 @@ export const sessions = pgTable(
   'sessions',
   {
     id: text('id').primaryKey(), // TypeID format: session_xxx
-    claudeCodeSessionId: text('claude_code_session_id'), // Claude Code internal session ID (set after init)
+    claudeCodeSessionId: text('claude_code_session_id').notNull(), // Claude Code internal session ID (from SDK init)
     title: text('title'),
     summary: text('summary'), // Auto-generated session summary from structured output
     model: text('model').notNull(),

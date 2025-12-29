@@ -176,6 +176,7 @@ export async function createSessionHandler(
             sdkMessage.subtype === 'init'
           ) {
             claudeCodeSessionId = sdkMessage.session_id;
+            session.setClaudeCodeSessionId(claudeCodeSessionId);
             getOrCreateQueue(session.id);
 
             // Store MessageStream for this session (for interactive messaging)
