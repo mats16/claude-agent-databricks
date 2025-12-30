@@ -1,5 +1,5 @@
 import { getAccessToken } from '../agent/index.js';
-import { getUserPersonalAccessToken } from '../services/userService.js';
+import { getUserPersonalAccessToken } from '../services/user.service.js';
 
 /**
  * Get access token for Databricks API calls.

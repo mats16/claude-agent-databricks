@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { extractRequestContext } from '../../../../utils/headers.js';
-import * as subagentService from '../../../../services/subagentService.js';
-import { parseGitHubRepo } from '../../../../services/gitHubClient.js';
+import * as subagentService from '../../../../services/subagent.service.js';
+import { parseGitHubRepo } from '../../../../services/github-client.service.js';
 
 // List all subagents
 export async function listSubagentsHandler(

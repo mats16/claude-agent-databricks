@@ -5,7 +5,7 @@ import { processAgentRequest, MessageStream } from '../../../agent/index.js';
 import { saveMessage } from '../../../db/events.js';
 import { getSessionById, updateSession } from '../../../db/sessions.js';
 import { getSettingsDirect } from '../../../db/settings.js';
-import { getUserPersonalAccessToken } from '../../../services/userService.js';
+import { getUserPersonalAccessToken } from '../../../services/user.service.js';
 import { extractRequestContextFromHeaders } from '../../../utils/headers.js';
 import { Session } from '../../../models/Session.js';
 import {
@@ -17,7 +17,7 @@ import {
   createControlRequest,
   createControlResponse,
   createResultMessage,
-} from '../../../services/sessionState.js';
+} from '../../../services/session-state.service.js';
 
 const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
   // WebSocket endpoint for session list updates

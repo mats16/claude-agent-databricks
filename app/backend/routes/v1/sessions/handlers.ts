@@ -8,7 +8,7 @@ import {
   getAccessToken,
 } from '../../../agent/index.js';
 import { databricks, paths } from '../../../config/index.js';
-import * as workspaceService from '../../../services/workspaceService.js';
+import * as workspaceService from '../../../services/workspace.service.js';
 import { saveMessage, getMessagesBySessionId } from '../../../db/events.js';
 import {
   createSession,
@@ -20,8 +20,8 @@ import {
 } from '../../../db/sessions.js';
 import { getSettingsDirect } from '../../../db/settings.js';
 import { upsertUser } from '../../../db/users.js';
-import { enqueueDelete } from '../../../services/workspaceQueueService.js';
-import { getUserPersonalAccessToken } from '../../../services/userService.js';
+import { enqueueDelete } from '../../../services/workspace-queue.service.js';
+import { getUserPersonalAccessToken } from '../../../services/user.service.js';
 import { extractRequestContext } from '../../../utils/headers.js';
 import { ClaudeSettings } from '../../../models/ClaudeSettings.js';
 import { SessionDraft, Session } from '../../../models/Session.js';
@@ -32,8 +32,8 @@ import {
   addEventToQueue,
   markQueueCompleted,
   createUserMessage,
-} from '../../../services/sessionState.js';
-import { generateTitleAsync } from '../../../services/titleService.js';
+} from '../../../services/session-state.service.js';
+import { generateTitleAsync } from '../../../services/title.service.js';
 
 // Types
 interface CreateSessionBody {
