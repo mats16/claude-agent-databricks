@@ -26,9 +26,19 @@ export class SessionId {
 
   /**
    * Factory: Restore from DB string
+   * @throws Error if the ID is not a valid session TypeID
    */
   static fromString(id: string): SessionId {
-    return new SessionId(TypeID.fromString(id) as TypeID<'session'>);
+    const typeId = TypeID.fromString(id);
+
+    // Validate that the TypeID has the correct 'session' prefix
+    if (typeId.getType() !== 'session') {
+      throw new Error(
+        `Invalid session ID type: expected 'session', got '${typeId.getType()}'`
+      );
+    }
+
+    return new SessionId(typeId as TypeID<'session'>);
   }
 
   /**

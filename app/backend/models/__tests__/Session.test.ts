@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { SelectSession } from '../../db/schema.js';
 import fs from 'fs';
 import path from 'path';
@@ -44,6 +44,20 @@ describe('SessionId', () => {
       const sessionId = SessionId.fromString(idString);
       expect(sessionId.toString()).toBe(idString);
       expect(sessionId.getSuffix()).toBe('01h455vb4pex5vsknk084sn02q');
+    });
+
+    it('should throw error for invalid TypeID prefix', () => {
+      const invalidId = 'user_01h455vb4pex5vsknk084sn02q'; // Wrong prefix
+      expect(() => SessionId.fromString(invalidId)).toThrow(
+        "Invalid session ID type: expected 'session', got 'user'"
+      );
+    });
+
+    it('should throw error for TypeID without prefix', () => {
+      const invalidId = '01h455vb4pex5vsknk084sn02q'; // No prefix
+      expect(() => SessionId.fromString(invalidId)).toThrow(
+        "Invalid session ID type: expected 'session'"
+      );
     });
   });
 
