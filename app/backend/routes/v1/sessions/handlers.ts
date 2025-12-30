@@ -121,17 +121,13 @@ export async function createSessionHandler(
     databricksWorkspacePath: databricksWorkspacePath ?? null,
     userId,
     databricksWorkspaceAutoPush,
-    agentLocalPath: '', // Will be set after creating directory
   });
 
-  const localWorkPath = path.join(paths.sessionsBase, draft.id);
+  // Create working directory and get path
+  const localWorkPath = draft.createWorkingDirectory();
   console.log(
-    `[New Session] Creating workDir with TypeID: ${draft.id}, path: ${localWorkPath}`
+    `[New Session] Created workDir with TypeID: ${draft.id}, path: ${localWorkPath}`
   );
-  fs.mkdirSync(localWorkPath, { recursive: true });
-
-  // Update draft with created path
-  (draft as { agentLocalPath: string }).agentLocalPath = localWorkPath;
 
   // TypeID for API responses and state management
   const appSessionId = draft.id;

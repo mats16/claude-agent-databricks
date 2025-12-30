@@ -1,6 +1,6 @@
 import { eq, desc, sql, and } from 'drizzle-orm';
 import { db } from './index.js';
-import { sessions, type NewSession, type Session } from './schema.js';
+import { sessions, type InsertSession, type SelectSession } from './schema.js';
 
 // Helper to execute queries with RLS user context
 async function withUserContext<T>(
@@ -16,7 +16,7 @@ async function withUserContext<T>(
 // Create a new session (with RLS)
 // Uses ON CONFLICT DO NOTHING to handle retries with the same session ID
 export async function createSession(
-  session: NewSession,
+  session: InsertSession,
   userId: string
 ): Promise<void> {
   return withUserContext(userId, async () => {
@@ -28,7 +28,7 @@ export async function createSession(
 export async function getSessionById(
   id: string,
   userId: string
-): Promise<Session | null> {
+): Promise<SelectSession | null> {
   return withUserContext(userId, async () => {
     const result = await db
       .select()
@@ -43,7 +43,7 @@ export async function getSessionById(
 // Get session by ID without RLS (for internal use when user context is already verified)
 export async function getSessionByIdDirect(
   id: string
-): Promise<Session | null> {
+): Promise<SelectSession | null> {
   const result = await db
     .select()
     .from(sessions)
@@ -57,7 +57,7 @@ export async function getSessionByIdDirect(
 export async function getSessionsByUserId(
   userId: string,
   filter: 'active' | 'archived' | 'all' = 'active'
-): Promise<Session[]> {
+): Promise<SelectSession[]> {
   return withUserContext(userId, async () => {
     let whereClause;
     if (filter === 'active') {

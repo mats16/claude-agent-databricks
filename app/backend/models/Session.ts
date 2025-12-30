@@ -1,5 +1,8 @@
 import { typeid } from 'typeid-js';
-import type { Session as DBSession } from '../db/schema.js';
+import path from 'path';
+import fs from 'fs';
+import type { SelectSession as DBSession } from '../db/schema.js';
+import { paths } from '../config/index.js';
 
 /**
  * SessionDraft - Represents a session before it's saved to DB
@@ -26,6 +29,38 @@ export class SessionDraft {
     this.userId = params?.userId ?? '';
     this.databricksWorkspaceAutoPush = params?.databricksWorkspaceAutoPush ?? false;
     this.agentLocalPath = params?.agentLocalPath ?? '';
+  }
+
+  /**
+   * Create working directory structure for this session
+   * Creates:
+   * - Session working directory at {SESSIONS_BASE_PATH}/{session_id}
+   * - .claude config subdirectory
+   *
+   * @returns The absolute path to the created working directory
+   * @throws Error if directory creation fails
+   */
+  createWorkingDirectory(): string {
+    const workDir = path.join(paths.sessionsBase, this.id);
+    const claudeConfigDir = path.join(workDir, '.claude');
+
+    try {
+      // Create session working directory
+      fs.mkdirSync(workDir, { recursive: true });
+
+      // Create .claude config subdirectory
+      fs.mkdirSync(claudeConfigDir, { recursive: true });
+
+      // Update agentLocalPath with created directory
+      (this as { agentLocalPath: string }).agentLocalPath = workDir;
+
+      return workDir;
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `Failed to create working directory for session ${this.id}: ${err.message}`
+      );
+    }
   }
 
   /**

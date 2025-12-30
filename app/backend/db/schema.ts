@@ -20,8 +20,8 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
+export type SelectUser = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
 
 // Sessions table (with RLS by user_id)
 export const sessions = pgTable(
@@ -55,8 +55,8 @@ export const sessions = pgTable(
   ]
 );
 
-export type Session = typeof sessions.$inferSelect;
-export type NewSession = typeof sessions.$inferInsert;
+export type SelectSession = typeof sessions.$inferSelect;
+export type InsertSession = typeof sessions.$inferInsert;
 
 // Events table
 export const events = pgTable(
@@ -78,8 +78,8 @@ export const events = pgTable(
   ]
 );
 
-export type Event = typeof events.$inferSelect;
-export type NewEvent = typeof events.$inferInsert;
+export type SelectEvent = typeof events.$inferSelect;
+export type InsertEvent = typeof events.$inferInsert;
 
 // Settings table (with RLS by user_id)
 export const settings = pgTable(
@@ -104,8 +104,8 @@ export const settings = pgTable(
   ]
 );
 
-export type Settings = typeof settings.$inferSelect;
-export type NewSettings = typeof settings.$inferInsert;
+export type SelectSettings = typeof settings.$inferSelect;
+export type InsertSettings = typeof settings.$inferInsert;
 
 // OAuth tokens table for storing encrypted access tokens (with RLS by user_id)
 // Primary key is composite (user_id, provider) to allow one token per provider per user
@@ -134,5 +134,5 @@ export const oauthTokens = pgTable(
   ]
 );
 
-export type OAuthToken = typeof oauthTokens.$inferSelect;
-export type NewOAuthToken = typeof oauthTokens.$inferInsert;
+export type SelectOAuthToken = typeof oauthTokens.$inferSelect;
+export type InsertOAuthToken = typeof oauthTokens.$inferInsert;
