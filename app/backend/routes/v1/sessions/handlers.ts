@@ -146,7 +146,7 @@ export async function createSessionHandler(
     // Note: workspace sync is now handled by settings.json hooks
     const stream = new MessageStream(messageContent);
 
-    // Get user's PAT (needed for title generation)
+    // Get user's PAT (used for: 1) startAgent to avoid re-fetching, 2) title generation)
     const userPersonalAccessToken = await getUserPersonalAccessToken(userId);
 
     // Start processing in background
@@ -157,7 +157,7 @@ export async function createSessionHandler(
       messageContent,
       claudeConfigAutoPush,
       messageStream: stream,
-      userPersonalAccessToken, // Pass PAT to avoid re-fetching
+      userPersonalAccessToken, // Pass to avoid re-fetching inside startAgent
     });
 
     // Process events in background

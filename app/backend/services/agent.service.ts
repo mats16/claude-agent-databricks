@@ -232,8 +232,31 @@ function buildPrompt(
   return stream();
 }
 
-// Process agent request using Claude Agent SDK
-// Returns SDKMessage directly without transformation
+/**
+ * Process agent request using Claude Agent SDK
+ *
+ * @deprecated Use {@link startAgent} instead for better ergonomics.
+ * This function is kept for backward compatibility and low-level control.
+ *
+ * @remarks
+ * - Low-level API with positional arguments
+ * - Requires explicit dependency injection
+ * - Use {@link startAgent} for automatic PAT retrieval and cleaner API
+ *
+ * @example
+ * ```typescript
+ * // Deprecated: Low-level API
+ * const pat = await getUserPersonalAccessToken(userId);
+ * for await (const msg of processAgentRequest(session, content, user, options, stream, pat)) {
+ *   // ...
+ * }
+ *
+ * // Recommended: High-level API
+ * for await (const msg of startAgent({ session, user, userId, messageContent, ... })) {
+ *   // ...
+ * }
+ * ```
+ */
 export async function* processAgentRequest(
   session: SessionBase,
   message: MessageContent[],

@@ -3,6 +3,7 @@ import { createDatabricksMcpServer } from './mcp/databricks.js';
 import { databricks, warehouseIds, agentEnv } from '../config/index.js';
 import type { RequestUser } from '../models/RequestUser.js';
 import type { SessionBase } from '../models/Session.js';
+import type { MessageStream } from '../services/agent.service.js';
 
 // Re-export from service for backward compatibility
 export {
@@ -23,7 +24,7 @@ export interface ProcessAgentRequestOptions {
 export function buildSDKQueryOptions(params: {
   session: SessionBase;
   user: RequestUser;
-  messageStream: any; // MessageStream type from agent.service.ts
+  messageStream: MessageStream;
   userPersonalAccessToken?: string;
   spAccessToken?: string;
   claudeConfigAutoPush: boolean;
