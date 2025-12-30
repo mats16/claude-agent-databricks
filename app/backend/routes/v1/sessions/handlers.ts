@@ -115,13 +115,8 @@ export async function createSessionHandler(
       ? [{ type: 'text', text: userMessage }]
       : userMessage;
 
-  // Generate TypeID and create SessionDraft
-  const draft = new SessionDraft({
-    model,
-    databricksWorkspacePath: databricksWorkspacePath ?? null,
-    userId,
-    databricksWorkspaceAutoPush,
-  });
+  // Generate TypeID for new session
+  const draft = new SessionDraft();
 
   // Create working directory and get path
   const localWorkPath = draft.createWorkingDirectory();

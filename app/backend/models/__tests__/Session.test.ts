@@ -25,68 +25,10 @@ describe('SessionDraft', () => {
       expect(draft.id).toMatch(/^session_[a-z0-9]{26}$/);
     });
 
-    it('should set default values when no params provided', () => {
-      const draft = new SessionDraft();
-      expect(draft.model).toBe('');
-      expect(draft.databricksWorkspacePath).toBeNull();
-      expect(draft.userId).toBe('');
-      expect(draft.databricksWorkspaceAutoPush).toBe(false);
-    });
-
-    it('should use provided parameter values', () => {
-      const draft = new SessionDraft({
-        model: 'claude-sonnet-4-5',
-        databricksWorkspacePath: '/Workspace/Users/test@example.com/project',
-        userId: 'user123',
-        databricksWorkspaceAutoPush: true,
-      });
-
-      expect(draft.model).toBe('claude-sonnet-4-5');
-      expect(draft.databricksWorkspacePath).toBe(
-        '/Workspace/Users/test@example.com/project'
-      );
-      expect(draft.userId).toBe('user123');
-      expect(draft.databricksWorkspaceAutoPush).toBe(true);
-    });
-
-    it('should handle null databricksWorkspacePath explicitly', () => {
-      const draft = new SessionDraft({
-        databricksWorkspacePath: null,
-      });
-      expect(draft.databricksWorkspacePath).toBeNull();
-    });
-
     it('should generate unique IDs for multiple instances', () => {
       const draft1 = new SessionDraft();
       const draft2 = new SessionDraft();
       expect(draft1.id).not.toBe(draft2.id);
-    });
-  });
-
-  describe('getAppName', () => {
-    it('should remove session_ prefix and add app- prefix', () => {
-      const draft = new SessionDraft();
-      const appName = draft.getAppName();
-
-      // App name should be exactly 30 chars to fit Databricks limit
-      expect(appName).toHaveLength(30);
-      expect(appName).toMatch(/^app-[a-z0-9]{26}$/);
-      expect(appName).not.toContain('session_');
-    });
-
-    it('should produce consistent app name for same session', () => {
-      const draft = new SessionDraft();
-      expect(draft.getAppName()).toBe(draft.getAppName());
-    });
-  });
-
-  describe('getGitBranch', () => {
-    it('should return branch name with claude/ prefix', () => {
-      const draft = new SessionDraft();
-      const branch = draft.getGitBranch();
-
-      expect(branch).toMatch(/^claude\/session_[a-z0-9]{26}$/);
-      expect(branch).toContain(draft.id);
     });
   });
 
@@ -127,12 +69,6 @@ describe('SessionDraft', () => {
       const workDir = draft.createWorkingDirectory();
 
       expect(workDir).toBe(path.join(testSessionsBase, draft.id));
-    });
-
-    it('should compute cwd() from session ID', () => {
-      const draft = new SessionDraft();
-      const expectedPath = path.join(testSessionsBase, draft.id);
-      expect(draft.cwd()).toBe(expectedPath);
     });
 
     it('should succeed when directory already exists (recursive: true)', () => {
@@ -177,7 +113,7 @@ describe('SessionDraft', () => {
 
 describe('Session', () => {
   describe('constructor', () => {
-    it('should extend SessionDraft with DB fields', () => {
+    it('should initialize with all DB fields', () => {
       const dbSession: SelectSession = {
         id: 'session_01h455vb4pex5vsknk084sn02q',
         claudeCodeSessionId: 'sdk-session-123',
@@ -194,8 +130,11 @@ describe('Session', () => {
 
       const session = new Session(dbSession);
 
-      // SessionDraft properties
+      // All properties should match DB session
       expect(session.id).toBe(dbSession.id);
+      expect(session.claudeCodeSessionId).toBe(dbSession.claudeCodeSessionId);
+      expect(session.title).toBe(dbSession.title);
+      expect(session.summary).toBe(dbSession.summary);
       expect(session.model).toBe(dbSession.model);
       expect(session.databricksWorkspacePath).toBe(
         dbSession.databricksWorkspacePath
@@ -204,19 +143,14 @@ describe('Session', () => {
       expect(session.databricksWorkspaceAutoPush).toBe(
         dbSession.databricksWorkspaceAutoPush
       );
+      expect(session.isArchived).toBe(dbSession.isArchived);
+      expect(session.createdAt).toEqual(dbSession.createdAt);
+      expect(session.updatedAt).toEqual(dbSession.updatedAt);
 
       // cwd() should be computed from session ID
       expect(session.cwd()).toBe(
         path.join(testSessionsBase, dbSession.id)
       );
-
-      // Session-specific properties
-      expect(session.claudeCodeSessionId).toBe(dbSession.claudeCodeSessionId);
-      expect(session.title).toBe(dbSession.title);
-      expect(session.summary).toBe(dbSession.summary);
-      expect(session.isArchived).toBe(dbSession.isArchived);
-      expect(session.createdAt).toEqual(dbSession.createdAt);
-      expect(session.updatedAt).toEqual(dbSession.updatedAt);
     });
 
     it('should handle null values correctly', () => {
@@ -241,7 +175,7 @@ describe('Session', () => {
       expect(session.databricksWorkspacePath).toBeNull();
     });
 
-    it('should inherit helper methods from SessionDraft', () => {
+    it('should provide helper methods', () => {
       const dbSession: SelectSession = {
         id: 'session_01h455vb4pex5vsknk084sn02q',
         claudeCodeSessionId: 'sdk-123',
@@ -259,7 +193,7 @@ describe('Session', () => {
       const session = new Session(dbSession);
 
       expect(session.getAppName()).toBe('app-01h455vb4pex5vsknk084sn02q');
-      expect(session.getGitBranch()).toBe(
+      expect(session.getBranchName()).toBe(
         'claude/session_01h455vb4pex5vsknk084sn02q'
       );
     });
