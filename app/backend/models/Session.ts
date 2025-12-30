@@ -9,7 +9,10 @@ import { paths } from '../config/index.js';
  * Eliminates the need for a separate SessionId wrapper class
  */
 export abstract class SessionBase {
-  protected readonly _typeId: TypeID<'session'>;
+  private readonly _typeId: TypeID<'session'>;
+
+  // TypeID string representation (e.g., "session_01h455...")
+  readonly id: string;
 
   // Common fields for both Draft and Session
   readonly userId: string;
@@ -29,18 +32,11 @@ export abstract class SessionBase {
     databricksWorkspaceAutoPush: boolean;
   }) {
     this._typeId = params.typeId;
+    this.id = params.typeId.toString();
     this.userId = params.userId;
     this.model = params.model;
     this.databricksWorkspacePath = params.databricksWorkspacePath;
     this.databricksWorkspaceAutoPush = params.databricksWorkspaceAutoPush;
-  }
-
-  /**
-   * Public getter: Access the internal TypeID (for factory methods)
-   * Read-only access to the TypeID instance
-   */
-  getTypeId(): TypeID<'session'> {
-    return this._typeId;
   }
 
   /**
@@ -138,13 +134,6 @@ export abstract class SessionBase {
    */
   isDraft(): this is SessionDraft {
     return this.claudeCodeSessionId === undefined;
-  }
-
-  /**
-   * Type guard: Check if this is a Session
-   */
-  isSession(): this is Session {
-    return this.claudeCodeSessionId !== undefined;
   }
 }
 
@@ -248,7 +237,7 @@ export class Session extends SessionBase {
     updatedAt: Date = new Date()
   ): Session {
     return new Session({
-      typeId: draft.getTypeId(), // Access via protected getter
+      typeId: SessionBase.typeIdFromString(draft.id), // Restore TypeID from id string
       claudeCodeSessionId,
       userId: draft.userId,
       model: draft.model,

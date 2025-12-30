@@ -25,6 +25,7 @@ describe('SessionDraft', () => {
         userId: 'user123',
         model: 'claude-sonnet-4-5',
       });
+      expect(draft.id).toMatch(/^session_[a-z0-9]{26}$/);
       expect(draft.toString()).toMatch(/^session_[a-z0-9]{26}$/);
     });
 
@@ -37,6 +38,7 @@ describe('SessionDraft', () => {
         userId: 'user123',
         model: 'claude-sonnet-4-5',
       });
+      expect(draft1.id).not.toBe(draft2.id);
       expect(draft1.toString()).not.toBe(draft2.toString());
     });
 
@@ -162,7 +164,6 @@ describe('SessionDraft', () => {
         model: 'claude-sonnet-4-5',
       });
       expect(draft.isDraft()).toBe(true);
-      expect(draft.isSession()).toBe(false);
     });
   });
 });
@@ -187,6 +188,7 @@ describe('Session', () => {
       const session = Session.fromSelectSession(dbSession);
 
       // All properties should match DB session
+      expect(session.id).toBe(dbSession.id);
       expect(session.toString()).toBe(dbSession.id);
       expect(session.claudeCodeSessionId).toBe(dbSession.claudeCodeSessionId);
       expect(session.title).toBe(dbSession.title);
@@ -264,6 +266,7 @@ describe('Session', () => {
       const session = Session.fromSessionDraft(draft, 'sdk-session-456');
 
       // TypeID should be preserved
+      expect(session.id).toBe(draft.id);
       expect(session.toString()).toBe(draft.toString());
       expect(session.getSuffix()).toBe(draft.getSuffix());
 
@@ -330,7 +333,7 @@ describe('Session', () => {
   });
 
   describe('type guards', () => {
-    it('should return true for isSession()', () => {
+    it('should return false for isDraft()', () => {
       const dbSession: SelectSession = {
         id: 'session_01h455vb4pex5vsknk084sn02q',
         claudeCodeSessionId: 'sdk-123',
@@ -347,7 +350,6 @@ describe('Session', () => {
 
       const session = Session.fromSelectSession(dbSession);
 
-      expect(session.isSession()).toBe(true);
       expect(session.isDraft()).toBe(false);
     });
   });
