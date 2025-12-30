@@ -1,12 +1,18 @@
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import type {
   SDKMessage,
   SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
+import fs from 'fs';
+import path from 'path';
 import type { MessageContent } from '@app/shared';
-import { databricks } from '../config/index.js';
+import { databricks, agentEnv } from '../config/index.js';
 import type { RequestUser } from '../models/RequestUser.js';
 import type { SessionBase } from '../models/Session.js';
-import { processAgentRequest } from '../agent/index.js';
+import {
+  buildSDKQueryOptions,
+  type ProcessAgentRequestOptions,
+} from '../agent/index.js';
 import { getUserPersonalAccessToken } from './user.service.js';
 
 export type { SDKMessage };
@@ -181,6 +187,103 @@ export class MessageStream {
   }
 }
 
+// Build prompt from MessageContent[] for Claude Agent SDK
+// Returns AsyncIterable<SDKUserMessage> for query function
+// If messageStream is provided, uses it for persistent streaming
+function buildPrompt(
+  contents: MessageContent[],
+  messageStream?: MessageStream
+): AsyncIterable<SDKUserMessage> {
+  // If messageStream is provided, use it for persistent streaming
+  if (messageStream) {
+    return messageStream.stream();
+  }
+
+  // Fallback: single message mode (backward compatibility)
+  // Convert MessageContent[] to API content format
+  const apiContent = contents.map((c) => {
+    if (c.type === 'text') {
+      return { type: 'text' as const, text: c.text };
+    } else {
+      return {
+        type: 'image' as const,
+        source: {
+          type: 'base64' as const,
+          media_type: c.source.media_type,
+          data: c.source.data,
+        },
+      };
+    }
+  });
+
+  // Create async generator that yields SDKUserMessage
+  async function* stream(): AsyncGenerator<SDKUserMessage> {
+    yield {
+      type: 'user',
+      session_id: '', // SDK will set this
+      message: {
+        role: 'user',
+        content: apiContent,
+      },
+      parent_tool_use_id: null,
+    } as SDKUserMessage;
+  }
+
+  return stream();
+}
+
+// Process agent request using Claude Agent SDK
+// Returns SDKMessage directly without transformation
+export async function* processAgentRequest(
+  session: SessionBase,
+  message: MessageContent[],
+  user: RequestUser,
+  options?: ProcessAgentRequestOptions,
+  messageStream?: MessageStream,
+  userPersonalAccessToken?: string
+): AsyncGenerator<SDKMessage> {
+  // Extract options (with defaults)
+  const claudeConfigAutoPush = options?.claudeConfigAutoPush ?? true;
+  const waitForReady = options?.waitForReady;
+
+  // Local Claude config directory from User object, fallback to default
+  const localClaudeConfigPath =
+    user.local.claudeConfigDir ??
+    path.join(agentEnv.USERS_BASE_PATH, 'me', '.claude');
+  fs.mkdirSync(localClaudeConfigPath, { recursive: true });
+
+  const spAccessToken = await getOidcAccessToken();
+
+  // Create or use provided MessageStream
+  const stream = messageStream ?? new MessageStream(message, waitForReady);
+
+  // Build SDK query options using agent/index.ts helper
+  const sdkOptions = buildSDKQueryOptions({
+    session,
+    user,
+    messageStream: stream,
+    userPersonalAccessToken,
+    spAccessToken,
+    claudeConfigAutoPush,
+  });
+
+  // Create query with Claude Agent SDK
+  const response = query({
+    prompt: buildPrompt(message, stream),
+    options: sdkOptions,
+  });
+
+  // Yield SDK messages directly without transformation
+  try {
+    for await (const sdkMessage of response) {
+      yield sdkMessage;
+    }
+  } finally {
+    // Complete the stream when agent finishes
+    stream.complete();
+  }
+}
+
 // Parameters for starting an agent session
 export interface StartAgentParams {
   session: SessionBase; // SessionDraft or Session
@@ -209,22 +312,46 @@ export async function* startAgent(
     waitForReady,
   } = params;
 
-  // Create MessageStream if not provided
-  const stream =
-    messageStream ?? new MessageStream(messageContent, waitForReady);
+  // Local Claude config directory from User object, fallback to default
+  const localClaudeConfigPath =
+    user.local.claudeConfigDir ??
+    path.join(agentEnv.USERS_BASE_PATH, 'me', '.claude');
+  fs.mkdirSync(localClaudeConfigPath, { recursive: true });
 
   // Get user PAT if not provided
   const pat =
     userPersonalAccessToken ?? (await getUserPersonalAccessToken(userId));
 
-  // Delegate to agent/index.ts processAgentRequest
-  // This keeps SDK-specific logic in agent/index.ts
-  yield* processAgentRequest(
+  // Get service principal token
+  const spAccessToken = await getOidcAccessToken();
+
+  // Create MessageStream if not provided
+  const stream =
+    messageStream ?? new MessageStream(messageContent, waitForReady);
+
+  // Build SDK query options using agent/index.ts helper
+  const sdkOptions = buildSDKQueryOptions({
     session,
-    messageContent,
     user,
-    { claudeConfigAutoPush, waitForReady },
-    stream,
-    pat
-  );
+    messageStream: stream,
+    userPersonalAccessToken: pat,
+    spAccessToken,
+    claudeConfigAutoPush,
+  });
+
+  // Create query with Claude Agent SDK
+  const response = query({
+    prompt: buildPrompt(messageContent, stream),
+    options: sdkOptions,
+  });
+
+  // Yield SDK messages directly without transformation
+  try {
+    for await (const sdkMessage of response) {
+      yield sdkMessage;
+    }
+  } finally {
+    // Complete the stream when agent finishes
+    stream.complete();
+  }
 }
