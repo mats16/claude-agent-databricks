@@ -302,7 +302,7 @@ Violating these rules is considered a critical error.
       model: session.model,
       env: {
         ...agentEnv,
-        CLAUDE_CONFIG_DIR: localClaudeConfigPath,
+        CLAUDE_CONFIG_DIR: user.local.claudeConfigDir,
         CLAUDE_CONFIG_AUTO_PUSH: claudeConfigAutoPush ? 'true' : undefined,
         CLAUDE_CODE_SESSION_ID: session.claudeCodeSessionId,
         CLAUDE_CODE_REMOTE_SESSION_ID: session.id, // e.g. session_01h455vb4pex5vsknk084sn02q
@@ -326,11 +326,10 @@ Violating these rules is considered a critical error.
         // Git branch uses TypeID
         GIT_BRANCH: session.branchName,
         // Git author/committer info from user headers
-        GIT_AUTHOR_NAME: user.preferredUsername ?? user.email ?? 'Claude Agent',
-        GIT_AUTHOR_EMAIL: user.email ?? 'agent@databricks.com',
-        GIT_COMMITTER_NAME:
-          user.preferredUsername ?? user.email ?? 'Claude Agent',
-        GIT_COMMITTER_EMAIL: user.email ?? 'agent@databricks.com',
+        GIT_AUTHOR_NAME: user.preferredUsername,
+        GIT_AUTHOR_EMAIL: user.email,
+        GIT_COMMITTER_NAME: user.preferredUsername,
+        GIT_COMMITTER_EMAIL: user.email,
       },
       maxTurns: 100,
       tools: {
