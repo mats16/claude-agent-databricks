@@ -214,7 +214,6 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
                 for await (const sdkMessage of startAgent({
                   session, // Pass Session object - claudeCodeSessionId is defined, so resume mode
                   user,
-                  userId,
                   messageContent: userMessageContent,
                   claudeConfigAutoPush,
                   messageStream: stream,

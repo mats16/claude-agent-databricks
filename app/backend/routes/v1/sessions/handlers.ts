@@ -153,7 +153,6 @@ export async function createSessionHandler(
     const agentIterator = startAgent({
       session: draft, // Pass SessionDraft - undefined claudeCodeSessionId means new session
       user,
-      userId,
       messageContent,
       claudeConfigAutoPush,
       messageStream: stream,

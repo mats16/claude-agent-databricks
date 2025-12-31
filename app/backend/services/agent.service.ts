@@ -20,6 +20,9 @@ export type { SDKMessage };
 // Token cache for service principal
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
+// Token expiry buffer (5 minutes) to prevent using tokens about to expire
+const TOKEN_EXPIRY_BUFFER_SECONDS = 300;
+
 // Get service principal access token from Databricks OAuth2
 export async function getOidcAccessToken(): Promise<string | undefined> {
   // Check if cached token is still valid
@@ -59,10 +62,10 @@ export async function getOidcAccessToken(): Promise<string | undefined> {
   };
   const expiresIn = data.expires_in || 3600; // Default to 1 hour
 
-  // Cache token with 5 minute buffer before expiration
+  // Cache token with buffer before expiration
   cachedToken = {
     token: data.access_token,
-    expiresAt: Date.now() + (expiresIn - 300) * 1000,
+    expiresAt: Date.now() + (expiresIn - TOKEN_EXPIRY_BUFFER_SECONDS) * 1000,
   };
 
   return data.access_token;
@@ -128,7 +131,7 @@ export class MessageStream {
           '[MessageStream] Workspace pull completed, starting message processing'
         );
       } catch (error) {
-        console.error(
+        console.warn(
           '[MessageStream] Workspace pull failed, continuing anyway:',
           error
         );
@@ -311,7 +314,6 @@ export async function* processAgentRequest(
 export interface StartAgentParams {
   session: SessionBase; // SessionDraft or Session
   user: RequestUser;
-  userId: string;
   messageContent: MessageContent[];
   claudeConfigAutoPush?: boolean;
   messageStream?: MessageStream; // Optional, will be created if not provided
@@ -327,13 +329,15 @@ export async function* startAgent(
   const {
     session,
     user,
-    userId,
     messageContent,
     claudeConfigAutoPush = true,
     messageStream,
     userPersonalAccessToken,
     waitForReady,
   } = params;
+
+  // Extract userId from user (user.sub is the unique identifier)
+  const userId = user.sub;
 
   // Local Claude config directory from User object, fallback to default
   const localClaudeConfigPath =
