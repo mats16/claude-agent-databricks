@@ -1,4 +1,5 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema.js';
 
@@ -11,3 +12,6 @@ if (!connectionString) {
 const client = postgres(connectionString);
 // In drizzle-orm v1.0.0+, we need to pass the client explicitly
 export const db = drizzle({ client, schema });
+
+// Export database type for use in transaction types
+export type Database = PostgresJsDatabase<typeof schema>;

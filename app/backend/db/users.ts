@@ -11,6 +11,7 @@ import { withUserContextInTransaction } from './rls.util.js';
 /**
  * Create a new user (pure insert).
  * Does NOT create default settings - that's the responsibility of the service layer.
+ * Uses RETURNING clause to avoid a second query.
  *
  * @param id - User ID
  * @param email - User email
@@ -21,15 +22,10 @@ export async function createUser(id: string, email: string): Promise<SelectUser>
     id,
     email,
   };
-  await db.insert(users).values(newUser);
 
-  const created = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
+  const [created] = await db.insert(users).values(newUser).returning();
 
-  return created[0];
+  return created;
 }
 
 /**
@@ -85,9 +81,9 @@ export async function createUserWithDefaultSettings(
   defaultSettings: { claudeConfigAutoPush: boolean }
 ): Promise<SelectUser> {
   return withUserContextInTransaction(id, async (tx) => {
-    // Create user
+    // Create user with RETURNING to avoid second query
     const newUser: InsertUser = { id, email };
-    await tx.insert(users).values(newUser);
+    const [createdUser] = await tx.insert(users).values(newUser).returning();
 
     // Create default settings
     await tx.insert(settings).values({
@@ -95,13 +91,6 @@ export async function createUserWithDefaultSettings(
       claudeConfigAutoPush: defaultSettings.claudeConfigAutoPush,
     });
 
-    // Return created user
-    const created = await tx
-      .select()
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1);
-
-    return created[0];
+    return createdUser;
   });
 }

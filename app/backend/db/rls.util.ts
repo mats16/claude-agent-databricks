@@ -1,5 +1,18 @@
 import { sql } from 'drizzle-orm';
+import type { PgTransaction } from 'drizzle-orm/pg-core';
+import type { PostgresJsQueryResultHKT } from 'drizzle-orm/postgres-js';
 import { db } from './index.js';
+import type * as schema from './schema.js';
+
+/**
+ * Transaction type for PostgreSQL with schema.
+ * This provides compile-time type safety for transaction operations.
+ */
+export type DbTransaction = PgTransaction<
+  PostgresJsQueryResultHKT,
+  typeof schema,
+  Record<string, never>
+>;
 
 /**
  * Helper to execute database queries with RLS (Row Level Security) user context.
@@ -48,7 +61,7 @@ export async function withUserContext<T>(
  */
 export async function withUserContextInTransaction<T>(
   userId: string,
-  fn: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>
+  fn: (tx: DbTransaction) => Promise<T>
 ): Promise<T> {
   return db.transaction(async (tx) => {
     // Set RLS context FIRST, before any other queries
