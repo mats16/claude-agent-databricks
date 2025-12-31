@@ -39,6 +39,7 @@ interface CreateSessionBody {
     model: string;
     databricksWorkspacePath?: string;
     databricksWorkspaceAutoPush?: boolean;
+    appAutoDeploy?: boolean;
   };
 }
 
