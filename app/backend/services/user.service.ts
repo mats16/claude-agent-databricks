@@ -15,7 +15,7 @@ import { isEncryptionAvailable } from '../utils/encryption.js';
 import type { RequestUser } from '../models/RequestUser.js';
 import type { SelectUser } from '../db/schema.js';
 import * as settingsService from './user-settings.service.js';
-import { DEFAULT_USER_SETTINGS } from './user-settings.service.js';
+import { DEFAULT_USER_SETTINGS, type UserSettings } from './user-settings.service.js';
 
 // Databricks token info from /api/2.0/token/list
 interface DatabricksTokenInfo {
@@ -35,11 +35,6 @@ export interface UserInfo {
   workspaceHome: string | null;
   hasWorkspacePermission: boolean;
   databricksAppUrl: string | null;
-}
-
-export interface UserSettings {
-  userId: string;
-  claudeConfigAutoPush: boolean;
 }
 
 /**

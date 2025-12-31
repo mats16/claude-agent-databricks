@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from './index.js';
 import {
   users,
@@ -6,6 +6,7 @@ import {
   type SelectUser,
   type InsertUser,
 } from './schema.js';
+import { withUserContextInTransaction } from './rls.util.js';
 
 /**
  * Create a new user (pure insert).
@@ -70,6 +71,7 @@ export async function getUserByEmail(
 /**
  * Create user with default settings in a transaction.
  * This ensures atomicity - either both user and settings are created, or neither.
+ * Uses withUserContextInTransaction to ensure RLS context is set before any queries.
  *
  * @param id - User ID
  * @param email - User email
@@ -82,12 +84,7 @@ export async function createUserWithDefaultSettings(
   email: string,
   defaultSettings: { claudeConfigAutoPush: boolean }
 ): Promise<SelectUser> {
-  return db.transaction(async (tx) => {
-    // Set RLS context for this transaction
-    await tx.execute(
-      sql`SELECT set_config('app.current_user_id', ${id}, true)`
-    );
-
+  return withUserContextInTransaction(id, async (tx) => {
     // Create user
     const newUser: InsertUser = { id, email };
     await tx.insert(users).values(newUser);

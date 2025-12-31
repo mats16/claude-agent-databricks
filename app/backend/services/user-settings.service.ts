@@ -52,14 +52,6 @@ export async function updateUserSettings(
     throw new Error('At least one setting field must be provided');
   }
 
-  // Validation: claudeConfigAutoPush must be a boolean if provided
-  if (
-    updates.claudeConfigAutoPush !== undefined &&
-    typeof updates.claudeConfigAutoPush !== 'boolean'
-  ) {
-    throw new Error('claudeConfigAutoPush must be a boolean');
-  }
-
   // Repository call
   await settingsRepo.upsertSettings(userId, updates);
 }
