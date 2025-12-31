@@ -6,6 +6,10 @@ import * as sessionService from './session.service.js';
  * Save session message with validation.
  * Wraps repository's saveMessage with additional business logic.
  *
+ * Note: This function does NOT verify session ownership because it is used
+ * exclusively to store messages from the Agent SDK. The SDK-generated messages
+ * are trusted and do not require ownership validation.
+ *
  * @param sdkMessage - SDK message to save
  */
 export async function saveSessionMessage(sdkMessage: SDKMessage): Promise<void> {
