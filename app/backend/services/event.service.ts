@@ -60,7 +60,7 @@ export async function getSessionMessages(
 
   return {
     messages: events.map((e) => e.message),
-    first_id: events.length > 0 ? events[0].id : null,
-    last_id: events.length > 0 ? events[events.length - 1].id : null,
+    first_id: events.length > 0 ? events[0].uuid : null,
+    last_id: events.length > 0 ? events[events.length - 1].uuid : null,
   };
 }

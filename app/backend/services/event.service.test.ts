@@ -164,28 +164,22 @@ describe('event.service', () => {
 
       const mockMessages = [
         {
-          id: 'msg-1',
-          sessionId: mockSessionId,
-          seq: 1,
+          uuid: 'msg-1',
           message: {
             session_id: mockSessionId,
             type: 'input',
             created_at: '2025-01-01T00:00:00Z',
             message: { role: 'user', content: 'Hello' },
           } as SDKMessage,
-          createdAt: new Date('2025-01-01T00:00:00Z'),
         },
         {
-          id: 'msg-2',
-          sessionId: mockSessionId,
-          seq: 2,
+          uuid: 'msg-2',
           message: {
             session_id: mockSessionId,
             type: 'output',
             created_at: '2025-01-01T00:00:01Z',
             message: { role: 'assistant', content: 'Hi there!' },
           } as SDKMessage,
-          createdAt: new Date('2025-01-01T00:00:01Z'),
         },
       ];
 
@@ -276,18 +270,12 @@ describe('event.service', () => {
 
       const mockMessages = [
         {
-          id: 'msg-1',
-          sessionId: mockSessionId,
-          seq: 1,
+          uuid: 'msg-1',
           message: mockSdkMessage1,
-          createdAt: new Date('2025-01-01T00:00:00Z'),
         },
         {
-          id: 'msg-2',
-          sessionId: mockSessionId,
-          seq: 2,
+          uuid: 'msg-2',
           message: mockSdkMessage2,
-          createdAt: new Date('2025-01-01T00:00:01Z'),
         },
       ];
 

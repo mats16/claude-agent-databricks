@@ -356,24 +356,12 @@ export async function updateSessionHandler(
   if (title !== undefined) updates.title = title;
   if (databricksWorkspacePath !== undefined) {
     updates.databricksWorkspacePath = databricksWorkspacePath || null;
-    // Force databricksWorkspaceAutoPush to false when databricksWorkspacePath is cleared
-    if (!databricksWorkspacePath || !databricksWorkspacePath.trim()) {
-      updates.databricksWorkspaceAutoPush = false;
-    }
   }
   if (databricksWorkspaceAutoPush !== undefined) {
-    // Only apply databricksWorkspaceAutoPush if databricksWorkspacePath is set
-    // (either from current update or existing session)
-    const session = await sessionService.getSession(sessionId, userId);
-    const finalDatabricksWorkspacePath =
-      updates.databricksWorkspacePath ?? session?.databricksWorkspacePath;
-    if (finalDatabricksWorkspacePath && finalDatabricksWorkspacePath.trim()) {
-      updates.databricksWorkspaceAutoPush = databricksWorkspaceAutoPush;
-    } else {
-      updates.databricksWorkspaceAutoPush = false;
-    }
+    updates.databricksWorkspaceAutoPush = databricksWorkspaceAutoPush;
   }
 
+  // Service layer handles validation and business logic
   await sessionService.updateSessionSettings(sessionId, userId, updates);
   return { success: true };
 }
