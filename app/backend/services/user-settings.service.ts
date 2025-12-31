@@ -1,0 +1,57 @@
+import * as settingsRepo from '../db/settings.js';
+
+export interface UserSettings {
+  userId: string;
+  claudeConfigAutoPush: boolean;
+}
+
+/**
+ * Default user settings applied when creating a new user.
+ * This constant ensures consistency across user creation and settings retrieval.
+ */
+export const DEFAULT_USER_SETTINGS = {
+  claudeConfigAutoPush: true,
+} as const;
+
+/**
+ * Get user settings with default fallback.
+ * Returns default settings if user settings don't exist.
+ *
+ * @param userId - User ID
+ * @returns User settings
+ */
+export async function getUserSettings(userId: string): Promise<UserSettings> {
+  const settings = await settingsRepo.getSettings(userId);
+
+  if (!settings) {
+    // Return default settings
+    return {
+      userId,
+      ...DEFAULT_USER_SETTINGS,
+    };
+  }
+
+  return {
+    userId: settings.userId,
+    claudeConfigAutoPush: settings.claudeConfigAutoPush,
+  };
+}
+
+/**
+ * Update user settings with validation.
+ *
+ * @param userId - User ID
+ * @param updates - Settings to update (at least one field required)
+ */
+export async function updateUserSettings(
+  userId: string,
+  updates: { claudeConfigAutoPush?: boolean }
+): Promise<void> {
+  // Validation: At least one field must be provided
+  if (Object.keys(updates).length === 0) {
+    throw new Error('At least one setting field must be provided');
+  }
+
+  // Repository call
+  await settingsRepo.upsertSettings(userId, updates);
+}

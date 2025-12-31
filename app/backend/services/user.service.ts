@@ -1,15 +1,21 @@
 import { getAccessToken } from './agent.service.js';
 import { databricks } from '../config/index.js';
-import { getSettings, upsertSettings } from '../db/settings.js';
 import {
   getDatabricksPat,
   hasDatabricksPat as hasPatInDb,
   setDatabricksPat as setPatInDb,
   deleteDatabricksPat,
 } from '../db/oauthTokens.js';
-import { upsertUser } from '../db/users.js';
+import {
+  getUserById,
+  updateUserEmail,
+  createUserWithDefaultSettings,
+} from '../db/users.js';
 import { isEncryptionAvailable } from '../utils/encryption.js';
 import type { RequestUser } from '../models/RequestUser.js';
+import type { SelectUser } from '../db/schema.js';
+import * as settingsService from './user-settings.service.js';
+import { DEFAULT_USER_SETTINGS, type UserSettings } from './user-settings.service.js';
 
 // Databricks token info from /api/2.0/token/list
 interface DatabricksTokenInfo {
@@ -31,14 +37,43 @@ export interface UserInfo {
   databricksAppUrl: string | null;
 }
 
-export interface UserSettings {
-  userId: string;
-  claudeConfigAutoPush: boolean;
+/**
+ * Ensure user exists in database with default settings.
+ * Uses a transaction to atomically create both user and settings.
+ *
+ * @param id - User ID
+ * @param email - User email
+ * @returns Created or existing user
+ * @throws Error if user creation transaction fails
+ */
+export async function ensureUserWithDefaults(
+  id: string,
+  email: string
+): Promise<SelectUser> {
+  // Check if user exists
+  const existing = await getUserById(id);
+
+  if (existing) {
+    // Update email if different
+    if (existing.email !== email) {
+      await updateUserEmail(id, email);
+      return { ...existing, email, updatedAt: new Date() };
+    }
+    return existing;
+  }
+
+  // Create new user with default settings in a transaction
+  // This ensures atomicity - either both are created or neither
+  return createUserWithDefaultSettings(id, email, DEFAULT_USER_SETTINGS);
 }
 
-// Ensure user exists in database
+/**
+ * Ensure user exists in database (convenience wrapper).
+ *
+ * @param user - Request user object
+ */
 export async function ensureUser(user: RequestUser): Promise<void> {
-  await upsertUser(user.sub, user.email);
+  await ensureUserWithDefaults(user.sub, user.email);
 }
 
 // Check if user has workspace permission by attempting to create .claude directory
@@ -99,27 +134,24 @@ export async function getUserInfo(user: RequestUser): Promise<UserInfo> {
   };
 }
 
-// Get user settings
+/**
+ * Get user settings (delegates to settings.service).
+ * @deprecated Use settingsService.getUserSettings() directly
+ */
 export async function getUserSettings(userId: string): Promise<UserSettings> {
-  const userSettings = await getSettings(userId);
-
-  if (!userSettings) {
-    return { userId, claudeConfigAutoPush: true };
-  }
-
-  return {
-    userId: userSettings.userId,
-    claudeConfigAutoPush: userSettings.claudeConfigAutoPush,
-  };
+  return settingsService.getUserSettings(userId);
 }
 
-// Update user settings
+/**
+ * Update user settings (delegates to settings.service).
+ * @deprecated Use settingsService.updateUserSettings() directly
+ */
 export async function updateUserSettings(
   user: RequestUser,
   settings: { claudeConfigAutoPush?: boolean }
 ): Promise<void> {
   await ensureUser(user);
-  await upsertSettings(user.sub, settings);
+  await settingsService.updateUserSettings(user.sub, settings);
 }
 
 // Check if PAT is configured for user

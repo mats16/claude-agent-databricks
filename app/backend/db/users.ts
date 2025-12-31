@@ -1,58 +1,47 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from './index.js';
 import {
   users,
   settings,
   type SelectUser,
   type InsertUser,
-  type InsertSettings,
 } from './schema.js';
+import { withUserContextInTransaction } from './rls.util.js';
 
-// Create or update a user (upsert)
-export async function upsertUser(
-  id: string,
-  email: string
-): Promise<SelectUser> {
-  const existing = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
-
-  if (existing.length > 0) {
-    // Update email if different
-    if (existing[0].email !== email) {
-      await db
-        .update(users)
-        .set({ email, updatedAt: new Date() })
-        .where(eq(users.id, id));
-      return { ...existing[0], email, updatedAt: new Date() };
-    }
-    return existing[0];
-  }
-
-  // Create new user
+/**
+ * Create a new user (pure insert).
+ * Does NOT create default settings - that's the responsibility of the service layer.
+ * Uses RETURNING clause to avoid a second query.
+ *
+ * @param id - User ID
+ * @param email - User email
+ * @returns Created user
+ */
+export async function createUser(id: string, email: string): Promise<SelectUser> {
   const newUser: InsertUser = {
     id,
     email,
   };
-  await db.insert(users).values(newUser);
 
-  // Create default settings for new user (requires RLS context)
-  await db.execute(sql`SELECT set_config('app.current_user_id', ${id}, true)`);
-  const newSettings: InsertSettings = {
-    userId: id,
-    claudeConfigAutoPush: true,
-  };
-  await db.insert(settings).values(newSettings);
+  const [created] = await db.insert(users).values(newUser).returning();
 
-  const created = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
+  return created;
+}
 
-  return created[0];
+/**
+ * Update user email (pure update).
+ *
+ * @param id - User ID
+ * @param email - New email
+ */
+export async function updateUserEmail(
+  id: string,
+  email: string
+): Promise<void> {
+  await db
+    .update(users)
+    .set({ email, updatedAt: new Date() })
+    .where(eq(users.id, id));
 }
 
 // Get user by ID
@@ -73,4 +62,35 @@ export async function getUserByEmail(
     .limit(1);
 
   return result[0] ?? null;
+}
+
+/**
+ * Create user with default settings in a transaction.
+ * This ensures atomicity - either both user and settings are created, or neither.
+ * Uses withUserContextInTransaction to ensure RLS context is set before any queries.
+ *
+ * @param id - User ID
+ * @param email - User email
+ * @param defaultSettings - Default settings to create
+ * @returns Created user
+ * @throws Error if transaction fails
+ */
+export async function createUserWithDefaultSettings(
+  id: string,
+  email: string,
+  defaultSettings: { claudeConfigAutoPush: boolean }
+): Promise<SelectUser> {
+  return withUserContextInTransaction(id, async (tx) => {
+    // Create user with RETURNING to avoid second query
+    const newUser: InsertUser = { id, email };
+    const [createdUser] = await tx.insert(users).values(newUser).returning();
+
+    // Create default settings
+    await tx.insert(settings).values({
+      userId: id,
+      claudeConfigAutoPush: defaultSettings.claudeConfigAutoPush,
+    });
+
+    return createdUser;
+  });
 }
