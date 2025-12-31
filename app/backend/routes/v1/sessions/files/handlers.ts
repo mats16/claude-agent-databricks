@@ -9,8 +9,7 @@ import type {
   FileDeleteResponse,
 } from '@app/shared';
 import { extractRequestContext } from '../../../../utils/headers.js';
-import { getSessionById } from '../../../../db/sessions.js';
-import { Session } from '../../../../models/Session.js';
+import * as sessionService from '../../../../services/session.service.js';
 
 // Size limits
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -121,14 +120,11 @@ export async function getFileHandler(
 
   const userId = context.user.sub;
 
-  // Verify session ownership and get agentLocalPath
-  const selectSession = await getSessionById(sessionId, userId);
-  if (!selectSession) {
+  // Verify session ownership and get working directory
+  const session = await sessionService.getSession(sessionId, userId);
+  if (!session) {
     return reply.status(404).send({ error: 'Session not found' });
   }
-
-  // Convert to Session model to get working directory
-  const session = Session.fromSelectSession(selectSession);
 
   // Validate file path
   const validation = validateFilePath(filePath, session.cwd);
@@ -193,14 +189,11 @@ export async function uploadFileHandler(
 
   const userId = context.user.sub;
 
-  // Verify session ownership and get agentLocalPath
-  const selectSession = await getSessionById(sessionId, userId);
-  if (!selectSession) {
+  // Verify session ownership and get working directory
+  const session = await sessionService.getSession(sessionId, userId);
+  if (!session) {
     return reply.status(404).send({ error: 'Session not found' });
   }
-
-  // Convert to Session model to get working directory
-  const session = Session.fromSelectSession(selectSession);
 
   // Validate file path
   const validation = validateFilePath(filePath, session.cwd);
@@ -272,14 +265,11 @@ export async function deleteFileHandler(
 
   const userId = context.user.sub;
 
-  // Verify session ownership and get agentLocalPath
-  const selectSession = await getSessionById(sessionId, userId);
-  if (!selectSession) {
+  // Verify session ownership and get working directory
+  const session = await sessionService.getSession(sessionId, userId);
+  if (!session) {
     return reply.status(404).send({ error: 'Session not found' });
   }
-
-  // Convert to Session model to get working directory
-  const session = Session.fromSelectSession(selectSession);
 
   // Validate file path
   const validation = validateFilePath(filePath, session.cwd);
@@ -330,14 +320,11 @@ export async function listFilesHandler(
 
   const userId = context.user.sub;
 
-  // Verify session ownership and get agentLocalPath
-  const selectSession = await getSessionById(sessionId, userId);
-  if (!selectSession) {
+  // Verify session ownership and get working directory
+  const session = await sessionService.getSession(sessionId, userId);
+  if (!session) {
     return reply.status(404).send({ error: 'Session not found' });
   }
-
-  // Convert to Session model to get working directory
-  const session = Session.fromSelectSession(selectSession);
 
   // Check if directory exists
   try {

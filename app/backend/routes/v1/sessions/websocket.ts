@@ -2,11 +2,10 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { MessageContent, IncomingWSMessage } from '@app/shared';
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { startAgent, MessageStream } from '../../../services/agent.service.js';
-import { saveMessage } from '../../../db/events.js';
-import { getSessionById, updateSession } from '../../../db/sessions.js';
-import { getSettingsDirect } from '../../../db/settings.js';
+import * as eventService from '../../../services/event.service.js';
+import * as sessionService from '../../../services/session.service.js';
+import * as userSettingsService from '../../../services/user-settings.service.js';
 import { extractRequestContextFromHeaders } from '../../../utils/headers.js';
-import { Session } from '../../../models/Session.js';
 import {
   sessionQueues,
   sessionMessageStreams,
@@ -163,7 +162,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               // Save user message to database
               // Note: Don't send back to client - frontend already added it optimistically
               const userMsg = createUserMessage(sessionId, userMessageContent);
-              await saveMessage(userMsg);
+              await eventService.saveSessionMessage(userMsg);
             } else {
               // Start new agent session or resume existing one
               console.log(
@@ -171,31 +170,29 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               );
 
               // Fetch session to get databricksWorkspacePath, databricksWorkspaceAutoPush, agentLocalPath, and model for resume
-              const selectSession = await getSessionById(sessionId, userId);
-              if (!selectSession) {
+              let session = await sessionService.getSession(sessionId, userId);
+              if (!session) {
                 throw new Error('Session not found. Cannot resume session.');
               }
 
-              // Convert to Session model
-              let session = Session.fromSelectSession(selectSession);
-
               // Update session model in DB if different from saved model
               if (messageModel && messageModel !== session.model) {
-                await updateSession(sessionId, { model: messageModel }, userId);
+                await sessionService.updateSessionSettings(sessionId, userId, {
+                  model: messageModel
+                });
                 // Re-fetch session to get updated model
-                const updatedSelectSession = await getSessionById(
+                const updatedSession = await sessionService.getSession(
                   sessionId,
                   userId
                 );
-                if (updatedSelectSession) {
-                  session = Session.fromSelectSession(updatedSelectSession);
+                if (updatedSession) {
+                  session = updatedSession;
                 }
               }
 
               // Get user settings for claudeConfigAutoPush
-              const userSettings = await getSettingsDirect(userId);
-              const claudeConfigAutoPush =
-                userSettings?.claudeConfigAutoPush ?? true;
+              const userSettings = await userSettingsService.getUserSettings(userId);
+              const claudeConfigAutoPush = userSettings.claudeConfigAutoPush;
 
               // Ensure user's local directory structure exists
               user.ensureLocalDirs();
@@ -206,7 +203,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
 
               // Save user message to database
               const userMsg = createUserMessage(sessionId, userMessageContent);
-              await saveMessage(userMsg);
+              await eventService.saveSessionMessage(userMsg);
 
               // Process agent request and stream responses
               // Pass session object - agent extracts all needed properties
@@ -220,7 +217,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
                   // userPersonalAccessToken is automatically fetched in startAgent
                 })) {
                   // Save message to database (always execute regardless of WebSocket state)
-                  await saveMessage(sdkMessage);
+                  await eventService.saveSessionMessage(sdkMessage);
 
                   // Send to client (continue even if WebSocket is disconnected)
                   try {
@@ -253,7 +250,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               sessionId,
               'interrupt'
             );
-            await saveMessage(controlRequestMsg);
+            await eventService.saveSessionMessage(controlRequestMsg);
 
             // 2. Send control_response to client
             const controlResponse = createControlResponse(
@@ -271,7 +268,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               { type: 'text', text: '[Request interrupted by user]' },
             ];
             const interruptMsg = createUserMessage(sessionId, interruptContent);
-            await saveMessage(interruptMsg);
+            await eventService.saveSessionMessage(interruptMsg);
             try {
               socket.send(JSON.stringify(interruptMsg));
             } catch (sendError) {
@@ -280,7 +277,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
 
             // 4. Create, save, and send the result message to mark session as complete
             const resultMsg = createResultMessage(sessionId, 'interrupted');
-            await saveMessage(resultMsg);
+            await eventService.saveSessionMessage(resultMsg);
             try {
               socket.send(JSON.stringify(resultMsg));
             } catch (sendError) {
