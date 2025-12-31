@@ -59,16 +59,16 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
         throw new Error('Failed to fetch sessions');
       }
       const data: SessionListResponse = await response.json();
-      // Transform API response to internal Session format
+      // Transform API response (snake_case) to internal Session format (camelCase)
       const sessions: Session[] = data.sessions.map((item) => ({
         id: item.id,
         title: item.title,
-        databricksWorkspacePath: item.workspacePath,
+        databricksWorkspacePath: item.workspace_path,
         userEmail: null, // Not provided in list response
-        databricksWorkspaceAutoPush: item.workspaceAutoPush,
-        isArchived: item.isArchived,
-        createdAt: item.updatedAt, // List response only has updatedAt
-        updatedAt: item.updatedAt,
+        databricksWorkspaceAutoPush: item.workspace_auto_push,
+        isArchived: item.is_archived,
+        createdAt: item.updated_at, // List response only has updated_at
+        updatedAt: item.updated_at,
       }));
       setSessions(sessions);
     } catch (err) {
@@ -112,17 +112,16 @@ export function SessionsProvider({ children }: SessionsProviderProps) {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'session_created' && data.session) {
-            // Add new session to the top of the list
+            // Add new session to the top of the list (API uses snake_case)
             const newSession: Session = {
               id: data.session.id,
               title: data.session.title,
-              databricksWorkspacePath:
-                data.session.databricksWorkspacePath ?? null,
-              updatedAt: data.session.updatedAt,
-              createdAt: data.session.updatedAt, // New sessions have same createdAt/updatedAt
+              databricksWorkspacePath: data.session.workspace_path ?? null,
+              updatedAt: data.session.updated_at,
+              createdAt: data.session.updated_at, // New sessions have same createdAt/updatedAt
               userEmail: null,
               databricksWorkspaceAutoPush:
-                data.session.databricksWorkspaceAutoPush ?? false,
+                data.session.workspace_auto_push ?? false,
               isArchived: false, // New sessions are always active
             };
             setSessions((prev) => {

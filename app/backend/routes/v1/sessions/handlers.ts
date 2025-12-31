@@ -185,13 +185,13 @@ export async function createSessionHandler(
               userId
             );
 
-            // Notify session list WebSocket listeners
+            // Notify session list WebSocket listeners (snake_case for API consistency)
             notifySessionCreated(userId, {
               id: appSessionId,
               title: null, // Title will be generated async
-              databricksWorkspacePath: databricksWorkspacePath ?? null,
-              databricksWorkspaceAutoPush,
-              updatedAt: new Date().toISOString(),
+              workspace_path: databricksWorkspacePath ?? null,
+              workspace_auto_push: databricksWorkspaceAutoPush,
+              updated_at: new Date().toISOString(),
             });
 
             // Trigger async title generation (supports both text and images)
@@ -298,15 +298,15 @@ export async function listSessionsHandler(
   const filter = request.query.filter || 'active';
   const sessions_list = await sessionService.listUserSessions(userId, filter);
 
-  // Transform to API response format
+  // Transform to API response format (snake_case for API consistency)
   const sessions: SessionListItem[] = sessions_list.map((session) => ({
     id: session.toString(),
     title: session.title,
-    workspacePath: session.databricksWorkspacePath,
-    workspaceAutoPush: session.databricksWorkspaceAutoPush,
-    appAutoDeploy: false, // TODO: Implement app auto-deploy feature
-    updatedAt: session.updatedAt.toISOString(),
-    isArchived: session.isArchived,
+    workspace_path: session.databricksWorkspacePath,
+    workspace_auto_push: session.databricksWorkspaceAutoPush,
+    app_auto_deploy: false, // TODO: Implement app auto-deploy feature
+    updated_at: session.updatedAt.toISOString(),
+    is_archived: session.isArchived,
   }));
 
   const response: SessionListResponse = { sessions };

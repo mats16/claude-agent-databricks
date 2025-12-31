@@ -22,9 +22,9 @@ export function notifySessionCreated(
   session: {
     id: string;
     title: string | null;
-    databricksWorkspacePath: string | null;
-    databricksWorkspaceAutoPush: boolean;
-    updatedAt: string;
+    workspace_path: string | null;
+    workspace_auto_push: boolean;
+    updated_at: string;
   }
 ) {
   const listeners = userSessionListeners.get(userId);

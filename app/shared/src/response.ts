@@ -8,11 +8,11 @@
 export interface SessionListItem {
   id: string;
   title: string | null;
-  workspacePath: string | null;
-  workspaceAutoPush: boolean;
-  appAutoDeploy: boolean;
-  updatedAt: string;
-  isArchived: boolean;
+  workspace_path: string | null;
+  workspace_auto_push: boolean;
+  app_auto_deploy: boolean;
+  updated_at: string;
+  is_archived: boolean;
 }
 
 /**
