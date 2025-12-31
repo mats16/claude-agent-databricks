@@ -1,9 +1,29 @@
 // ============================================
-// Session Response Types
+// Session Types
 // ============================================
+
+// POST /api/v1/sessions request
+export interface CreateSessionRequest {
+  events: Array<{
+    uuid: string;
+    session_id: string;
+    type: string;
+    message: { role: string; content: string };
+  }>;
+  session_context: {
+    model: string;
+    workspacePath?: string;
+  };
+}
+
+// POST /api/v1/sessions response
+export interface CreateSessionResponse {
+  session_id: string;
+}
 
 /**
  * Session item in list response (minimal data)
+ * GET /api/v1/sessions
  */
 export interface SessionListItem {
   id: string;

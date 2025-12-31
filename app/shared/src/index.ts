@@ -102,27 +102,5 @@ export interface WSErrorResponse {
   error: string;
 }
 
-// ============================================
-// REST API Types
-// ============================================
-
-// POST /api/v1/sessions
-export interface CreateSessionRequest {
-  events: Array<{
-    uuid: string;
-    session_id: string;
-    type: string;
-    message: { role: string; content: string };
-  }>;
-  session_context: {
-    model: string;
-    workspacePath?: string;
-  };
-}
-
-export interface CreateSessionResponse {
-  session_id: string;
-}
-
-// Re-export response types
-export * from './response.js';
+// Re-export session types
+export * from './session.js';
