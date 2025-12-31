@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { extractRequestContext } from '../../../utils/headers.js';
 import { getAccessTokenForUser } from '../../../utils/auth.js';
-import * as workspaceService from '../../../services/workspaceService.js';
+import * as workspaceService from '../../../services/workspace.service.js';
 
 // List root workspace (returns Users and Shared)
 export async function listRootWorkspaceHandler(

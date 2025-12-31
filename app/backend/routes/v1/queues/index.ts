@@ -5,7 +5,7 @@ import {
   getUserPendingTasks,
   getTotalPendingCount,
   getQueueStats,
-} from '../../../services/workspaceQueueService.js';
+} from '../../../services/workspace-queue.service.js';
 
 const queueRoutes: FastifyPluginAsync = async (fastify) => {
   // Get current user's queue status

@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { extractRequestContext } from '../../../../utils/headers.js';
-import * as userService from '../../../../services/userService.js';
-import * as claudeBackupService from '../../../../services/claudeBackupService.js';
+import * as userService from '../../../../services/user.service.js';
+import * as claudeBackupService from '../../../../services/claude-config-backup.service.js';
 
 const claudeBackupRoutes: FastifyPluginAsync = async (fastify) => {
   // Get Claude backup settings

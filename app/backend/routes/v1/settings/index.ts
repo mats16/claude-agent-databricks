@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { extractRequestContext } from '../../../utils/headers.js';
-import * as userService from '../../../services/userService.js';
+import * as userService from '../../../services/user.service.js';
 
 const settingsRoutes: FastifyPluginAsync = async (fastify) => {
   // Get current user settings

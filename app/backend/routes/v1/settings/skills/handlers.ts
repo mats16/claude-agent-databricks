@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { extractRequestContext } from '../../../../utils/headers.js';
-import * as skillService from '../../../../services/skillService.js';
-import { parseGitHubRepo } from '../../../../services/gitHubClient.js';
+import * as skillService from '../../../../services/skill.service.js';
+import { parseGitHubRepo } from '../../../../services/github-client.service.js';
 
 // List all skills
 export async function listSkillsHandler(

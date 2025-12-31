@@ -8,7 +8,7 @@ import {
   setCache,
   GitHubRateLimitError,
   formatRateLimitError,
-} from '../../../../services/gitHubClient.js';
+} from '../../../../services/github-client.service.js';
 
 // Repository configurations
 const REPOS = {

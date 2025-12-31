@@ -26,7 +26,7 @@ import publicAgentsRoutes from './routes/v1/agents/public/index.js';
 import {
   startCacheCleanup,
   stopCacheCleanup,
-} from './services/gitHubClient.js';
+} from './services/github-client.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -3,12 +3,12 @@ import path from 'path';
 import fs from 'fs';
 import type { MessageContent } from '@app/shared';
 import {
-  processAgentRequest,
+  startAgent,
   MessageStream,
   getAccessToken,
-} from '../../../agent/index.js';
+} from '../../../services/agent.service.js';
 import { databricks, paths } from '../../../config/index.js';
-import * as workspaceService from '../../../services/workspaceService.js';
+import * as workspaceService from '../../../services/workspace.service.js';
 import { saveMessage, getMessagesBySessionId } from '../../../db/events.js';
 import {
   createSession,
@@ -20,8 +20,8 @@ import {
 } from '../../../db/sessions.js';
 import { getSettingsDirect } from '../../../db/settings.js';
 import { upsertUser } from '../../../db/users.js';
-import { enqueueDelete } from '../../../services/workspaceQueueService.js';
-import { getUserPersonalAccessToken } from '../../../services/userService.js';
+import { enqueueDelete } from '../../../services/workspace-queue.service.js';
+import { getUserPersonalAccessToken } from '../../../services/user.service.js';
 import { extractRequestContext } from '../../../utils/headers.js';
 import { ClaudeSettings } from '../../../models/ClaudeSettings.js';
 import { SessionDraft, Session } from '../../../models/Session.js';
@@ -32,8 +32,8 @@ import {
   addEventToQueue,
   markQueueCompleted,
   createUserMessage,
-} from '../../../services/sessionState.js';
-import { generateTitleAsync } from '../../../services/titleService.js';
+} from '../../../services/session-state.service.js';
+import { generateTitleAsync } from '../../../services/session-title.service.js';
 
 // Types
 interface CreateSessionBody {
@@ -117,7 +117,7 @@ export async function createSessionHandler(
       : userMessage;
 
   // Create SessionDraft for new session
-  const draft = new SessionDraft({
+  const sessionDraft = new SessionDraft({
     userId,
     model,
     databricksWorkspacePath,
@@ -125,13 +125,13 @@ export async function createSessionHandler(
   });
 
   // Create working directory
-  const localWorkPath = draft.createWorkingDirectory();
+  const localWorkPath = sessionDraft.createWorkingDirectory();
   console.log(
-    `[New Session] Created workDir with TypeID: ${draft.toString()}, path: ${localWorkPath}`
+    `[New Session] Created workDir with TypeID: ${sessionDraft.toString()}, path: ${localWorkPath}`
   );
 
   // TypeID string for DB storage and API responses
-  const appSessionId = draft.toString();
+  const appSessionId = sessionDraft.toString();
 
   // Create settings.json with workspace sync hooks for all sessions
   const claudeSettings = new ClaudeSettings({
@@ -146,20 +146,18 @@ export async function createSessionHandler(
     // Note: workspace sync is now handled by settings.json hooks
     const stream = new MessageStream(messageContent);
 
-    // Get user's PAT if configured (for Databricks CLI operations)
+    // Get user's PAT (used for: 1) startAgent to avoid re-fetching, 2) title generation)
     const userPersonalAccessToken = await getUserPersonalAccessToken(userId);
 
     // Start processing in background
-    const agentIterator = processAgentRequest(
-      draft, // Pass SessionDraft - undefined claudeCodeSessionId means new session
-      messageContent,
+    const agentIterator = startAgent({
+      session: sessionDraft, // Pass SessionDraft - undefined claudeCodeSessionId means new session
       user,
-      {
-        claudeConfigAutoPush,
-      },
-      stream,
-      userPersonalAccessToken
-    );
+      messageContent,
+      claudeConfigAutoPush,
+      messageStream: stream,
+      userPersonalAccessToken, // Pass to avoid re-fetching inside startAgent
+    });
 
     // Process events in background
     (async () => {
@@ -181,9 +179,9 @@ export async function createSessionHandler(
             // Ensure user exists before creating session
             await upsertUser(userId, user.email);
 
-            // Convert draft to Session and save to database
+            // Convert sessionDraft to Session and save to database
             const session = await createSessionFromDraft(
-              draft,
+              sessionDraft,
               sessionId, // SDK session ID from init message
               userId
             );
