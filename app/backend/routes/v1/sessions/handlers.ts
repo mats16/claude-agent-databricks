@@ -19,9 +19,8 @@ import {
   archiveSession,
 } from '../../../db/sessions.js';
 import { getSettingsDirect } from '../../../db/settings.js';
-import { upsertUser } from '../../../db/users.js';
 import { enqueueDelete } from '../../../services/workspace-queue.service.js';
-import { getUserPersonalAccessToken } from '../../../services/user.service.js';
+import { ensureUser, getUserPersonalAccessToken } from '../../../services/user.service.js';
 import { extractRequestContext } from '../../../utils/headers.js';
 import { ClaudeSettings } from '../../../models/ClaudeSettings.js';
 import { SessionDraft, Session } from '../../../models/Session.js';
@@ -177,7 +176,7 @@ export async function createSessionHandler(
             sessionMessageStreams.set(appSessionId, stream); // Use TypeID
 
             // Ensure user exists before creating session
-            await upsertUser(userId, user.email);
+            await ensureUser(user);
 
             // Convert sessionDraft to Session and save to database
             const session = await createSessionFromDraft(
