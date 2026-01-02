@@ -6,6 +6,7 @@ import {
   getUserInfo,
   hasDatabricksPat,
   getUserPersonalAccessToken,
+  getPersonalAccessToken,
   setDatabricksPat,
   clearDatabricksPat,
 } from './user.service.js';
@@ -420,6 +421,81 @@ describe('user.service', () => {
         expect.stringContaining('[PAT] Failed to decrypt PAT'),
         'Decryption failed - key mismatch'
       );
+
+      consoleWarnSpy.mockRestore();
+    });
+  });
+
+  describe('getPersonalAccessToken', () => {
+    it('should return user PAT when available', async () => {
+      // Arrange
+      vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(true);
+      vi.mocked(oauthTokensRepo.getDatabricksPat).mockResolvedValue(mockPat);
+
+      // Act
+      const result = await getPersonalAccessToken(mockUserId);
+
+      // Assert
+      expect(result).toBe(mockPat);
+      expect(oauthTokensRepo.getDatabricksPat).toHaveBeenCalledWith(mockUserId);
+      expect(authUtil.getServicePrincipalAccessToken).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to service principal token when PAT not available', async () => {
+      // Arrange
+      vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(true);
+      vi.mocked(oauthTokensRepo.getDatabricksPat).mockResolvedValue(null);
+      vi.mocked(authUtil.getServicePrincipalAccessToken).mockResolvedValue('sp-token-123');
+
+      // Act
+      const result = await getPersonalAccessToken(mockUserId);
+
+      // Assert
+      expect(result).toBe('sp-token-123');
+      expect(oauthTokensRepo.getDatabricksPat).toHaveBeenCalledWith(mockUserId);
+      expect(authUtil.getServicePrincipalAccessToken).toHaveBeenCalled();
+    });
+
+    it('should fall back to service principal token when encryption not available', async () => {
+      // Arrange
+      vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(false);
+      vi.mocked(authUtil.getServicePrincipalAccessToken).mockResolvedValue('sp-token-123');
+
+      // Act
+      const result = await getPersonalAccessToken(mockUserId);
+
+      // Assert
+      expect(result).toBe('sp-token-123');
+      expect(oauthTokensRepo.getDatabricksPat).not.toHaveBeenCalled();
+      expect(authUtil.getServicePrincipalAccessToken).toHaveBeenCalled();
+    });
+
+    it('should throw error when both PAT and SP token are unavailable', async () => {
+      // Arrange
+      vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(true);
+      vi.mocked(oauthTokensRepo.getDatabricksPat).mockResolvedValue(null);
+      vi.mocked(authUtil.getServicePrincipalAccessToken).mockResolvedValue(undefined);
+
+      // Act & Assert
+      await expect(
+        getPersonalAccessToken(mockUserId)
+      ).rejects.toThrow('No access token available. Set DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET.');
+    });
+
+    it('should throw error when PAT decryption fails and SP token unavailable', async () => {
+      // Arrange
+      vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(true);
+      vi.mocked(oauthTokensRepo.getDatabricksPat).mockRejectedValue(
+        new Error('Decryption failed')
+      );
+      vi.mocked(authUtil.getServicePrincipalAccessToken).mockResolvedValue(undefined);
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Act & Assert
+      await expect(
+        getPersonalAccessToken(mockUserId)
+      ).rejects.toThrow('No access token available. Set DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET.');
 
       consoleWarnSpy.mockRestore();
     });
