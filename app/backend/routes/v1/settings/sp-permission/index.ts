@@ -7,13 +7,8 @@ const spPermissionRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v1/settings/sp-permission
   fastify.get('/', async (_request, reply) => {
     try {
+      // getServicePrincipalAccessToken() throws if credentials not configured
       const spToken = await getServicePrincipalAccessToken();
-      if (!spToken) {
-        return reply.status(500).send({
-          error:
-            'No access token available. Set DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET.',
-        });
-      }
 
       // Fetch SP info from Databricks SCIM API
       const response = await fetch(

@@ -1,22 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock config before importing anything else
-vi.mock('../config/index.js', () => ({
-  databricks: {
+// Mock fetch globally
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
+// Mock config module - must be inline due to hoisting
+vi.mock('../config/index.js', () => {
+  const mockDatabricks = {
     host: 'test.databricks.com',
     hostUrl: 'https://test.databricks.com',
     clientId: 'test-client-id',
     clientSecret: 'test-client-secret',
     appName: 'claude-agent-test',
-  },
-}));
-
-// Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+  };
+  return {
+    databricks: mockDatabricks,
+  };
+});
 
 // Import after mocks
 import { getServicePrincipalAccessToken } from './auth.js';
+import * as configModule from '../config/index.js';
 
 describe('auth.ts', () => {
   let testCounter = 0;
@@ -28,6 +32,10 @@ describe('auth.ts', () => {
     // Each test gets a new "day" to ensure cache is always expired
     testCounter++;
     vi.setSystemTime(new Date(`2024-01-${String(testCounter).padStart(2, '0')}T00:00:00Z`));
+
+    // Reset databricks config to default values
+    vi.mocked(configModule.databricks).clientId = 'test-client-id';
+    vi.mocked(configModule.databricks).clientSecret = 'test-client-secret';
   });
 
   afterEach(() => {
@@ -176,6 +184,23 @@ describe('auth.ts', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1); // New fetch was made
     });
 
+    it('should throw error when credentials not configured', async () => {
+      // Arrange - Temporarily set credentials to undefined
+      const originalClientId = vi.mocked(configModule.databricks).clientId;
+      const originalClientSecret = vi.mocked(configModule.databricks).clientSecret;
+      vi.mocked(configModule.databricks).clientId = undefined;
+      vi.mocked(configModule.databricks).clientSecret = undefined;
+
+      // Act & Assert
+      await expect(getServicePrincipalAccessToken()).rejects.toThrow(
+        'Service Principal credentials not configured. Set DATABRICKS_CLIENT_ID and DATABRICKS_CLIENT_SECRET.'
+      );
+      expect(mockFetch).not.toHaveBeenCalled();
+
+      // Restore
+      vi.mocked(configModule.databricks).clientId = originalClientId;
+      vi.mocked(configModule.databricks).clientSecret = originalClientSecret;
+    });
 
     it('should throw error when OAuth2 endpoint returns error', async () => {
 

@@ -296,11 +296,6 @@ export async function getPersonalAccessToken(userId: string): Promise<string> {
     return userPat;
   }
 
-  const spToken = await getServicePrincipalAccessToken();
-  if (!spToken) {
-    throw new Error(
-      'No access token available. Set DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET.'
-    );
-  }
-  return spToken;
+  // getServicePrincipalAccessToken() now throws if credentials not configured
+  return await getServicePrincipalAccessToken();
 }

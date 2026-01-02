@@ -474,12 +474,14 @@ describe('user.service', () => {
       // Arrange
       vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(true);
       vi.mocked(oauthTokensRepo.getDatabricksPat).mockResolvedValue(null);
-      vi.mocked(authUtil.getServicePrincipalAccessToken).mockResolvedValue(undefined);
+      vi.mocked(authUtil.getServicePrincipalAccessToken).mockRejectedValue(
+        new Error('Service Principal credentials not configured. Set DATABRICKS_CLIENT_ID and DATABRICKS_CLIENT_SECRET.')
+      );
 
       // Act & Assert
       await expect(
         getPersonalAccessToken(mockUserId)
-      ).rejects.toThrow('No access token available. Set DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET.');
+      ).rejects.toThrow('Service Principal credentials not configured. Set DATABRICKS_CLIENT_ID and DATABRICKS_CLIENT_SECRET.');
     });
 
     it('should throw error when PAT decryption fails and SP token unavailable', async () => {
@@ -488,14 +490,16 @@ describe('user.service', () => {
       vi.mocked(oauthTokensRepo.getDatabricksPat).mockRejectedValue(
         new Error('Decryption failed')
       );
-      vi.mocked(authUtil.getServicePrincipalAccessToken).mockResolvedValue(undefined);
+      vi.mocked(authUtil.getServicePrincipalAccessToken).mockRejectedValue(
+        new Error('Service Principal credentials not configured. Set DATABRICKS_CLIENT_ID and DATABRICKS_CLIENT_SECRET.')
+      );
 
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       // Act & Assert
       await expect(
         getPersonalAccessToken(mockUserId)
-      ).rejects.toThrow('No access token available. Set DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET.');
+      ).rejects.toThrow('Service Principal credentials not configured. Set DATABRICKS_CLIENT_ID and DATABRICKS_CLIENT_SECRET.');
 
       consoleWarnSpy.mockRestore();
     });

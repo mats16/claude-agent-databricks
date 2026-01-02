@@ -10,18 +10,19 @@ const TOKEN_EXPIRY_BUFFER_SECONDS = 300;
  * Get service principal access token from Databricks OAuth2.
  * Implements token caching with 5-minute expiry buffer.
  *
- * @returns Access token or undefined if credentials not configured
+ * @returns Access token
+ * @throws Error if credentials not configured
  */
-export async function getServicePrincipalAccessToken(): Promise<
-  string | undefined
-> {
+export async function getServicePrincipalAccessToken(): Promise<string> {
   // Check if cached token is still valid
   if (cachedToken && Date.now() < cachedToken.expiresAt) {
     return cachedToken.token;
   }
 
   if (!databricks.clientId || !databricks.clientSecret) {
-    return undefined;
+    throw new Error(
+      'Service Principal credentials not configured. Set DATABRICKS_CLIENT_ID and DATABRICKS_CLIENT_SECRET.'
+    );
   }
 
   // Request token from Databricks OAuth2 endpoint
