@@ -24,18 +24,18 @@ interface RequestContext {
 
 declare module 'fastify' {
   interface FastifyRequest {
-    context: RequestContext | null;
+    ctx: RequestContext | null;
   }
 }
 
 export default fp(
   async (fastify) => {
     // Add request context decorator
-    fastify.decorateRequest('context', null);
+    fastify.decorateRequest('ctx', null);
 
     // Add preHandler hook for extracting request context
     fastify.addHook('preHandler', async (req) => {
-      req.context = {
+      req.ctx = {
         host: req.headers['x-forwarded-host'] as string,
         requestId: req.headers['x-request-id'] as string,
         realIp: req.headers['x-real-ip'] as string,
