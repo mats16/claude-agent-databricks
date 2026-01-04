@@ -115,7 +115,11 @@ describe('encryption', () => {
     });
 
     it('should throw on invalid ciphertext format (missing parts)', () => {
-      expect(() => decrypt('invalid')).toThrow('Invalid ciphertext format');
+      // Data without colons is treated as plaintext (no error)
+      const plainResult = decrypt('invalid');
+      expect(plainResult).toBe('invalid');
+
+      // Data with colons but wrong number of parts should throw
       expect(() => decrypt('part1:part2')).toThrow('Invalid ciphertext format');
       expect(() => decrypt('part1:part2:part3:part4')).toThrow(
         'Invalid ciphertext format'
@@ -196,9 +200,16 @@ describe('encryption', () => {
       expect(result).toBe('test');
     });
 
-    it('should return null for invalid ciphertext', () => {
+    it('should return null for invalid ciphertext with colons', () => {
+      // Data with colons looks like encryption attempt, but invalid format
       const result = decryptSafe('invalid:ciphertext');
-      expect(result).toBeNull();
+      expect(result).toBeNull(); // Decryption fails, returns null
+    });
+
+    it('should return plaintext for data without colons', () => {
+      // Data without colons is clearly plaintext (legacy data)
+      const result = decryptSafe('plaintext-without-colons');
+      expect(result).toBe('plaintext-without-colons');
     });
 
     it('should return null for tampered data', () => {

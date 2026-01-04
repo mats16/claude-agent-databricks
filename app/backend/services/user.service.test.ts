@@ -409,7 +409,7 @@ describe('user.service', () => {
       // Assert
       expect(result).toBe(undefined);
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[PAT] Failed to decrypt PAT'),
+        expect.stringContaining('[PAT] Failed to retrieve PAT'),
         'Decryption failed - key mismatch'
       );
 
@@ -447,9 +447,10 @@ describe('user.service', () => {
       expect(authUtil.getServicePrincipalAccessToken).toHaveBeenCalled();
     });
 
-    it('should fall back to service principal token when encryption not available', async () => {
+    it('should fall back to service principal token when encryption not available and PAT not found', async () => {
       // Arrange
       vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(false);
+      vi.mocked(oauthTokensRepo.getDatabricksPat).mockResolvedValue(null); // No PAT in DB
       vi.mocked(authUtil.getServicePrincipalAccessToken).mockResolvedValue('sp-token-123');
 
       // Act
@@ -457,7 +458,7 @@ describe('user.service', () => {
 
       // Assert
       expect(result).toBe('sp-token-123');
-      expect(oauthTokensRepo.getDatabricksPat).not.toHaveBeenCalled();
+      expect(oauthTokensRepo.getDatabricksPat).toHaveBeenCalled(); // Still tries to get PAT even in plaintext mode
       expect(authUtil.getServicePrincipalAccessToken).toHaveBeenCalled();
     });
 

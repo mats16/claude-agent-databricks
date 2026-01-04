@@ -168,7 +168,10 @@ export function decrypt(ciphertext: string): string {
   // Check if data appears to be encrypted format
   // If encryption is enabled but data is in plaintext (migration scenario),
   // detect and handle gracefully
-  if (!isEncryptedFormat(ciphertext)) {
+  // IMPORTANT: Only treat as plaintext if it doesn't contain colons (clear plaintext)
+  // If it contains colons, it might be an encryption attempt, so try to decrypt it
+  if (!ciphertext.includes(CIPHERTEXT_DELIMITER)) {
+    // No colons = clearly plaintext (legacy data before encryption was enabled)
     console.warn(
       '[Encryption] Data does not appear to be encrypted. ' +
       'Returning as plaintext (may be legacy data).'
@@ -176,6 +179,8 @@ export function decrypt(ciphertext: string): string {
     return ciphertext; // Assume plaintext from pre-encryption era
   }
 
+  // Has colons, so might be encrypted data - proceed with decryption attempt
+  // This will throw errors if format is invalid (which is what we want)
   // Parse the ciphertext components
   const parts = ciphertext.split(CIPHERTEXT_DELIMITER);
   if (parts.length !== 3) {
