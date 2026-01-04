@@ -1,11 +1,13 @@
 import type { FastifyRequest } from 'fastify';
 import path from 'path';
 import { RequestUser } from '../models/RequestUser.js';
+import { createUserFromHeaders, type User } from '../models/User.js';
 
 export { RequestUser };
 
 /**
  * Extracted request context from Databricks Apps headers
+ * @deprecated Use UserRequestContext instead
  */
 export interface RequestContext {
   /** User object with sub, email, preferredUsername, name, accessToken */
@@ -15,10 +17,51 @@ export interface RequestContext {
 }
 
 /**
+ * New request context using lightweight User interface
+ */
+export interface UserRequestContext {
+  /** User object with id, name, email (no access token) */
+  user: User;
+  /** UUID of the request (X-Request-Id) */
+  requestId?: string;
+}
+
+/**
+ * Extract user from request headers (new User interface).
+ *
+ * @param headers - Request headers
+ * @returns User object
+ * @throws Error if required headers are missing
+ */
+export function extractUser(headers: {
+  [key: string]: string | string[] | undefined;
+}): User {
+  return createUserFromHeaders(headers);
+}
+
+/**
+ * Extract user request context (new User interface).
+ *
+ * @param request - Fastify request object
+ * @returns UserRequestContext with User object and optional requestId
+ * @throws Error if required headers are missing
+ */
+export function extractUserRequestContext(request: FastifyRequest): UserRequestContext {
+  const user = createUserFromHeaders(request.headers);
+  const requestId = request.headers['x-request-id'] as string | undefined;
+
+  return {
+    user,
+    requestId,
+  };
+}
+
+/**
  * Extract user context from Databricks Apps forwarded headers
  * @param request - Fastify request object
  * @returns RequestContext with user object and optional requestId
  * @throws Error if required headers are missing
+ * @deprecated Use extractUserRequestContext instead
  */
 export function extractRequestContext(request: FastifyRequest): RequestContext {
   const { config } = request.server;
@@ -39,6 +82,7 @@ export function extractRequestContext(request: FastifyRequest): RequestContext {
  * @param usersBase - Base directory for user files (from config)
  * @returns RequestContext with user object and optional requestId
  * @throws Error if required headers are missing
+ * @deprecated Use extractUser instead
  */
 export function extractRequestContextFromHeaders(
   headers: {

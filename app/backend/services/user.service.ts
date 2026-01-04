@@ -13,6 +13,11 @@ import {
 } from '../db/users.js';
 import { isEncryptionAvailable } from '../utils/encryption.js';
 import type { RequestUser } from '../models/RequestUser.js';
+import type { User } from '../models/User.js';
+import {
+  getRemoteClaudeConfigDir,
+  getRemoteHomeDir,
+} from '../utils/userPaths.js';
 import type { SelectUser } from '../db/schema.js';
 import * as settingsService from './user-settings.service.js';
 import { DEFAULT_USER_SETTINGS, type UserSettings } from './user-settings.service.js';
@@ -68,20 +73,30 @@ export async function ensureUserWithDefaults(
 }
 
 /**
- * Ensure user exists in database (convenience wrapper).
+ * Ensure user exists in database (convenience wrapper, new User interface).
+ *
+ * @param user - User object
+ */
+export async function ensureUser(user: User): Promise<void> {
+  await ensureUserWithDefaults(user.id, user.email);
+}
+
+/**
+ * Ensure user exists in database (convenience wrapper, legacy).
  *
  * @param user - Request user object
+ * @deprecated Use ensureUser(user: User) instead
  */
-export async function ensureUser(user: RequestUser): Promise<void> {
+export async function ensureUserLegacy(user: RequestUser): Promise<void> {
   await ensureUserWithDefaults(user.sub, user.email);
 }
 
-// Check if user has workspace permission by attempting to create .claude directory
+// Check if user has workspace permission by attempting to create .claude directory (new User interface)
 export async function checkWorkspacePermission(
   fastify: FastifyInstance,
-  user: RequestUser
+  user: User
 ): Promise<boolean> {
-  const claudeConfigPath = user.remote.claudeConfigDir;
+  const claudeConfigPath = getRemoteClaudeConfigDir(user);
 
   try {
     const spToken = await getServicePrincipalAccessToken(fastify);
@@ -110,13 +125,28 @@ export async function checkWorkspacePermission(
   }
 }
 
-// Get user info including workspace permission check
-export async function getUserInfo(fastify: FastifyInstance, user: RequestUser): Promise<UserInfo> {
+/**
+ * Check workspace permission (legacy RequestUser).
+ * @deprecated Use checkWorkspacePermission(fastify, user: User) instead
+ */
+export async function checkWorkspacePermissionLegacy(
+  fastify: FastifyInstance,
+  user: RequestUser
+): Promise<boolean> {
+  return checkWorkspacePermission(fastify, {
+    id: user.sub,
+    name: user.preferredUsername,
+    email: user.email,
+  });
+}
+
+// Get user info including workspace permission check (new User interface)
+export async function getUserInfo(fastify: FastifyInstance, user: User): Promise<UserInfo> {
   // Ensure user exists
   await ensureUser(user);
 
   // Workspace home from user object
-  const workspaceHome = user.remote.homeDir;
+  const workspaceHome = getRemoteHomeDir(user);
 
   // Check workspace permission
   const hasWorkspacePermission = await checkWorkspacePermission(fastify, user);
@@ -129,12 +159,24 @@ export async function getUserInfo(fastify: FastifyInstance, user: RequestUser): 
       : null;
 
   return {
-    userId: user.sub,
+    userId: user.id,
     email: user.email,
     workspaceHome,
     hasWorkspacePermission,
     databricksAppUrl,
   };
+}
+
+/**
+ * Get user info (legacy RequestUser).
+ * @deprecated Use getUserInfo(fastify, user: User) instead
+ */
+export async function getUserInfoLegacy(fastify: FastifyInstance, user: RequestUser): Promise<UserInfo> {
+  return getUserInfo(fastify, {
+    id: user.sub,
+    name: user.preferredUsername,
+    email: user.email,
+  });
 }
 
 /**
@@ -146,14 +188,26 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
 }
 
 /**
- * Update user settings (delegates to settings.service).
+ * Update user settings (new User interface, delegates to settings.service).
  * @deprecated Use settingsService.updateUserSettings() directly
  */
 export async function updateUserSettings(
-  user: RequestUser,
+  user: User,
   settings: { claudeConfigAutoPush?: boolean }
 ): Promise<void> {
   await ensureUser(user);
+  await settingsService.updateUserSettings(user.id, settings);
+}
+
+/**
+ * Update user settings (legacy RequestUser, delegates to settings.service).
+ * @deprecated Use settingsService.updateUserSettings() directly
+ */
+export async function updateUserSettingsLegacy(
+  user: RequestUser,
+  settings: { claudeConfigAutoPush?: boolean }
+): Promise<void> {
+  await ensureUserLegacy(user);
   await settingsService.updateUserSettings(user.sub, settings);
 }
 
@@ -238,18 +292,18 @@ async function fetchDatabricksTokenInfo(
 }
 
 /**
- * Set PAT (fetches expiry from Databricks API, stores encrypted).
+ * Set PAT (new User interface, fetches expiry from Databricks API, stores encrypted).
  *
  * Note: Encryption is handled automatically by the encryptedText custom type.
  */
 export async function setDatabricksPat(
   fastify: FastifyInstance,
-  user: RequestUser,
+  user: User,
   pat: string
 ): Promise<{ expiresAt: Date | null; comment: string | null }> {
   if (!isEncryptionAvailable()) {
     console.warn(
-      `[PAT] Storing PAT for user ${user.sub} in PLAINTEXT mode. ` +
+      `[PAT] Storing PAT for user ${user.id} in PLAINTEXT mode. ` +
       'This is NOT secure for production use.'
     );
   }
@@ -276,9 +330,25 @@ export async function setDatabricksPat(
   }
 
   // Store PAT (encryption handled by customType)
-  await setPatInDb(user.sub, pat, expiresAt);
+  await setPatInDb(user.id, pat, expiresAt);
 
   return { expiresAt, comment };
+}
+
+/**
+ * Set PAT (legacy RequestUser, fetches expiry from Databricks API, stores encrypted).
+ * @deprecated Use setDatabricksPat(fastify, user: User, pat) instead
+ */
+export async function setDatabricksPatLegacy(
+  fastify: FastifyInstance,
+  user: RequestUser,
+  pat: string
+): Promise<{ expiresAt: Date | null; comment: string | null }> {
+  return setDatabricksPat(fastify, {
+    id: user.sub,
+    name: user.preferredUsername,
+    email: user.email,
+  }, pat);
 }
 
 // Clear PAT

@@ -12,6 +12,7 @@ import {
   clearDatabricksPat,
 } from './user.service.js';
 import type { RequestUser } from '../models/RequestUser.js';
+import type { User } from '../models/User.js';
 import type { SelectUser } from '../db/schema.js';
 import * as usersRepo from '../db/users.js';
 import * as oauthTokensRepo from '../db/oauthTokens.js';
@@ -58,6 +59,12 @@ describe('user.service', () => {
       claudeConfigDir: '/Workspace/Users/test@example.com/.claude',
     },
   } as RequestUser;
+
+  const mockUser: User = {
+    id: mockUserId,
+    name: 'Test User',
+    email: mockEmail,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -155,17 +162,17 @@ describe('user.service', () => {
   describe('ensureUser', () => {
     it('should call ensureUserWithDefaults with user info', async () => {
       // Arrange
-      const mockUser: SelectUser = {
+      const mockDbUser: SelectUser = {
         id: mockUserId,
         email: mockEmail,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      vi.mocked(usersRepo.getUserById).mockResolvedValue(mockUser);
+      vi.mocked(usersRepo.getUserById).mockResolvedValue(mockDbUser);
 
       // Act
-      await ensureUser(mockRequestUser);
+      await ensureUser(mockUser);
 
       // Assert
       expect(usersRepo.getUserById).toHaveBeenCalledWith(mockUserId);
@@ -243,14 +250,14 @@ describe('user.service', () => {
   describe('getUserInfo', () => {
     it('should return complete user info when all checks pass', async () => {
       // Arrange
-      const mockUser: SelectUser = {
+      const mockDbUser: SelectUser = {
         id: mockUserId,
         email: mockEmail,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      vi.mocked(usersRepo.getUserById).mockResolvedValue(mockUser);
+      vi.mocked(usersRepo.getUserById).mockResolvedValue(mockDbUser);
       vi.mocked(authUtil.getServicePrincipalAccessToken).mockResolvedValue(
         'mock-token'
       );
@@ -260,7 +267,7 @@ describe('user.service', () => {
       });
 
       // Act
-      const result = await getUserInfo(mockFastify, mockRequestUser);
+      const result = await getUserInfo(mockFastify, mockUser);
 
       // Assert
       expect(result).toEqual({
@@ -321,7 +328,7 @@ describe('user.service', () => {
       });
 
       // Act
-      const result = await getUserInfo(mockFastify, mockRequestUser);
+      const result = await getUserInfo(mockFastify, mockUser);
 
       // Assert
       expect(result.hasWorkspacePermission).toBe(false);
@@ -520,7 +527,7 @@ describe('user.service', () => {
       vi.mocked(oauthTokensRepo.setDatabricksPat).mockResolvedValue(undefined);
 
       // Act
-      await setDatabricksPat(mockFastify, mockRequestUser, mockPat);
+      await setDatabricksPat(mockFastify, mockUser, mockPat);
 
       // Assert
       expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -576,7 +583,7 @@ describe('user.service', () => {
       vi.mocked(oauthTokensRepo.setDatabricksPat).mockResolvedValue(undefined);
 
       // Act
-      const result = await setDatabricksPat(mockFastify, mockRequestUser, mockPat);
+      const result = await setDatabricksPat(mockFastify, mockUser, mockPat);
 
       // Assert
       expect(result.expiresAt).toEqual(new Date(expiryTime));
@@ -619,7 +626,7 @@ describe('user.service', () => {
       vi.mocked(oauthTokensRepo.setDatabricksPat).mockResolvedValue(undefined);
 
       // Act
-      const result = await setDatabricksPat(mockFastify, mockRequestUser, mockPat);
+      const result = await setDatabricksPat(mockFastify, mockUser, mockPat);
 
       // Assert
       expect(result.expiresAt).toBe(null);
@@ -655,7 +662,7 @@ describe('user.service', () => {
       vi.mocked(oauthTokensRepo.setDatabricksPat).mockResolvedValue(undefined);
 
       // Act
-      const result = await setDatabricksPat(mockFastify, mockRequestUser, mockPat);
+      const result = await setDatabricksPat(mockFastify, mockUser, mockPat);
 
       // Assert
       expect(result.expiresAt).toBe(null);
@@ -692,7 +699,7 @@ describe('user.service', () => {
       vi.mocked(oauthTokensRepo.setDatabricksPat).mockResolvedValue(undefined);
 
       // Act
-      await setDatabricksPat(mockFastify, mockRequestUser, mockPat);
+      await setDatabricksPat(mockFastify, mockUser, mockPat);
 
       // Assert - User should be created
       expect(usersRepo.createUserWithDefaultSettings).toHaveBeenCalled();
