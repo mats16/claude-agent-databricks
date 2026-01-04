@@ -14,12 +14,11 @@ const schema = {
 			type: 'string',
 			description: 'PostgreSQL connection string',
 		},
-		// Encryption (optional with default)
+		// Encryption (optional - empty string = plaintext mode)
 		ENCRYPTION_KEY: {
 			type: 'string',
-			default: 'deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe',
-			pattern: '^[0-9a-fA-F]{64}$',
-			description: 'AES-256-GCM encryption key (64 hex chars)',
+			default: '',
+			description: 'AES-256-GCM encryption key (64 hex chars). Leave empty for plaintext mode (NOT recommended for production).',
 		},
 		// User and working directories (optional)
 		USER_DIR_BASE: {
@@ -111,7 +110,7 @@ declare module 'fastify' {
       // Database
       DATABASE_URL: string
       // Encryption
-      ENCRYPTION_KEY: string
+      ENCRYPTION_KEY?: string
       // User and working directories
       USER_DIR_BASE: string
       WORKING_DIR_BASE: string

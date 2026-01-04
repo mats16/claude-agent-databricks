@@ -14,13 +14,17 @@ const patRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(400).send({ error: error.message });
     }
 
-    if (!isEncryptionAvailable()) {
-      return { hasPat: false, encryptionAvailable: false };
-    }
-
     try {
       const hasPat = await userService.hasDatabricksPat(context.user.sub);
-      return { hasPat, encryptionAvailable: true };
+      const encryptionAvailable = isEncryptionAvailable();
+      return {
+        hasPat,
+        encryptionAvailable,
+        ...((!encryptionAvailable && hasPat) && {
+          plaintextMode: true,
+          warning: 'PAT is stored in plaintext (encryption disabled)'
+        })
+      };
     } catch (error: any) {
       console.error('Failed to check PAT status:', error);
       return reply.status(500).send({ error: error.message });
@@ -43,22 +47,20 @@ const patRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(400).send({ error: 'PAT is required' });
     }
 
-    if (!isEncryptionAvailable()) {
-      return reply.status(503).send({
-        error: 'PAT storage is not available. ENCRYPTION_KEY not configured.',
-      });
-    }
-
     try {
       const result = await userService.setDatabricksPat(
         fastify,
         context.user,
         pat.trim()
       );
+      const encryptionAvailable = isEncryptionAvailable();
       return {
         success: true,
         expiresAt: result.expiresAt?.toISOString() ?? null,
         comment: result.comment,
+        ...(!encryptionAvailable && {
+          warning: 'PAT stored in PLAINTEXT (encryption disabled)'
+        })
       };
     } catch (error: any) {
       console.error('Failed to set PAT:', error);

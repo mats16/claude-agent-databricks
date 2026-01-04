@@ -117,9 +117,11 @@ export function isEncryptionAvailable(): boolean {
  */
 export function encrypt(plaintext: string): string {
   if (!encryptionKey) {
-    throw new Error(
-      'Encryption not initialized. Call initializeEncryption() first.'
+    console.warn(
+      '[Encryption] WARNING: Storing data in PLAINTEXT (encryption disabled). ' +
+      'Set ENCRYPTION_KEY environment variable for production use.'
     );
+    return plaintext; // Return plaintext as-is
   }
 
   // Generate a random IV for this encryption (critical for GCM security)
@@ -157,9 +159,21 @@ export function encrypt(plaintext: string): string {
  */
 export function decrypt(ciphertext: string): string {
   if (!encryptionKey) {
-    throw new Error(
-      'Encryption not initialized. Call initializeEncryption() first.'
+    console.warn(
+      '[Encryption] WARNING: Reading data as PLAINTEXT (encryption disabled).'
     );
+    return ciphertext; // Return as-is (assume plaintext)
+  }
+
+  // Check if data appears to be encrypted format
+  // If encryption is enabled but data is in plaintext (migration scenario),
+  // detect and handle gracefully
+  if (!isEncryptedFormat(ciphertext)) {
+    console.warn(
+      '[Encryption] Data does not appear to be encrypted. ' +
+      'Returning as plaintext (may be legacy data).'
+    );
+    return ciphertext; // Assume plaintext from pre-encryption era
   }
 
   // Parse the ciphertext components
@@ -226,7 +240,7 @@ export function decrypt(ciphertext: string): string {
  */
 export function encryptSafe(plaintext: string): string | null {
   if (!isEncryptionAvailable()) {
-    return null;
+    return plaintext; // Return plaintext instead of null
   }
   return encrypt(plaintext);
 }
@@ -242,7 +256,7 @@ export function encryptSafe(plaintext: string): string | null {
  */
 export function decryptSafe(ciphertext: string): string | null {
   if (!isEncryptionAvailable()) {
-    return null;
+    return ciphertext; // Return plaintext instead of null
   }
   try {
     return decrypt(ciphertext);

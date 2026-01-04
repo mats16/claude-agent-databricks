@@ -9,7 +9,20 @@ await runMigrations();
 const app = await buildApp();
 
 // Initialize encryption for PAT storage (after config plugin is loaded)
-initializeEncryption(app.config.ENCRYPTION_KEY);
+const encryptionEnabled = initializeEncryption(app.config.ENCRYPTION_KEY);
+if (!encryptionEnabled) {
+  console.warn(
+    '\n═══════════════════════════════════════════════════════════════\n' +
+    '⚠️  WARNING: ENCRYPTION DISABLED - PLAINTEXT MODE ACTIVE ⚠️\n' +
+    '═══════════════════════════════════════════════════════════════\n' +
+    'Sensitive data (PATs, tokens) will be stored in PLAINTEXT.\n' +
+    'This is ONLY suitable for development/testing environments.\n' +
+    '\n' +
+    'For production use, set ENCRYPTION_KEY environment variable:\n' +
+    '  openssl rand -hex 32\n' +
+    '═══════════════════════════════════════════════════════════════\n'
+  );
+}
 
 const host = '0.0.0.0';
 const port = app.config.DATABRICKS_APP_PORT;

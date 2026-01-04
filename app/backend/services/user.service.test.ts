@@ -329,19 +329,7 @@ describe('user.service', () => {
   });
 
   describe('hasDatabricksPat', () => {
-    it('should return false when encryption not available', async () => {
-      // Arrange
-      vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(false);
-
-      // Act
-      const result = await hasDatabricksPat(mockUserId);
-
-      // Assert
-      expect(result).toBe(false);
-      expect(oauthTokensRepo.hasDatabricksPat).not.toHaveBeenCalled();
-    });
-
-    it('should return true when encryption available and PAT exists', async () => {
+    it('should return true when PAT exists (encryption enabled)', async () => {
       // Arrange
       vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(true);
       vi.mocked(oauthTokensRepo.hasDatabricksPat).mockResolvedValue(true);
@@ -354,7 +342,20 @@ describe('user.service', () => {
       expect(oauthTokensRepo.hasDatabricksPat).toHaveBeenCalledWith(mockUserId);
     });
 
-    it('should return false when encryption available but PAT does not exist', async () => {
+    it('should return true when PAT exists (plaintext mode)', async () => {
+      // Arrange
+      vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(false);
+      vi.mocked(oauthTokensRepo.hasDatabricksPat).mockResolvedValue(true);
+
+      // Act
+      const result = await hasDatabricksPat(mockUserId);
+
+      // Assert
+      expect(result).toBe(true);
+      expect(oauthTokensRepo.hasDatabricksPat).toHaveBeenCalledWith(mockUserId);
+    });
+
+    it('should return false when PAT does not exist', async () => {
       // Arrange
       vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(true);
       vi.mocked(oauthTokensRepo.hasDatabricksPat).mockResolvedValue(false);
@@ -368,19 +369,7 @@ describe('user.service', () => {
   });
 
   describe('getUserPersonalAccessToken', () => {
-    it('should return undefined when encryption not available', async () => {
-      // Arrange
-      vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(false);
-
-      // Act
-      const result = await getUserPersonalAccessToken(mockUserId);
-
-      // Assert
-      expect(result).toBe(undefined);
-      expect(oauthTokensRepo.getDatabricksPat).not.toHaveBeenCalled();
-    });
-
-    it('should return PAT when encryption available and PAT exists', async () => {
+    it('should return PAT when PAT exists (encryption enabled)', async () => {
       // Arrange
       vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(true);
       vi.mocked(oauthTokensRepo.getDatabricksPat).mockResolvedValue(mockPat);
@@ -508,16 +497,50 @@ describe('user.service', () => {
   });
 
   describe('setDatabricksPat', () => {
-    it('should throw error when encryption not available', async () => {
+    it('should store PAT with warning in plaintext mode', async () => {
       // Arrange
       vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(false);
 
-      // Act & Assert
-      await expect(
-        setDatabricksPat(mockFastify, mockRequestUser, mockPat)
-      ).rejects.toThrow('Encryption not available. Cannot store PAT.');
+      const mockUser: SelectUser = {
+        id: mockUserId,
+        email: mockEmail,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      expect(oauthTokensRepo.setDatabricksPat).not.toHaveBeenCalled();
+      vi.mocked(usersRepo.getUserById).mockResolvedValue(mockUser);
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ token_infos: [] }),
+      });
+      vi.mocked(oauthTokensRepo.setDatabricksPat).mockResolvedValue(undefined);
+
+      // Act
+      await setDatabricksPat(mockFastify, mockRequestUser, mockPat);
+
+      // Assert
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('PLAINTEXT')
+      );
+      expect(oauthTokensRepo.setDatabricksPat).toHaveBeenCalled();
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should return PAT when PAT exists (plaintext mode)', async () => {
+      // Arrange
+      vi.mocked(encryptionUtil.isEncryptionAvailable).mockReturnValue(false);
+      vi.mocked(oauthTokensRepo.getDatabricksPat).mockResolvedValue(mockPat);
+
+      // Act
+      const result = await getUserPersonalAccessToken(mockUserId);
+
+      // Assert
+      expect(result).toBe(mockPat);
+      expect(oauthTokensRepo.getDatabricksPat).toHaveBeenCalledWith(mockUserId);
     });
 
     it('should store PAT with expiry when token info is available', async () => {

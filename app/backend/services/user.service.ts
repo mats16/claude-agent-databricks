@@ -159,7 +159,7 @@ export async function updateUserSettings(
 
 // Check if PAT is configured for user
 export async function hasDatabricksPat(userId: string): Promise<boolean> {
-  if (!isEncryptionAvailable()) return false;
+  // Works in both encrypted and plaintext modes
   return hasPatInDb(userId);
 }
 
@@ -175,17 +175,17 @@ export async function hasDatabricksPat(userId: string): Promise<boolean> {
 export async function getUserPersonalAccessToken(
   userId: string
 ): Promise<string | undefined> {
-  if (!isEncryptionAvailable()) return undefined;
-
   try {
     const pat = await getDatabricksPat(userId);
     return pat ?? undefined;
   } catch (error) {
-    // Decryption failure - likely due to encryption key change
+    // Decryption failure (when encryption enabled) OR read failure
     // User will need to re-configure their PAT
     console.warn(
-      `[PAT] Failed to decrypt PAT for user ${userId}. ` +
-        'This may occur if the encryption key was changed. ' +
+      `[PAT] Failed to retrieve PAT for user ${userId}. ` +
+        (isEncryptionAvailable()
+          ? 'This may occur if the encryption key was changed. '
+          : 'Error reading plaintext PAT. ') +
         'User should re-configure their PAT.',
       error instanceof Error ? error.message : error
     );
@@ -248,7 +248,10 @@ export async function setDatabricksPat(
   pat: string
 ): Promise<{ expiresAt: Date | null; comment: string | null }> {
   if (!isEncryptionAvailable()) {
-    throw new Error('Encryption not available. Cannot store PAT.');
+    console.warn(
+      `[PAT] Storing PAT for user ${user.sub} in PLAINTEXT mode. ` +
+      'This is NOT secure for production use.'
+    );
   }
 
   await ensureUser(user);

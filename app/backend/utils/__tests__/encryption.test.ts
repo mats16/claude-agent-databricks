@@ -330,29 +330,83 @@ describe('encryption without valid key', () => {
     expect(isEncryptionAvailable()).toBe(false);
   });
 
-  it('should throw when encrypting without initialization', () => {
+  it('should return plaintext when encrypting without initialization', () => {
     initializeEncryption(''); // Returns false
 
-    expect(() => encrypt('test')).toThrow('Encryption not initialized');
+    const plaintext = 'my-secret-token';
+    const result = encrypt(plaintext);
+    expect(result).toBe(plaintext); // Returns as-is
   });
 
-  it('should throw when decrypting without initialization', () => {
+  it('should return plaintext when decrypting without initialization', () => {
     initializeEncryption(''); // Returns false
 
-    expect(() => decrypt('test:test:test')).toThrow(
-      'Encryption not initialized'
+    const plaintext = 'my-secret-token';
+    const result = decrypt(plaintext);
+    expect(result).toBe(plaintext); // Returns as-is
+  });
+
+  it('should return plaintext from encryptSafe when not initialized', () => {
+    initializeEncryption(''); // Returns false
+
+    const plaintext = 'test';
+    const result = encryptSafe(plaintext);
+    expect(result).toBe(plaintext); // Returns plaintext instead of null
+  });
+
+  it('should return plaintext from decryptSafe when not initialized', () => {
+    initializeEncryption(''); // Returns false
+
+    const plaintext = 'test';
+    const result = decryptSafe(plaintext);
+    expect(result).toBe(plaintext); // Returns plaintext instead of null
+  });
+
+  it('should handle round-trip in plaintext mode', () => {
+    initializeEncryption('');
+
+    const original = 'test-token-12345';
+    const encrypted = encrypt(original);
+    const decrypted = decrypt(encrypted);
+
+    expect(encrypted).toBe(original);
+    expect(decrypted).toBe(original);
+  });
+
+  it('should warn when storing data in plaintext mode', () => {
+    initializeEncryption('');
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    encrypt('test');
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('PLAINTEXT')
     );
+
+    consoleWarnSpy.mockRestore();
+  });
+});
+
+describe('mixed mode - plaintext to encrypted migration', () => {
+  beforeEach(() => {
+    initializeEncryption(testEncryptionKey);
   });
 
-  it('should return null from encryptSafe when not initialized', () => {
-    initializeEncryption(''); // Returns false
+  it('should handle decrypting plaintext data when encryption enabled', () => {
+    // Simulate: data stored in plaintext, now encryption is enabled
+    const plaintextData = 'my-legacy-token';
 
-    expect(encryptSafe('test')).toBeNull();
+    // decrypt() should detect non-encrypted format and return as-is
+    const result = decrypt(plaintextData);
+    expect(result).toBe(plaintextData);
   });
 
-  it('should return null from decryptSafe when not initialized', () => {
-    initializeEncryption(''); // Returns false
+  it('should handle re-encrypting plaintext data', () => {
+    const plaintextData = 'my-legacy-token';
 
-    expect(decryptSafe('test:test:test')).toBeNull();
+    // Can re-encrypt the plaintext
+    const encrypted = encrypt(plaintextData);
+    expect(isEncryptedFormat(encrypted)).toBe(true);
+    expect(decrypt(encrypted)).toBe(plaintextData);
   });
 });
