@@ -323,95 +323,53 @@ describe('encryption', () => {
 });
 
 describe('encryption with invalid key', () => {
-  it('should handle key too short', async () => {
-    // Reset module and mock with short key
-    vi.resetModules();
-    vi.doMock('../../config/index.js', () => ({
-      encryptionKey: 'tooshort',
-    }));
-
-    const mod = await import('../encryption.js');
-    const result = mod.initializeEncryption(testEncryptionKey);
+  it('should handle key too short', () => {
+    const result = initializeEncryption('tooshort');
 
     expect(result).toBe(false);
-    expect(mod.isEncryptionAvailable()).toBe(false);
+    expect(isEncryptionAvailable()).toBe(false);
   });
 
-  it('should handle missing key', async () => {
-    vi.resetModules();
-    vi.doMock('../../config/index.js', () => ({
-      encryptionKey: undefined,
-    }));
-
-    const mod = await import('../encryption.js');
-    const result = mod.initializeEncryption(testEncryptionKey);
+  it('should handle missing key', () => {
+    const result = initializeEncryption('');
 
     expect(result).toBe(false);
-    expect(mod.isEncryptionAvailable()).toBe(false);
+    expect(isEncryptionAvailable()).toBe(false);
   });
 
-  it('should handle non-hex key', async () => {
-    vi.resetModules();
-    vi.doMock('../../config/index.js', () => ({
-      // 64 chars but not hex (contains 'g')
-      encryptionKey:
-        'gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg',
-    }));
-
-    const mod = await import('../encryption.js');
-    const result = mod.initializeEncryption(testEncryptionKey);
+  it('should handle non-hex key', () => {
+    // 64 chars but not hex (contains 'g')
+    const invalidKey =
+      'gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg';
+    const result = initializeEncryption(invalidKey);
 
     expect(result).toBe(false);
-    expect(mod.isEncryptionAvailable()).toBe(false);
+    expect(isEncryptionAvailable()).toBe(false);
   });
 
-  it('should throw when encrypting without initialization', async () => {
-    vi.resetModules();
-    vi.doMock('../../config/index.js', () => ({
-      encryptionKey: undefined,
-    }));
+  it('should throw when encrypting without initialization', () => {
+    initializeEncryption(''); // Returns false
 
-    const mod = await import('../encryption.js');
-    mod.initializeEncryption(testEncryptionKey); // Returns false
-
-    expect(() => mod.encrypt('test')).toThrow('Encryption not initialized');
+    expect(() => encrypt('test')).toThrow('Encryption not initialized');
   });
 
-  it('should throw when decrypting without initialization', async () => {
-    vi.resetModules();
-    vi.doMock('../../config/index.js', () => ({
-      encryptionKey: undefined,
-    }));
+  it('should throw when decrypting without initialization', () => {
+    initializeEncryption(''); // Returns false
 
-    const mod = await import('../encryption.js');
-    mod.initializeEncryption(testEncryptionKey); // Returns false
-
-    expect(() => mod.decrypt('test:test:test')).toThrow(
+    expect(() => decrypt('test:test:test')).toThrow(
       'Encryption not initialized'
     );
   });
 
-  it('should return null from encryptSafe when not initialized', async () => {
-    vi.resetModules();
-    vi.doMock('../../config/index.js', () => ({
-      encryptionKey: undefined,
-    }));
+  it('should return null from encryptSafe when not initialized', () => {
+    initializeEncryption(''); // Returns false
 
-    const mod = await import('../encryption.js');
-    mod.initializeEncryption(testEncryptionKey); // Returns false
-
-    expect(mod.encryptSafe('test')).toBeNull();
+    expect(encryptSafe('test')).toBeNull();
   });
 
-  it('should return null from decryptSafe when not initialized', async () => {
-    vi.resetModules();
-    vi.doMock('../../config/index.js', () => ({
-      encryptionKey: undefined,
-    }));
+  it('should return null from decryptSafe when not initialized', () => {
+    initializeEncryption(''); // Returns false
 
-    const mod = await import('../encryption.js');
-    mod.initializeEncryption(testEncryptionKey); // Returns false
-
-    expect(mod.decryptSafe('test:test:test')).toBeNull();
+    expect(decryptSafe('test:test:test')).toBeNull();
   });
 });

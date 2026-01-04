@@ -129,7 +129,7 @@ describe('session.service', () => {
       });
 
       const dbError = new Error('Database connection failed');
-      vi.mocked(sessionRepo.createSessionFromDraft).mockRejectedValue(dbError);
+      vi.mocked(sessionRepo.createSession).mockRejectedValue(dbError);
 
       // Act & Assert
       await expect(

@@ -203,7 +203,7 @@ describe('event.service', () => {
       expect(result.first_id).toBe('msg-1');
       expect(result.last_id).toBe('msg-2');
 
-      expect(sessionService.getSession).toHaveBeenCalledWith(mockSessionId, mockUserId);
+      expect(sessionService.getSession).toHaveBeenCalledWith(mockFastify, mockSessionId, mockUserId);
       expect(eventRepo.getMessagesBySessionId).toHaveBeenCalledWith(mockSessionId);
     });
 

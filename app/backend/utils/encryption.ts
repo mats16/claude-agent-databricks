@@ -63,6 +63,8 @@ export function initializeEncryption(encryptionKeyHex: string): boolean {
   const keyHex = encryptionKeyHex;
 
   if (!keyHex) {
+    encryptionKey = null;
+    encryptionAvailable = false;
     console.warn(
       '[Encryption] ENCRYPTION_KEY not set. PAT storage feature disabled.'
     );
@@ -70,6 +72,8 @@ export function initializeEncryption(encryptionKeyHex: string): boolean {
   }
 
   if (keyHex.length !== KEY_HEX_LENGTH) {
+    encryptionKey = null;
+    encryptionAvailable = false;
     console.error(
       `[Encryption] ENCRYPTION_KEY must be ${KEY_HEX_LENGTH} hex characters (32 bytes). PAT storage feature disabled.`
     );
@@ -78,6 +82,8 @@ export function initializeEncryption(encryptionKeyHex: string): boolean {
 
   // Validate hex format
   if (!/^[0-9a-fA-F]+$/.test(keyHex)) {
+    encryptionKey = null;
+    encryptionAvailable = false;
     console.error(
       '[Encryption] ENCRYPTION_KEY must contain only hex characters (0-9, a-f). PAT storage feature disabled.'
     );
@@ -90,6 +96,8 @@ export function initializeEncryption(encryptionKeyHex: string): boolean {
     console.log('[Encryption] Initialized successfully.');
     return true;
   } catch (error) {
+    encryptionKey = null;
+    encryptionAvailable = false;
     console.error('[Encryption] Failed to initialize:', error);
     return false;
   }
