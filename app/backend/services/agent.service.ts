@@ -7,7 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import fs from 'fs';
 import path from 'path';
 import type { MessageContent } from '@app/shared';
-import type { RequestUser } from '../models/RequestUser.js';
+import type { User } from '../models/User.js';
 import type { SessionBase } from '../models/Session.js';
 import {
   buildSDKQueryOptions,
@@ -15,6 +15,7 @@ import {
 } from '../agent/index.js';
 import { getUserPersonalAccessToken } from './user.service.js';
 import { getServicePrincipalAccessToken } from '../utils/auth.js';
+import { getLocalClaudeConfigDir } from '../utils/userPaths.js';
 
 export type { SDKMessage };
 
@@ -200,7 +201,8 @@ export async function* processAgentRequest(
   fastify: FastifyInstance,
   session: SessionBase,
   message: MessageContent[],
-  user: RequestUser,
+  user: User,
+  userAccessToken: string, // OBO access token (from req.ctx.user.accessToken)
   options?: ProcessAgentRequestOptions,
   messageStream?: MessageStream,
   userPersonalAccessToken?: string
@@ -209,11 +211,13 @@ export async function* processAgentRequest(
   const claudeConfigAutoPush = options?.claudeConfigAutoPush ?? true;
   const waitForReady = options?.waitForReady;
 
-  // Local Claude config directory from User object, fallback to default
-  const usersBasePath = path.join(fastify.config.HOME, fastify.config.USER_DIR_BASE);
-  const localClaudeConfigPath =
-    user.local.claudeConfigDir ??
-    path.join(usersBasePath, 'me', '.claude');
+  // Local Claude config directory using utility function
+  const { config } = fastify;
+  const localClaudeConfigPath = getLocalClaudeConfigDir(
+    user,
+    config.HOME,
+    config.USER_DIR_BASE
+  );
   fs.mkdirSync(localClaudeConfigPath, { recursive: true });
 
   const spAccessToken = await getServicePrincipalAccessToken(fastify);
@@ -225,6 +229,7 @@ export async function* processAgentRequest(
   const sdkOptions = buildSDKQueryOptions(fastify, {
     session,
     user,
+    userAccessToken,
     messageStream: stream,
     userPersonalAccessToken,
     spAccessToken,
@@ -251,7 +256,8 @@ export async function* processAgentRequest(
 // Parameters for starting an agent session
 export interface StartAgentParams {
   session: SessionBase; // SessionDraft or Session
-  user: RequestUser;
+  user: User;
+  userAccessToken: string; // OBO access token (from req.ctx.user.accessToken)
   messageContent: MessageContent[];
   claudeConfigAutoPush?: boolean;
   messageStream?: MessageStream; // Optional, will be created if not provided
@@ -268,6 +274,7 @@ export async function* startAgent(
   const {
     session,
     user,
+    userAccessToken,
     messageContent,
     claudeConfigAutoPush = true,
     messageStream,
@@ -275,14 +282,16 @@ export async function* startAgent(
     waitForReady,
   } = params;
 
-  // Extract userId from user (user.sub is the unique identifier)
-  const userId = user.sub;
+  // Extract userId from user (user.id is the unique identifier)
+  const userId = user.id;
 
-  // Local Claude config directory from User object, fallback to default
-  const usersBasePath = path.join(fastify.config.HOME, fastify.config.USER_DIR_BASE);
-  const localClaudeConfigPath =
-    user.local.claudeConfigDir ??
-    path.join(usersBasePath, 'me', '.claude');
+  // Local Claude config directory from User object using utility function
+  const { config } = fastify;
+  const localClaudeConfigPath = getLocalClaudeConfigDir(
+    user,
+    config.HOME,
+    config.USER_DIR_BASE
+  );
   fs.mkdirSync(localClaudeConfigPath, { recursive: true });
 
   // Get user PAT if not provided
@@ -300,6 +309,7 @@ export async function* startAgent(
   const sdkOptions = buildSDKQueryOptions(fastify, {
     session,
     user,
+    userAccessToken,
     messageStream: stream,
     userPersonalAccessToken: pat,
     spAccessToken,

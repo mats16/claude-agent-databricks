@@ -11,7 +11,7 @@ import * as eventService from '../../../services/event.service.js';
 import * as sessionService from '../../../services/session.service.js';
 import * as userSettingsService from '../../../services/user-settings.service.js';
 import { ensureUser, getPersonalAccessToken, getUserPersonalAccessToken } from '../../../services/user.service.js';
-import { extractRequestContext } from '../../../utils/headers.js';
+import { extractUserRequestContext } from '../../../utils/headers.js';
 import { ClaudeSettings } from '../../../models/ClaudeSettings.js';
 import { SessionDraft } from '../../../models/Session.js';
 import { SessionNotFoundError } from '../../../errors/ServiceErrors.js';
@@ -51,13 +51,13 @@ export async function createSessionHandler(
   // Get user info from request headers
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
   const { user } = context;
-  const userId = user.sub;
+  const userId = user.id;
 
   // Extract first user message
   const userEvent = events.find((e) => e.type === 'user');
@@ -144,6 +144,7 @@ export async function createSessionHandler(
     const agentIterator = startAgent(request.server, {
       session: sessionDraft, // Pass SessionDraft - undefined claudeCodeSessionId means new session
       user,
+      userAccessToken: request.ctx.user.accessToken, // OBO access token from headers
       messageContent,
       claudeConfigAutoPush,
       messageStream: stream,
@@ -282,12 +283,12 @@ export async function listSessionsHandler(
 ) {
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
-  const userId = context.user.sub;
+  const userId = context.user.id;
   const filter = request.query.filter || 'active';
   const sessions_list = await sessionService.listUserSessions(
     request.server,
@@ -334,12 +335,12 @@ export async function updateSessionHandler(
 
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
-  const userId = context.user.sub;
+  const userId = context.user.id;
 
   // At least one field must be provided
   if (
@@ -384,12 +385,12 @@ export async function archiveSessionHandler(
 
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
-  const userId = context.user.sub;
+  const userId = context.user.id;
 
   try {
     // Archive session and enqueue cleanup
@@ -416,12 +417,12 @@ export async function getSessionEventsHandler(
 
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
-  const userId = context.user.sub;
+  const userId = context.user.id;
 
   try {
     // getSessionMessages includes session ownership check
@@ -479,12 +480,12 @@ export async function getAppLiveStatusHandler(
 
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
-  const userId = context.user.sub;
+  const userId = context.user.id;
 
   // Get session (includes ownership check)
   const session = await sessionService.getSession(request.server, sessionId, userId);
@@ -574,12 +575,12 @@ export async function getAppHandler(
 
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
-  const userId = context.user.sub;
+  const userId = context.user.id;
 
   const session = await sessionService.getSession(request.server, sessionId, userId);
   if (!session) {
@@ -626,12 +627,12 @@ export async function listAppDeploymentsHandler(
 
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
-  const userId = context.user.sub;
+  const userId = context.user.id;
 
   const session = await sessionService.getSession(request.server, sessionId, userId);
   if (!session) {
@@ -678,12 +679,12 @@ export async function createAppDeploymentHandler(
 
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
-  const userId = context.user.sub;
+  const userId = context.user.id;
 
   const session = await sessionService.getSession(request.server, sessionId, userId);
   if (!session) {
@@ -737,12 +738,12 @@ export async function getSessionHandler(
 
   let context;
   try {
-    context = extractRequestContext(request);
+    context = extractUserRequestContext(request);
   } catch (error: any) {
     return reply.status(400).send({ error: error.message });
   }
 
-  const userId = context.user.sub;
+  const userId = context.user.id;
 
   // Get session from database (includes ownership check)
   const session = await sessionService.getSession(request.server, sessionId, userId);
