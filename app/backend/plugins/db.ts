@@ -3,7 +3,6 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../db/schema.js';
-import * as config from '../config';
 
 // Fastify 型定義拡張
 declare module 'fastify' {
@@ -15,7 +14,7 @@ declare module 'fastify' {
 export default fp(
 	async (fastify) => {
 		// Postgres クライアント作成
-		const client = postgres(config.database.url);
+		const client = postgres(fastify.config.DATABASE_URL);
 
 		// Drizzle インスタンス作成（v1.0+ 構文）
 		const db = drizzle({ client, schema });
@@ -32,6 +31,6 @@ export default fp(
 	},
 	{
 		name: 'db',
-		// 依存なし - 早期ロード
+		dependencies: ['config'], // config plugin must load first
 	}
 );
