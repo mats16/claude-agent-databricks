@@ -1,12 +1,7 @@
-// Load environment variables first, before any other imports
-import './env.js';
-
 import { buildApp } from './app.js';
 import { runMigrations } from './db/migrate.js';
 import { drainQueue } from './services/workspace-queue.service.js';
 import { initializeEncryption } from './utils/encryption.js';
-
-const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8000;
 
 // Initialize encryption for PAT storage
 initializeEncryption();
@@ -16,10 +11,13 @@ await runMigrations();
 
 const app = await buildApp();
 
+const host = '0.0.0.0';
+const port = app.config.DATABRICKS_APP_PORT;
+
 // Start server
 try {
-  await app.listen({ port: PORT, host: '0.0.0.0' });
-  console.log(`Backend server running on http://0.0.0.0:${PORT}`);
+  await app.listen({ host, port });
+  console.log(`Backend server running on http://${host}:${port}`);
 } catch (err) {
   app.log.error(err);
   process.exit(1);
