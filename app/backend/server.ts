@@ -9,7 +9,7 @@ await runMigrations();
 const app = await buildApp();
 
 // Initialize encryption for PAT storage (after config plugin is loaded)
-const encryptionEnabled = initializeEncryption(app.config.ENCRYPTION_KEY);
+const encryptionEnabled = initializeEncryption(app.config.ENCRYPTION_KEY ?? '');
 if (!encryptionEnabled) {
   console.warn(
     '\n═══════════════════════════════════════════════════════════════\n' +

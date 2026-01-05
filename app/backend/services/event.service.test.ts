@@ -27,7 +27,7 @@ const testSessionsBase = '/test/sessions';
 const mockFastify = {
   config: {
     HOME: '/test/home',
-    WORKING_DIR_BASE: 'sessions',
+    SESSION_BASE_DIR: '/test/home/sessions',
   },
 } as unknown as FastifyInstance;
 

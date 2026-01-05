@@ -132,7 +132,7 @@ export async function listSubagents(
   fastify: FastifyInstance,
   user: User
 ): Promise<SubagentListResult> {
-  const agentsPath = getLocalAgentsPath(user, fastify.config.HOME, fastify.config.USER_DIR_BASE);
+  const agentsPath = getLocalAgentsPath(user, fastify.config.USER_BASE_DIR);
 
   // Ensure agents directory exists
   if (!fs.existsSync(agentsPath)) {
@@ -169,7 +169,7 @@ export async function getSubagent(
   user: User,
   subagentName: string
 ): Promise<Subagent | null> {
-  const subagentPath = path.join(getLocalAgentsPath(user, fastify.config.HOME, fastify.config.USER_DIR_BASE), `${subagentName}.md`);
+  const subagentPath = path.join(getLocalAgentsPath(user, fastify.config.USER_BASE_DIR), `${subagentName}.md`);
 
   if (!fs.existsSync(subagentPath)) {
     return null;
@@ -196,7 +196,7 @@ export async function createSubagent(
   tools?: string,
   model?: 'sonnet' | 'opus'
 ): Promise<Subagent> {
-  const agentsPath = getLocalAgentsPath(user, fastify.config.HOME, fastify.config.USER_DIR_BASE);
+  const agentsPath = getLocalAgentsPath(user, fastify.config.USER_BASE_DIR);
   const subagentPath = path.join(agentsPath, `${name}.md`);
 
   // Ensure agents directory exists
@@ -237,7 +237,7 @@ export async function updateSubagent(
   tools?: string,
   model?: 'sonnet' | 'opus'
 ): Promise<Subagent> {
-  const agentsPath = getLocalAgentsPath(user, fastify.config.HOME, fastify.config.USER_DIR_BASE);
+  const agentsPath = getLocalAgentsPath(user, fastify.config.USER_BASE_DIR);
   const subagentPath = path.join(agentsPath, `${subagentName}.md`);
 
   // Check if subagent exists
@@ -269,7 +269,7 @@ export async function deleteSubagent(
   user: User,
   subagentName: string
 ): Promise<void> {
-  const agentsPath = getLocalAgentsPath(user, fastify.config.HOME, fastify.config.USER_DIR_BASE);
+  const agentsPath = getLocalAgentsPath(user, fastify.config.USER_BASE_DIR);
   const subagentPath = path.join(agentsPath, `${subagentName}.md`);
 
   // Check if subagent exists
@@ -361,7 +361,7 @@ export async function importPresetSubagent(
   const presetContent = await response.text();
   const parsed = parseSubagentContent(presetContent);
 
-  const agentsPath = getLocalAgentsPath(user, fastify.config.HOME, fastify.config.USER_DIR_BASE);
+  const agentsPath = getLocalAgentsPath(user, fastify.config.USER_BASE_DIR);
   const subagentPath = path.join(agentsPath, `${parsed.name}.md`);
 
   // Ensure agents directory exists
@@ -445,7 +445,7 @@ export async function importGitHubSubagent(
     throw new Error('Could not determine agent name');
   }
 
-  const agentsPath = getLocalAgentsPath(user, fastify.config.HOME, fastify.config.USER_DIR_BASE);
+  const agentsPath = getLocalAgentsPath(user, fastify.config.USER_BASE_DIR);
   const subagentPath = path.join(agentsPath, `${agentName}.md`);
 
   // Ensure agents directory exists

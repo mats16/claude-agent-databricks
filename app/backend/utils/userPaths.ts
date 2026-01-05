@@ -7,65 +7,57 @@ import { getUsernameFromEmail } from '../models/User.js';
  * Get user's local home directory.
  *
  * @param user - User object
- * @param home - Home directory from config (config.HOME)
- * @param userDirBase - User directory base from config (config.USER_DIR_BASE)
- * @returns Local home directory path: {home}/{userDirBase}/{username}
+ * @param userBaseDir - User base directory from config (config.USER_BASE_DIR)
+ * @returns Local home directory path: {userBaseDir}/{username}
  */
 export function getLocalHomeDir(
   user: User,
-  home: string,
-  userDirBase: string
+  userBaseDir: string
 ): string {
   const username = getUsernameFromEmail(user.email);
-  return path.join(home, userDirBase, username);
+  return path.join(userBaseDir, username);
 }
 
 /**
  * Get user's local Claude config directory.
  *
  * @param user - User object
- * @param home - Home directory from config (config.HOME)
- * @param userDirBase - User directory base from config (config.USER_DIR_BASE)
- * @returns Local Claude config path: {home}/{userDirBase}/{username}/.claude
+ * @param userBaseDir - User base directory from config (config.USER_BASE_DIR)
+ * @returns Local Claude config path: {userBaseDir}/{username}/.claude
  */
 export function getLocalClaudeConfigDir(
   user: User,
-  home: string,
-  userDirBase: string
+  userBaseDir: string
 ): string {
-  return path.join(getLocalHomeDir(user, home, userDirBase), '.claude');
+  return path.join(getLocalHomeDir(user, userBaseDir), '.claude');
 }
 
 /**
  * Get user's local skills directory.
  *
  * @param user - User object
- * @param home - Home directory from config (config.HOME)
- * @param userDirBase - User directory base from config (config.USER_DIR_BASE)
- * @returns Local skills path: {home}/{userDirBase}/{username}/.claude/skills
+ * @param userBaseDir - User base directory from config (config.USER_BASE_DIR)
+ * @returns Local skills path: {userBaseDir}/{username}/.claude/skills
  */
 export function getLocalSkillsPath(
   user: User,
-  home: string,
-  userDirBase: string
+  userBaseDir: string
 ): string {
-  return path.join(getLocalClaudeConfigDir(user, home, userDirBase), 'skills');
+  return path.join(getLocalClaudeConfigDir(user, userBaseDir), 'skills');
 }
 
 /**
  * Get user's local agents directory.
  *
  * @param user - User object
- * @param home - Home directory from config (config.HOME)
- * @param userDirBase - User directory base from config (config.USER_DIR_BASE)
- * @returns Local agents path: {home}/{userDirBase}/{username}/.claude/agents
+ * @param userBaseDir - User base directory from config (config.USER_BASE_DIR)
+ * @returns Local agents path: {userBaseDir}/{username}/.claude/agents
  */
 export function getLocalAgentsPath(
   user: User,
-  home: string,
-  userDirBase: string
+  userBaseDir: string
 ): string {
-  return path.join(getLocalClaudeConfigDir(user, home, userDirBase), 'agents');
+  return path.join(getLocalClaudeConfigDir(user, userBaseDir), 'agents');
 }
 
 /**
@@ -113,16 +105,14 @@ export function getRemoteAgentsPath(user: User): string {
  * Creates skills and agents directories with all parent directories.
  *
  * @param user - User object
- * @param home - Home directory from config (config.HOME)
- * @param userDirBase - User directory base from config (config.USER_DIR_BASE)
+ * @param userBaseDir - User base directory from config (config.USER_BASE_DIR)
  */
 export function ensureUserLocalDirectories(
   user: User,
-  home: string,
-  userDirBase: string
+  userBaseDir: string
 ): void {
-  const skillsPath = getLocalSkillsPath(user, home, userDirBase);
-  const agentsPath = getLocalAgentsPath(user, home, userDirBase);
+  const skillsPath = getLocalSkillsPath(user, userBaseDir);
+  const agentsPath = getLocalAgentsPath(user, userBaseDir);
   fs.mkdirSync(skillsPath, { recursive: true });
   fs.mkdirSync(agentsPath, { recursive: true });
 }

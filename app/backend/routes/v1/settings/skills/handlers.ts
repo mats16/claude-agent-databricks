@@ -19,8 +19,7 @@ export async function listSkillsHandler(
   // Ensure user's directory structure exists
   ensureUserLocalDirectories(
     context.user,
-    request.server.config.HOME,
-    request.server.config.USER_DIR_BASE
+    request.server.config.USER_BASE_DIR
   );
 
   try {

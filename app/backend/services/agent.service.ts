@@ -215,8 +215,7 @@ export async function* processAgentRequest(
   const { config } = fastify;
   const localClaudeConfigPath = getLocalClaudeConfigDir(
     user,
-    config.HOME,
-    config.USER_DIR_BASE
+    config.USER_BASE_DIR
   );
   fs.mkdirSync(localClaudeConfigPath, { recursive: true });
 
@@ -289,8 +288,7 @@ export async function* startAgent(
   const { config } = fastify;
   const localClaudeConfigPath = getLocalClaudeConfigDir(
     user,
-    config.HOME,
-    config.USER_DIR_BASE
+    config.USER_BASE_DIR
   );
   fs.mkdirSync(localClaudeConfigPath, { recursive: true });
 

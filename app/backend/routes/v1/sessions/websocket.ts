@@ -204,8 +204,7 @@ const sessionWebSocketRoutes: FastifyPluginAsync = async (fastify) => {
               // Ensure user's local directory structure exists
               ensureUserLocalDirectories(
                 user,
-                fastify.config.HOME,
-                fastify.config.USER_DIR_BASE
+                fastify.config.USER_BASE_DIR
               );
 
               // Create MessageStream for this session

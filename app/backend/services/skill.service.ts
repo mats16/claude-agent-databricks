@@ -89,7 +89,7 @@ async function syncSkillToWorkspace(
   }
 
   const { config } = fastify;
-  const localSkillsPath = getLocalSkillsPath(user, config.HOME, config.USER_DIR_BASE);
+  const localSkillsPath = getLocalSkillsPath(user, config.USER_BASE_DIR);
   const remoteSkillsPath = getRemoteSkillsPath(user);
   const localSkillPath = path.join(localSkillsPath, skillName);
   const workspaceSkillPath = path.join(remoteSkillsPath, skillName);
@@ -158,7 +158,7 @@ export async function listSkills(
   user: User
 ): Promise<SkillListResult> {
   const { config } = fastify;
-  const skillsPath = getLocalSkillsPath(user, config.HOME, config.USER_DIR_BASE);
+  const skillsPath = getLocalSkillsPath(user, config.USER_BASE_DIR);
 
   // Ensure skills directory exists
   if (!fs.existsSync(skillsPath)) {
@@ -196,7 +196,7 @@ export async function getSkill(
   skillName: string
 ): Promise<Skill | null> {
   const { config } = fastify;
-  const skillsPath = getLocalSkillsPath(user, config.HOME, config.USER_DIR_BASE);
+  const skillsPath = getLocalSkillsPath(user, config.USER_BASE_DIR);
   const skillPath = path.join(skillsPath, skillName, 'SKILL.md');
 
   if (!fs.existsSync(skillPath)) {
@@ -223,7 +223,7 @@ export async function createSkill(
   content: string
 ): Promise<Skill> {
   const { config } = fastify;
-  const skillsPath = getLocalSkillsPath(user, config.HOME, config.USER_DIR_BASE);
+  const skillsPath = getLocalSkillsPath(user, config.USER_BASE_DIR);
   const skillDirPath = path.join(skillsPath, name);
   const skillPath = path.join(skillDirPath, 'SKILL.md');
 
@@ -257,7 +257,7 @@ export async function updateSkill(
   content: string
 ): Promise<Skill> {
   const { config } = fastify;
-  const skillsPath = getLocalSkillsPath(user, config.HOME, config.USER_DIR_BASE);
+  const skillsPath = getLocalSkillsPath(user, config.USER_BASE_DIR);
   const skillDirPath = path.join(skillsPath, skillName);
   const skillPath = path.join(skillDirPath, 'SKILL.md');
 
@@ -290,7 +290,7 @@ export async function deleteSkill(
   skillName: string
 ): Promise<void> {
   const { config } = fastify;
-  const skillsPath = getLocalSkillsPath(user, config.HOME, config.USER_DIR_BASE);
+  const skillsPath = getLocalSkillsPath(user, config.USER_BASE_DIR);
   const skillDirPath = path.join(skillsPath, skillName);
 
   // Check if skill exists
@@ -471,7 +471,7 @@ export async function importGitHubSkill(
     const parsed = parseSkillContent(skillMdContent);
 
     const { config } = fastify;
-    const skillsPath = getLocalSkillsPath(user, config.HOME, config.USER_DIR_BASE);
+    const skillsPath = getLocalSkillsPath(user, config.USER_BASE_DIR);
     const skillDirPath = path.join(skillsPath, parsed.name || skillName);
 
     // If skill already exists, remove it first (overwrite)

@@ -77,15 +77,15 @@ Violating these rules is considered a critical error.
 `;
 
   // Compute user paths
-  const localClaudeConfigDir = getLocalClaudeConfigDir(user, config.HOME, config.USER_DIR_BASE);
+  const localClaudeConfigDir = getLocalClaudeConfigDir(user, config.USER_BASE_DIR);
   const remoteClaudeConfigDir = getRemoteClaudeConfigDir(user);
 
   // Build agentEnv inline from config
   const agentEnv = {
     HOME: config.HOME,
     PATH: `${config.PATH}:${config.HOME}/.bin`,
-    SESSIONS_BASE_PATH: path.join(config.HOME, config.WORKING_DIR_BASE),
-    USERS_BASE_PATH: path.join(config.HOME, config.USER_DIR_BASE),
+    SESSIONS_BASE_PATH: config.SESSION_BASE_DIR,
+    USERS_BASE_PATH: config.USER_BASE_DIR,
     DATABRICKS_APP_NAME: config.DATABRICKS_APP_NAME,
     DATABRICKS_HOST: `https://${config.DATABRICKS_HOST}`,
     ANTHROPIC_BASE_URL: config.ANTHROPIC_BASE_URL,

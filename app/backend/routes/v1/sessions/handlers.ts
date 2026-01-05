@@ -80,8 +80,7 @@ export async function createSessionHandler(
 
   // Compute paths from config
   const { config } = request.server;
-  const usersBase = path.join(config.HOME, config.USER_DIR_BASE);
-  const localClaudeConfigPath = path.join(usersBase, user.name, '.claude');
+  const localClaudeConfigPath = path.join(config.USER_BASE_DIR, user.name, '.claude');
 
   // Ensure claude config directory exists
   fs.mkdirSync(localClaudeConfigPath, { recursive: true });
@@ -106,7 +105,7 @@ export async function createSessionHandler(
       : userMessage;
 
   // Create SessionDraft for new session
-  const sessionsBase = path.join(config.HOME, config.WORKING_DIR_BASE);
+  const sessionsBase = config.SESSION_BASE_DIR;
   const sessionDraft = new SessionDraft({
     userId,
     model,

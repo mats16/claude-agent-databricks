@@ -24,7 +24,7 @@ export async function createSessionFromDraft(
   userId: string
 ): Promise<Session> {
   // Compute sessionsBase from config
-  const sessionsBase = path.join(fastify.config.HOME, fastify.config.WORKING_DIR_BASE);
+  const sessionsBase = fastify.config.SESSION_BASE_DIR;
 
   // Domain model conversion (business logic)
   const session = Session.fromSessionDraft(draft, claudeCodeSessionId, sessionsBase);
@@ -76,7 +76,7 @@ export async function getSession(
     return null;
   }
 
-  const sessionsBase = path.join(fastify.config.HOME, fastify.config.WORKING_DIR_BASE);
+  const sessionsBase = fastify.config.SESSION_BASE_DIR;
   return Session.fromSelectSession(selectSession, sessionsBase);
 }
 
@@ -94,7 +94,7 @@ export async function listUserSessions(
   filter: 'active' | 'archived' | 'all' = 'active'
 ): Promise<Session[]> {
   const selectSessions = await sessionRepo.getSessionsByUserId(userId, filter);
-  const sessionsBase = path.join(fastify.config.HOME, fastify.config.WORKING_DIR_BASE);
+  const sessionsBase = fastify.config.SESSION_BASE_DIR;
 
   return selectSessions.map((s) => Session.fromSelectSession(s, sessionsBase));
 }

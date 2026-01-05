@@ -65,7 +65,7 @@ export function extractUserRequestContext(request: FastifyRequest): UserRequestC
  */
 export function extractRequestContext(request: FastifyRequest): RequestContext {
   const { config } = request.server;
-  const usersBase = path.join(config.HOME, config.USER_DIR_BASE);
+  const usersBase = config.USER_BASE_DIR;
   const user = RequestUser.fromHeaders(request.headers, usersBase);
   const requestId = request.headers['x-request-id'] as string | undefined;
 
