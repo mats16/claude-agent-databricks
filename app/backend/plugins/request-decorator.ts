@@ -41,9 +41,9 @@ export default fp(
         requestId: req.headers['x-request-id'] as string ?? crypto.randomUUID(),
         realIp: req.headers['x-real-ip'] as string ?? req.ip,
         user: {
-          id: req.headers['x-forwarded-user'] as string ?? '1234567890123456@1234567890123456',
-          name: req.headers['x-forwarded-preferred-username'] as string ?? 'John Doe',
-          email: req.headers['x-forwarded-email'] as string ?? 'john.doe@example.com',
+          id: req.headers['x-forwarded-user'] as string ?? '',
+          name: req.headers['x-forwarded-preferred-username'] as string ?? '',
+          email: req.headers['x-forwarded-email'] as string ?? '',
           accessToken: req.headers['x-forwarded-access-token'] as string ?? '',
         },
       };
