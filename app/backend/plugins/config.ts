@@ -19,7 +19,6 @@ const schema = {
 		// Encryption (optional - empty string = plaintext mode)
 		ENCRYPTION_KEY: {
 			type: 'string',
-			default: '',
 			description: 'AES-256-GCM encryption key (64 hex chars). Leave empty for plaintext mode (NOT recommended for production).',
 		},
 		// User and session directories (optional)
@@ -36,23 +35,28 @@ const schema = {
 		// Warehouse IDs (optional)
 		WAREHOUSE_ID_2XS: {
 			type: 'string',
+      default: '',
 			description: 'SQL Warehouse ID for 2XS size',
 		},
 		WAREHOUSE_ID_XS: {
 			type: 'string',
+      default: '',
 			description: 'SQL Warehouse ID for XS size',
 		},
 		WAREHOUSE_ID_S: {
 			type: 'string',
+      default: '',
 			description: 'SQL Warehouse ID for S size',
 		},
     // Databricks Apps defaults
 		DATABRICKS_APP_NAME: {
 			type: 'string',
+      default: '',
 			description: 'The name of the running app.',
 		},
 		DATABRICKS_WORKSPACE_ID: {
 			type: 'string',
+      default: '',
 			description: 'The unique ID for the Databricks workspace the app belongs to.',
 	  },
 		DATABRICKS_HOST: {
@@ -66,10 +70,12 @@ const schema = {
 		},
 		DATABRICKS_CLIENT_ID: {
 			type: 'string',
+      default: '',
 			description: 'The client ID for the Databricks service principal assigned to the app.',
 		},
 		DATABRICKS_CLIENT_SECRET: {
 			type: 'string',
+      default: '',
 			description: 'The OAuth secret for the Databricks service principal assigned to the app.',
 		},
     // Anthropic
