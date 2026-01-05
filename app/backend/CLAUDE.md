@@ -374,3 +374,10 @@ open coverage/index.html
 ```
 
 **Coverage targets**: 70% statements, 60% branches, 70% functions
+
+**Coverage exclusions**:
+- Type definitions (`types/**`)
+- Constants files (`**/constants.ts`)
+- Entry points (`server.ts`, `app.ts`)
+- Test files and generated code
+- Configuration files
